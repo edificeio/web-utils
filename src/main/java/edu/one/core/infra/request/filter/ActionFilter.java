@@ -76,6 +76,8 @@ public class ActionFilter implements Filter {
 			authorizeWorkflowAction(session, binding, handler);
 		} else if (ActionType.RESOURCE.equals(binding.getActionType())) {
 			authorizeResourceAction(request, session, binding, handler);
+		} else if (ActionType.AUTHENTICATED.equals(binding.getActionType())) {
+			handler.handle(true);
 		} else {
 			handler.handle(false);
 		}
