@@ -174,7 +174,7 @@ public class Renders {
 	}
 
 	public static void redirect(HttpServerRequest request, String location) {
-		redirect(request, getScheme(request) + "://" + request.headers().get("Host"), location);
+		redirect(request, getScheme(request) + "://" + getHost(request), location);
 	}
 
 	public static void redirect(HttpServerRequest request, String host, String location) {
@@ -184,7 +184,7 @@ public class Renders {
 	}
 
 	public static void redirectPermanent(HttpServerRequest request, String location) {
-		redirectPermanent(request, getScheme(request) + "://" + request.headers().get("Host"), location);
+		redirectPermanent(request, getScheme(request) + "://" + getHost(request), location);
 	}
 
 	public static void redirectPermanent(HttpServerRequest request, String host, String location) {
@@ -203,5 +203,13 @@ public class Renders {
 			scheme = "http";
 		}
 		return scheme;
+	}
+
+	public static String getHost(HttpServerRequest request) {
+		String host = request.headers().get("X-Forwarded-Host");
+		if (host != null && !host.trim().isEmpty()) {
+			return host;
+		}
+		return request.headers().get("Host");
 	}
 }

@@ -1,5 +1,7 @@
 package edu.one.core.infra.mustache;
 
+import edu.one.core.infra.http.Renders;
+
 public class StaticResourceTemplateFunction extends VertxTemplateFunction {
 
 	private final String infraPort;
@@ -27,9 +29,9 @@ public class StaticResourceTemplateFunction extends VertxTemplateFunction {
 
 	@Override
 	public String apply(String path) {
-		String host = request.headers().get("Host");
+		String host = Renders.getHost(request);
 		if (infraPort != null && request.headers().get("X-Forwarded-For") == null) {
-			host = request.headers().get("Host").split(":")[0] + ":" + infraPort;
+			host = host.split(":")[0] + ":" + infraPort;
 		}
 		return protocol
 				+ host
