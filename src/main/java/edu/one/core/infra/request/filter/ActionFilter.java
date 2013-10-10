@@ -1,5 +1,7 @@
 package edu.one.core.infra.request.filter;
 
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 
@@ -28,6 +30,22 @@ public class ActionFilter implements Filter {
 	}
 
 	public ActionFilter(Set<Binding> bindings, EventBus eb) {
+		this(bindings, eb, null);
+	}
+
+	public ActionFilter(List<Set<Binding>> bindings, EventBus eb, ResourcesProvider provider) {
+		Set<Binding> b = new HashSet<>();
+		if (bindings != null) {
+			for (Set<Binding> bs: bindings) {
+				b.addAll(bs);
+			}
+		}
+		this.bindings = b;
+		this.eb = eb;
+		this.provider = provider;
+	}
+
+	public ActionFilter(List<Set<Binding>> bindings, EventBus eb) {
 		this(bindings, eb, null);
 	}
 

@@ -34,7 +34,7 @@ public class Renders {
 	private final MustacheFactory mf;
 	protected final Logger log;
 	private Map<String, VertxTemplateFunction> templateFunctions;
-	protected final String pathPrefix;
+	protected String pathPrefix;
 
 	public Renders(Container container) {
 		this.log = container.logger();
