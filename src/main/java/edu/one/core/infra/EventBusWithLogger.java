@@ -1,8 +1,5 @@
 package edu.one.core.infra;
 
-import java.util.Date;
-import java.util.UUID;
-
 import org.vertx.java.core.AsyncResult;
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.buffer.Buffer;
@@ -13,26 +10,36 @@ import org.vertx.java.core.json.JsonObject;
 import org.vertx.java.core.logging.Logger;
 import org.vertx.java.core.logging.impl.LoggerFactory;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.UUID;
+
 public class EventBusWithLogger implements EventBus {
 
 	private final EventBus eb;
 	private static final Logger logger = LoggerFactory.getLogger(EventBusWithLogger.class);
+	private static final DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm.ss.SSS");
 
 	public EventBusWithLogger(EventBus eb) {
 		this.eb = eb;
 	}
 
+	private static String formatDate(Date date) {
+		return df.format(date);
+	}
+
 	private void sendLog(String address, String message) {
-		logger.info(MongoDb.formatDate(new Date()) + " send : " + address + " - " + message);
+		logger.info(formatDate(new Date()) + " send : " + address + " - " + message);
 	}
 
 	private void publishLog(String address, String message) {
-		logger.info(MongoDb.formatDate(new Date()) + " publish : " + address + " - " + message);
+		logger.info(formatDate(new Date()) + " publish : " + address + " - " + message);
 	}
 
 	private String sendLogwithResponse(String address, String message) {
 		String logMessageId = UUID.randomUUID().toString();
-		logger.info(MongoDb.formatDate(new Date()) + " send : " + logMessageId + " - " + address + " - " + message);
+		logger.info(formatDate(new Date()) + " send : " + logMessageId + " - " + address + " - " + message);
 		return logMessageId;
 	}
 
@@ -47,7 +54,7 @@ public class EventBusWithLogger implements EventBus {
 		} else {
 			r = response.toString();
 		}
-		logger.info(MongoDb.formatDate(new Date()) + " response : " + logMessageId + " - " + r);
+		logger.info(formatDate(new Date()) + " response : " + logMessageId + " - " + r);
 	}
 
 	@Override

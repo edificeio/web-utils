@@ -146,8 +146,8 @@ public abstract class Server extends Verticle {
 
 	// TODO serviceloader
 	public static EventBus getEventBus(Vertx vertx) {
-		//return new EventBusWithLogger(vertx.eventBus());
-		return new EventBusWithMongoDBLogger(vertx.eventBus());
+		return new EventBusWithLogger(vertx.eventBus());
+		//return new EventBusWithMongoDBLogger(vertx.eventBus());
 	}
 
 }
