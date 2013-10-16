@@ -1,6 +1,13 @@
 package edu.one.core.infra;
 
+import org.vertx.java.core.MultiMap;
+import org.vertx.java.core.eventbus.Message;
+import org.vertx.java.core.json.JsonArray;
+import org.vertx.java.core.json.JsonObject;
+
 import java.io.InputStream;
+import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 
 public class Utils {
@@ -21,6 +28,54 @@ public class Utils {
 		String content = scanner.useDelimiter("\\A").next();
 		scanner.close();
 		return content;
+	}
+
+	public static JsonObject validAndGet(JsonObject json, List<String> fields,
+				List<String> requiredFields) {
+		if (json != null) {
+			JsonObject e = json.copy();
+			for (String attr: json.getFieldNames()) {
+				if (!fields.contains(attr) || e.getValue(attr) == null) {
+					e.removeField(attr);
+				}
+			}
+			if (e.toMap().keySet().containsAll(requiredFields)) {
+				return e;
+			}
+		}
+		return null;
+	}
+
+	public static Either<String, JsonObject> validResult(Message<JsonObject> res) {
+		if ("ok".equals(res.body().getString("status"))) {
+			JsonObject r = res.body().getObject("result");
+			if (r == null) {
+				r = res.body();
+				r.removeField("status");
+			}
+			return new Either.Right<>(r);
+		} else {
+			return new Either.Left<>(res.body().getString("message", ""));
+		}
+	}
+
+	public static Either<String, JsonArray> validResults(Message<JsonObject> res) {
+		if ("ok".equals(res.body().getString("status"))) {
+			return new Either.Right<>(res.body().getArray("results", new JsonArray()));
+		} else {
+			return new Either.Left<>(res.body().getString("message", ""));
+		}
+	}
+
+	// TODO improve with type and validation
+	public static JsonObject jsonFromMultimap(MultiMap attributes) {
+		JsonObject json = new JsonObject();
+		if (attributes != null) {
+			for (Map.Entry<String, String> e: attributes.entries()) {
+				json.putString(e.getKey(), e.getValue());
+			}
+		}
+		return json;
 	}
 
 }
