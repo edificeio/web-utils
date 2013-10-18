@@ -73,6 +73,13 @@ public class UserUtils {
 		findUsers(eb, request, m, handler);
 	}
 
+	public static void findVisibleProfilsGroups(final EventBus eb, HttpServerRequest request,
+												final Handler<JsonArray> handler) {
+		JsonObject m = new JsonObject()
+				.putString("action", "visibleProfilsGroups");
+		findUsers(eb, request, m, handler);
+	}
+
 	public static void getSession(EventBus eb, final HttpServerRequest request,
 			final Handler<JsonObject> handler) {
 		if (request instanceof SecureHttpServerRequest &&

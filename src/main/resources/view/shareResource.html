@@ -22,6 +22,16 @@
 						</tr>
 					</thead>
 					<tbody>
+                        {{#groups}}
+                        <tr>
+                            {{#group}}
+                            <td>{{name}}</td>
+                            {{/group}}
+                            {{#choices}}
+                            <td><input type="checkbox" name="shareGroups" value="{{value}}" {{checked}}/></td>
+                            {{/choices}}
+                        </tr>
+                        {{/groups}}
 						{{#users}}
 						<tr>
 							{{#user}}

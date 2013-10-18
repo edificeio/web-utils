@@ -337,6 +337,66 @@ public abstract class Controller extends Renders {
 		}
 	}
 
+	protected void shareGroupResource(final HttpServerRequest request, final String id,
+				final List<String> checked) {
+		if (id != null && !id.trim().isEmpty()) {
+			Map<String, JsonObject> resourceActions = new HashMap<>();
+			for (SecuredAction action: securedActions.values()) {
+				if (ActionType.RESOURCE.name().equals(action.getType())) {
+					JsonObject a = resourceActions.get(action.getDisplayName());
+					if (a == null) {
+						a = new JsonObject()
+								.putString("name", action.getName())
+								.putString("displayName", I18n.getInstance().translate(action.getDisplayName(), request.headers().get("Accept-Language")))
+								.putString("type", action.getType());
+						resourceActions.put(action.getDisplayName(), a);
+					} else {
+						a.putString("name", a.getString("name") + "," + action.getName());
+					}
+				}
+			}
+			final JsonArray actions = new JsonArray(resourceActions.values().toArray());
+			UserUtils.findVisibleProfilsGroups(eb, request, new Handler<JsonArray>() {
+				@Override
+				public void handle(JsonArray visibleGroups) {
+					JsonArray groups = new JsonArray();
+					for(Object u : visibleGroups) {
+						JsonObject group = (JsonObject) u;
+						JsonArray userChoices = new JsonArray();
+						for (Object a: actions) {
+							JsonObject action = (JsonObject) a;
+							String value = action.getString("name").replaceAll("\\.", "-");
+							List<String> list = new ArrayList<>();
+							for (String s:  Arrays.asList(value.split(","))) {
+								list.add(s + "_" + group.getString("id"));
+							}
+							value += "_" + group.getString("id");
+							JsonObject c = new JsonObject()
+									.putString("value", value);
+							if (checked != null && checked.containsAll(list)) {
+								c.putString("checked", "checked");
+							} else {
+								c.putString("checked", "");
+							}
+							userChoices.add(c);
+						}
+						groups.add(new JsonObject()
+								.putObject("group", group)
+								.putArray("choices", userChoices));
+					}
+					JsonObject share = new JsonObject()
+							.putString("postUri", request.path())
+							.putString("resourceId", id)
+							.putArray("actions", actions)
+							.putArray("groups", groups);
+					renderView(request, share, "/view/shareResource.html");
+				}
+			});
+		} else {
+			renderView(request, null, "/view/resourceNotFound.html");
+		}
+	}
+
 	private void renderView(HttpServerRequest request,
 			JsonObject share, String resourceName) {
 		InputStream in = this.getClass().getResourceAsStream(resourceName);
