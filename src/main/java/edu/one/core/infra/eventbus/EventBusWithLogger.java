@@ -1,4 +1,4 @@
-package edu.one.core.infra;
+package edu.one.core.infra.eventbus;
 
 import org.vertx.java.core.AsyncResult;
 import org.vertx.java.core.Handler;

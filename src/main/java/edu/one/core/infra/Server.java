@@ -2,8 +2,11 @@ package edu.one.core.infra;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentMap;
 
+import com.wse.eventbus.EventBusWrapperFactory;
+import edu.one.core.infra.eventbus.EventBusWithLogger;
 import org.vertx.java.core.AsyncResult;
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.MultiMap;
@@ -144,10 +147,13 @@ public abstract class Server extends Verticle {
 		return "/" + path;
 	}
 
-	// TODO serviceloader
 	public static EventBus getEventBus(Vertx vertx) {
-		return new EventBusWithLogger(vertx.eventBus());
-		//return new EventBusWithMongoDBLogger(vertx.eventBus());
+		ServiceLoader<EventBusWrapperFactory> factory = ServiceLoader
+				.load(EventBusWrapperFactory.class);
+		if (factory.iterator().hasNext()) {
+			return factory.iterator().next().getEventBus(vertx);
+		}
+		return vertx.eventBus();
 	}
 
 }

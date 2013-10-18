@@ -2,9 +2,20 @@ apply from: "gradle/vertx.gradle"
 
 dependencies {
 	compile "com.github.spullara.mustache.java:compiler:$mustacheVersion"
+	compile "com.wse:eventbus-wrapper:1.0.0"
 }
 
 test {
+}
+
+repositories{
+		maven {
+			credentials {
+				username 'admin'
+				password 'We_1234'
+			}
+			url "http://maven.web-education.net:8081/nexus/content/groups/public"
+		}
 }
 
 def configurePom(def pom) {
