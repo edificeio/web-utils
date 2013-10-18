@@ -78,4 +78,16 @@ public class Utils {
 		return json;
 	}
 
+
+	public static <T extends Enum<T>> T stringToEnum(String name, T defaultValue, Class<T> type) {
+		if (name != null) {
+			try {
+				return Enum.valueOf(type, name);
+			} catch (IllegalArgumentException | NullPointerException e) {
+				return defaultValue;
+			}
+		}
+		return defaultValue;
+	}
+
 }
