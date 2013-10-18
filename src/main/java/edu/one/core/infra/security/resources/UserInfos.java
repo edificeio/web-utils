@@ -87,6 +87,7 @@ public class UserInfos {
 	private String login;
 	private List<Action> authorizedActions;
 	private List<Application> apps;
+	private List<String> profilGroupsIds;
 
 	public String getUserId() {
 		return userId;
@@ -182,6 +183,14 @@ public class UserInfos {
 
 	public void setApps(List<Application> apps) {
 		this.apps = apps;
+	}
+
+	public List<String> getProfilGroupsIds() {
+		return profilGroupsIds;
+	}
+
+	public void setProfilGroupsIds(List<String> profilGroupsIds) {
+		this.profilGroupsIds = profilGroupsIds;
 	}
 
 }
