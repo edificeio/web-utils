@@ -380,6 +380,7 @@ public abstract class Controller extends Renders {
 							}
 							userChoices.add(c);
 						}
+						groupDisplayName(group, request);
 						groups.add(new JsonObject()
 								.putObject("group", group)
 								.putArray("choices", userChoices));
@@ -394,6 +395,22 @@ public abstract class Controller extends Renders {
 			});
 		} else {
 			renderView(request, null, "/view/resourceNotFound.html");
+		}
+	}
+
+	private void groupDisplayName(JsonObject group, HttpServerRequest request) {
+		String name = group.getString("name");
+		if (name != null && name.contains("_")) {
+			int idx = name.lastIndexOf('_');
+			if (name.length() > idx && idx > 0) {
+				String type = name.substring(idx + 1).toLowerCase();
+				String value = name.substring(0, idx);
+				String schoolOrClass = (group.getString("type", "")
+						.startsWith("GROUP_CLASSE")) ? "class" : "school";
+				group.putString("displayName",
+						I18n.getInstance().translate("group.profil."+ schoolOrClass + "." + type,
+								request.headers().get("Accept-Language")) + value);
+			}
 		}
 	}
 
@@ -420,14 +437,14 @@ public abstract class Controller extends Renders {
 				@Override
 				public void handle(JsonArray visibleGroups) {
 					final JsonArray groups = new JsonArray();
-					for(Object u : visibleGroups) {
+					for (Object u : visibleGroups) {
 						JsonObject group = (JsonObject) u;
 						JsonArray userChoices = new JsonArray();
-						for (Object a: actions) {
+						for (Object a : actions) {
 							JsonObject action = (JsonObject) a;
 							String value = action.getString("name").replaceAll("\\.", "-");
 							List<String> list = new ArrayList<>();
-							for (String s:  Arrays.asList(value.split(","))) {
+							for (String s : Arrays.asList(value.split(","))) {
 								list.add(s + "_" + group.getString("id"));
 							}
 							value += "_" + group.getString("id");
@@ -440,6 +457,7 @@ public abstract class Controller extends Renders {
 							}
 							userChoices.add(c);
 						}
+						groupDisplayName(group, request);
 						groups.add(new JsonObject()
 								.putObject("group", group)
 								.putArray("choices", userChoices));
@@ -448,14 +466,14 @@ public abstract class Controller extends Renders {
 						@Override
 						public void handle(JsonArray visibleUsers) {
 							JsonArray users = new JsonArray();
-							for(Object u : visibleUsers) {
+							for (Object u : visibleUsers) {
 								JsonObject user = (JsonObject) u;
 								JsonArray userChoices = new JsonArray();
-								for (Object a: actions) {
+								for (Object a : actions) {
 									JsonObject action = (JsonObject) a;
 									String value = action.getString("name").replaceAll("\\.", "-");
 									List<String> list = new ArrayList<>();
-									for (String s:  Arrays.asList(value.split(","))) {
+									for (String s : Arrays.asList(value.split(","))) {
 										list.add(s + "_" + user.getString("id"));
 									}
 									value += "_" + user.getString("id");
