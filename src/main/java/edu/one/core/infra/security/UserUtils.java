@@ -80,6 +80,19 @@ public class UserUtils {
 		findUsers(eb, request, m, handler);
 	}
 
+	public static void findUsersInProfilsGroups(String groupId, final EventBus eb,
+			final Handler<JsonArray> handler) {
+		JsonObject m = new JsonObject()
+			.putString("action", "usersInProfilGroup")
+			.putString("userId", groupId);
+		eb.send(COMMUNICATION_USERS, m, new Handler<Message<JsonArray>>() {
+			@Override
+			public void handle(Message<JsonArray> res) {
+				handler.handle(res.body());
+			}
+		});
+	}
+
 	public static void getSession(EventBus eb, final HttpServerRequest request,
 			final Handler<JsonObject> handler) {
 		if (request instanceof SecureHttpServerRequest &&
