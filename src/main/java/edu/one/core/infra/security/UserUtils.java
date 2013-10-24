@@ -116,7 +116,8 @@ public class UserUtils {
 						.putString("sessionId", oneSessionId);
 				} else { // remote user (oauth)
 					findSession.putString("action", "findByUserId")
-					.putString("userId", remoteUserId);
+					.putString("userId", remoteUserId)
+					.putBoolean("allowDisconnectedUser", true);
 				}
 				eb.send(SESSION_ADDRESS, findSession, new Handler<Message<JsonObject>>() {
 
