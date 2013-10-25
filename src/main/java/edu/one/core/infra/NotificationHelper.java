@@ -27,7 +27,13 @@ public class NotificationHelper {
 	}
 
 	public void notifyTimeline(HttpServerRequest request, UserInfos sender,
-			List<String> recipients, String resource, String template, JsonObject params)
+							   List<String> recipients, String resource, String template, JsonObject params)
+			throws IOException {
+		notifyTimeline(request, sender, recipients, resource, null, template, params);
+	}
+
+	public void notifyTimeline(HttpServerRequest request, UserInfos sender,
+			List<String> recipients, String resource, String subResource, String template, JsonObject params)
 					throws IOException {
 		JsonObject event = new JsonObject()
 		.putString("action", "add")
@@ -35,6 +41,9 @@ public class NotificationHelper {
 		.putString("sender", sender.getUserId())
 		.putString("message", render.processTemplate(request, template, params))
 		.putArray("recipients", new JsonArray(recipients.toArray()));
+		if (subResource != null && !subResource.trim().isEmpty()) {
+			event.putString("sub-resource", subResource);
+		}
 		eb.send(TIMELINE_ADDRESS, event);
 	}
 
@@ -42,6 +51,13 @@ public class NotificationHelper {
 		JsonObject json = new JsonObject()
 		.putString("action", "delete")
 		.putString("resource", resource);
+		eb.send(TIMELINE_ADDRESS, json);
+	}
+
+	public void deleteSubResourceFromTimeline(String subResource) {
+		JsonObject json = new JsonObject()
+				.putString("action", "deleteSubResource")
+				.putString("sub-resource", subResource);
 		eb.send(TIMELINE_ADDRESS, json);
 	}
 
