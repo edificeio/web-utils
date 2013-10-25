@@ -22,6 +22,12 @@
 						</tr>
 					</thead>
 					<tbody>
+                        <tr>
+                            <td><h3>{{#i18n}}share.groups{{/i18n}}</h3></td>
+                            {{#actions}}
+                            <td></td>
+                            {{/actions}}
+                        </tr>
                         {{#groups}}
                         <tr>
                             {{#group}}
@@ -32,6 +38,18 @@
                             {{/choices}}
                         </tr>
                         {{/groups}}
+                        <tr>
+                            <td></td>
+                            {{#actions}}
+                            <td></td>
+                            {{/actions}}
+                        </tr>
+                        <tr>
+                            <td><h3>{{#i18n}}share.users{{/i18n}}</h3></td>
+                            {{#actions}}
+                            <td></td>
+                            {{/actions}}
+                        </tr>
 						{{#users}}
 						<tr>
 							{{#user}}
