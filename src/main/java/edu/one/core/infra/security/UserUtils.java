@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.one.core.infra.request.CookieHelper;
 import edu.one.core.infra.security.resources.UserInfos;
 
+@Deprecated
 public class UserUtils {
 
 	private static final String COMMUNICATION_USERS = "wse.communication.users";
