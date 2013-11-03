@@ -42,7 +42,7 @@ public abstract class Controller extends Renders {
 	protected final Container container;
 	private final RouteMatcher rm;
 	private final Map<String, Set<Binding>> uriBinding;
-	private final Map<String, SecuredAction> securedActions;
+	protected final Map<String, SecuredAction> securedActions;
 	protected final EventBus eb;
 
 
