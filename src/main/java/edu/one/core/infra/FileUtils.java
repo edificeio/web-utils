@@ -165,7 +165,9 @@ public class FileUtils {
 			eb.send(gridfsAddress, buf, new  Handler<Message<JsonObject>>() {
 				@Override
 				public void handle(Message<JsonObject> res) {
-					handler.handle(res.body());
+					if (handler != null) {
+						handler.handle(res.body());
+					}
 				}
 			});
 		}
