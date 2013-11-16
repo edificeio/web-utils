@@ -33,7 +33,7 @@ public class StaticResource {
 				Date rlm = format.parse(resourceLastModified);
 				return imsDate != null && rlm != null &&
 						imsDate.getTime() >= rlm.getTime();
-			} catch (ParseException e) {
+			} catch (ParseException | NumberFormatException e) {
 				return false;
 			}
 		}
