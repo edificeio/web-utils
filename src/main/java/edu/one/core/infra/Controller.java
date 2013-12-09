@@ -33,7 +33,6 @@ import edu.one.core.infra.http.Renders;
 import edu.one.core.infra.request.filter.SecurityHandler;
 import edu.one.core.infra.security.ActionType;
 import edu.one.core.infra.security.SecuredAction;
-import edu.one.core.infra.security.UserUtils;
 
 public abstract class Controller extends Renders {
 
