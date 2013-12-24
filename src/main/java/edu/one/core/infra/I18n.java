@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.Map;
 
 import org.vertx.java.core.Vertx;
+import org.vertx.java.core.file.FileProps;
 import org.vertx.java.core.json.JsonObject;
 import org.vertx.java.core.logging.Logger;
 import org.vertx.java.platform.Container;
@@ -41,27 +42,14 @@ public class I18n {
 			log = container.logger();
 			if (vertx.fileSystem().existsSync(messagesDir)) {
 				for(String path : vertx.fileSystem().readDirSync(messagesDir)) {
-					Locale l = Locale.forLanguageTag(new File(path).getName().split("\\.")[0]);
-					JsonObject jo = new JsonObject(vertx.fileSystem().readFileSync(path).toString());
-					messages.put(l,jo);
+					if (vertx.fileSystem().propsSync(path).isRegularFile()) {
+						Locale l = Locale.forLanguageTag(new File(path).getName().split("\\.")[0]);
+						JsonObject jo = new JsonObject(vertx.fileSystem().readFileSync(path).toString());
+						messages.put(l,jo);
+					}
 				}
 			} else {
 				log.warn("I18n directory " + messagesDir + " doesn't exist.");
-			}
-
-			for (Locale l : messages.keySet()) {
-				InputStream in = this.getClass().
-						getResourceAsStream("/i18n/" + l.getLanguage() + ".utils.json");
-				if (in != null) {
-					String i18n = CharStreams.toString(new InputStreamReader(in, Charsets.UTF_8));
-					JsonObject jo = new JsonObject(i18n);
-					JsonObject j = messages.get(l);
-					if (j == null) {
-						messages.put(l,jo);
-					} else {
-						messages.put(l, jo.mergeIn(j));
-					}
-				}
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
