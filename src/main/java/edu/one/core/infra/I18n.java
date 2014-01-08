@@ -1,20 +1,14 @@
 package edu.one.core.infra;
 
 import java.io.File;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
 import org.vertx.java.core.Vertx;
-import org.vertx.java.core.file.FileProps;
 import org.vertx.java.core.json.JsonObject;
 import org.vertx.java.core.logging.Logger;
 import org.vertx.java.platform.Container;
-
-import com.google.common.base.Charsets;
-import com.google.common.io.CharStreams;
 
 
 /*

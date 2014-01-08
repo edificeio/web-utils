@@ -1,68 +1,86 @@
 package edu.one.core.infra.http;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.io.StringWriter;
-import java.io.Writer;
-import java.util.HashMap;
+import java.io.*;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
+import com.samskivert.mustache.Mustache;
+import com.samskivert.mustache.Template;
+import org.vertx.java.core.AsyncResult;
+import org.vertx.java.core.Handler;
+import org.vertx.java.core.Vertx;
+import org.vertx.java.core.buffer.Buffer;
 import org.vertx.java.core.http.HttpServerRequest;
 import org.vertx.java.core.json.JsonArray;
 import org.vertx.java.core.json.JsonObject;
 import org.vertx.java.core.logging.Logger;
 import org.vertx.java.platform.Container;
 
-import com.github.mustachejava.DefaultMustacheFactory;
-import com.github.mustachejava.Mustache;
-import com.github.mustachejava.MustacheFactory;
-import com.github.mustachejava.TemplateFunction;
-import com.google.common.collect.Collections2;
-
 import edu.one.core.infra.I18n;
 import edu.one.core.infra.Server;
-import edu.one.core.infra.mustache.DevMustacheFactory;
-import edu.one.core.infra.mustache.I18nTemplateFunction;
-import edu.one.core.infra.mustache.StaticResourceTemplateFunction;
-import edu.one.core.infra.mustache.VertxTemplateFunction;
-
-import java.util.Arrays;
-import java.util.Collections;
 
 public class Renders {
 
-	private final MustacheFactory mf;
 	protected final Logger log;
-	private Map<String, VertxTemplateFunction> templateFunctions;
 	protected String pathPrefix;
+	private final Container container;
+	private final I18n i18n;
+	private final Vertx vertx;
+	private static final ConcurrentMap<String, Template> templates = new ConcurrentHashMap<>();
 
-	public Renders(Container container) {
+	public Renders(Vertx vertx, Container container) {
 		this.log = container.logger();
+		this.container = container;
 		this.pathPrefix = Server.getPathPrefix(container.config());
-		this.mf = "dev".equals(container.config().getString("mode"))
-				? new DevMustacheFactory("./view") : new DefaultMustacheFactory("./view");
-
-		templateFunctions = new HashMap<>();
-		templateFunctions.put("infra", new StaticResourceTemplateFunction("/infra/public", "8001",
-				container.config().getBoolean("ssl", false))); // FIXME get port from infra module
-		templateFunctions.put("static", new StaticResourceTemplateFunction(pathPrefix + "/public",
-				null, container.config().getBoolean("ssl", false)));
-		templateFunctions.put("i18n", new I18nTemplateFunction(I18n.getInstance()));
-
+		this.i18n = I18n.getInstance();
+		this.vertx = vertx;
 	}
 
-	public void putTemplateFunction(String name, VertxTemplateFunction templateFunction) throws Exception{
-		if (Arrays.asList("infra", "static", "i18n").contains(name)) {
-			throw new Exception("infra, statci i18n are reserved Template Function");
-		}
-		templateFunctions.put(name, templateFunction);
+	private void setLambdaTemplateRequest(final HttpServerRequest request,
+			Map<String, Object> ctx) {
+		ctx.put("i18n", new Mustache.Lambda() {
+
+			@Override
+			public void execute(Template.Fragment frag, Writer out) throws IOException {
+				String key = frag.execute();
+				String text = i18n.translate(key, request.headers().get("Accept-Language"));
+				out.write(text);
+			}
+		});
+
+		ctx.put("static", new Mustache.Lambda() {
+
+			@Override
+			public void execute(Template.Fragment frag, Writer out) throws IOException {
+				String path = frag.execute();
+				out.write(staticResource(request, container.config().getBoolean("ssl", false),
+						null, pathPrefix + "/public", path));
+			}
+		});
+
+		ctx.put("infra", new Mustache.Lambda() {
+
+			@Override
+			public void execute(Template.Fragment frag, Writer out) throws IOException {
+				String path = frag.execute();
+				out.write(staticResource(request, container.config().getBoolean("ssl", false),
+						"8001", "/infra/public", path));
+			}
+		});
 	}
 
-	private Map<String,VertxTemplateFunction>  setTemplateFunctionRequest(HttpServerRequest request) {
-		for (Map.Entry<String, VertxTemplateFunction> entry : templateFunctions.entrySet()) {
-			entry.getValue().request = request;
+	private String staticResource(HttpServerRequest request,
+			boolean https, String infraPort, String publicDir, String path) {
+		String host = Renders.getHost(request);
+		String protocol = https ? "https://" : "http://";
+		if (infraPort != null && request.headers().get("X-Forwarded-For") == null) {
+			host = host.split(":")[0] + ":" + infraPort;
 		}
-		return templateFunctions;
+		return protocol
+				+ host
+				+ ((publicDir != null && publicDir.startsWith("/")) ? publicDir : "/" + publicDir)
+				+ "/" + path;
 	}
 
 	public void renderView(HttpServerRequest request) {
@@ -82,44 +100,96 @@ public class Renders {
 		renderView(request, params, resourceName, r, 200);
 	}
 
-	public void renderView(HttpServerRequest request, JsonObject params, String resourceName, Reader r, int status) {
-		try {
-			Writer writer = processTemplate(request, params, resourceName, r);
-			request.response().putHeader("content-type", "text/html");
-			request.response().setStatusCode(status);
-			request.response().end(writer.toString());
-		} catch (Exception e) {
-			e.printStackTrace();
-			log.error(e.getMessage());
-			renderError(request);
-		}
+	public void renderView(final HttpServerRequest request, JsonObject params,
+			String resourceName, Reader r, final int status) {
+		processTemplate(request, params, resourceName, r, new Handler<Writer>() {
+			@Override
+			public void handle(Writer writer) {
+				if (writer != null) {
+				request.response().putHeader("content-type", "text/html");
+				request.response().setStatusCode(status);
+				request.response().end(writer.toString());
+				} else {
+					renderError(request);
+				}
+			}
+		});
 	}
 
-	public String processTemplate(HttpServerRequest request, String template, JsonObject params)
-			throws IOException {
-		return processTemplate(request, params, template, null).toString();
+	public void processTemplate(HttpServerRequest request, String template, JsonObject params,
+			final Handler<String> handler) {
+		processTemplate(request, params, template, null, new Handler<Writer>() {
+			@Override
+			public void handle(Writer w) {
+				if (w != null) {
+					handler.handle(w.toString());
+				} else {
+					handler.handle(null);
+				}
+			}
+		});
 	}
 
-	private Writer processTemplate(HttpServerRequest request,
-			JsonObject params, String resourceName, Reader r)
-			throws IOException {
-		if (params == null) { params = new JsonObject(); }
-		Mustache mustache;
+	private void processTemplate(final HttpServerRequest request,
+			JsonObject p, String resourceName, Reader r, final Handler<Writer> handler) {
+		final JsonObject params = (p == null) ? new JsonObject() : p;
+		getTemplate(request, resourceName, r, new Handler<Template>() {
+
+			@Override
+			public void handle(Template t) {
+				if (t != null) {
+					try {
+						Writer writer = new StringWriter();
+						Map<String, Object> ctx = params.toMap();
+						setLambdaTemplateRequest(request, ctx);
+						t.execute(ctx, writer);
+						handler.handle(writer);
+					} catch (Exception e) {
+						log.error(e.getMessage(), e);
+						handler.handle(null);
+					}
+				} else {
+					handler.handle(null);
+				}
+			}
+		});
+	}
+
+	private void getTemplate(HttpServerRequest request, String resourceName,
+			Reader r, final Handler<Template> handler) {
+		String path;
 		if (resourceName != null && r != null && !resourceName.trim().isEmpty()) {
-			mustache = mf.compile(r, resourceName);
+			Mustache.Compiler compiler = Mustache.compiler().defaultValue("");
+			handler.handle(compiler.compile(r));
+			return;
 		} else if (resourceName != null && !resourceName.trim().isEmpty()) {
-			mustache = mf.compile(resourceName);
+			path = "view/" + resourceName;
 		} else {
 			String template = request.path().substring(pathPrefix.length());
-			if (template == null || template.trim().isEmpty()) {
+			if (template.trim().isEmpty()) {
 				template = pathPrefix.substring(1);
 			}
-			mustache = mf.compile(template + ".html");
+			path = "view/" + template + ".html";
 		}
-		Writer writer = new StringWriter();
-		Object[] scopes = { params.toMap(), setTemplateFunctionRequest(request)};
-		mustache.execute(writer, scopes).flush();
-		return writer;
+		Template t = templates.get(path);
+		if (t != null) {
+			handler.handle(t);
+		} else {
+			final String p = path;
+			vertx.fileSystem().readFile(p, new Handler<AsyncResult<Buffer>>() {
+				@Override
+				public void handle(AsyncResult<Buffer> ar) {
+					if (ar.succeeded()) {
+						Mustache.Compiler compiler = Mustache.compiler().defaultValue("");
+						Template template = compiler.compile(ar.result().toString("UTF-8"));
+						templates.putIfAbsent(p, template);
+						handler.handle(template);
+					} else {
+						handler.handle(null);
+					}
+				}
+			});
+		}
 	}
 
 	public static void badRequest(HttpServerRequest request) {

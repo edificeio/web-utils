@@ -47,7 +47,7 @@ public abstract class Controller extends Renders {
 
 	public Controller(Vertx vertx, Container container, RouteMatcher rm,
 			Map<String, SecuredAction> securedActions) {
-		super(container);
+		super(vertx, container);
 		this.vertx = vertx;
 		this.container = container;
 		this.rm = rm;
