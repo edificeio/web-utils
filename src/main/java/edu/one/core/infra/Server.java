@@ -42,6 +42,8 @@ public abstract class Server extends Verticle {
 		log = container.logger();
 		if (config == null) {
 			config = container.config();
+		} else if (container.config().size() == 0) {
+			container.config().mergeIn(config);
 		}
 		rm = new RouteMatcher();
 		trace = new TracerHelper(Server.getEventBus(vertx), "log.address", this.getClass().getSimpleName());
