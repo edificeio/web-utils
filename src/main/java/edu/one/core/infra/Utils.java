@@ -1,5 +1,6 @@
 package edu.one.core.infra;
 
+import org.vertx.java.core.Handler;
 import org.vertx.java.core.MultiMap;
 import org.vertx.java.core.eventbus.Message;
 import org.vertx.java.core.json.JsonArray;
@@ -78,6 +79,36 @@ public class Utils {
 		return json;
 	}
 
+	public static <T> boolean defaultValidationError(JsonObject c,
+			Handler<Either<String, T>> result, String ... params) {
+		return validationError(c, result, "invalid.field", params);
+	}
+
+	public static <T> boolean validationError(JsonObject c,
+			Handler<Either<String, T>> result, String errorMessage, String ... params) {
+		if (c == null) {
+			result.handle(new Either.Left<String, T>(errorMessage));
+			return true;
+		}
+		return validationParamsError(result, errorMessage, params);
+	}
+
+	public static <T> boolean defaultValidationParamsError(Handler<Either<String, T>> result, String ... params) {
+		return validationParamsError(result, "invalid.parameter", params);
+	}
+
+	public static <T> boolean validationParamsError(Handler<Either<String, T>> result,
+			String errorMessage, String ... params) {
+		if (params.length > 0) {
+			for (String s : params) {
+				if (s == null) {
+					result.handle(new Either.Left<String, T>(errorMessage));
+					return true;
+				}
+			}
+		}
+		return false;
+	}
 
 	public static <T extends Enum<T>> T stringToEnum(String name, T defaultValue, Class<T> type) {
 		if (name != null) {
