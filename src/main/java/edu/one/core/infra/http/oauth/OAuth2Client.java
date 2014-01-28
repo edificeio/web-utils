@@ -31,6 +31,7 @@ public class OAuth2Client {
 		this.httpClient = vertx.createHttpClient()
 				.setHost(uri.getHost())
 				.setPort(uri.getPort())
+				.setSSL("https".equals(uri.getScheme()))
 				.setMaxPoolSize(poolSize)
 				.setKeepAlive(false);
 		this.uri = uri;
@@ -112,6 +113,41 @@ public class OAuth2Client {
 		req.end(body, "UTF-8");
 	}
 
+	public void clientCredentialsToken(String scope,
+			final Handler<JsonObject> handler) throws UnsupportedEncodingException {
+		HttpClientRequest req = httpClient.post(tokenUrn, new Handler<HttpClientResponse>() {
+
+			@Override
+			public void handle(final HttpClientResponse response) {
+				response.bodyHandler(new Handler<Buffer>() {
+
+					@Override
+					public void handle(Buffer r) {
+						JsonObject j = new JsonObject(r.toString("UTF-8"));
+						if (response.statusCode() == 200) {
+							JsonObject json = new JsonObject()
+									.putString("status", "ok")
+									.putObject("token", j);
+							handler.handle(json);
+						} else {
+							handler.handle(j.putNumber("statusCode", response.statusCode()));
+						}
+					}
+				});
+			}
+		});
+		req.headers()
+				.add("Authorization", "Basic " + Base64.encodeBytes(
+						(clientId + ":" + secret).getBytes("UTF-8")))
+				.add("Content-Type", "application/x-www-form-urlencoded")
+				.add("Accept", "application/json; charset=UTF-8");
+		String body = "grant_type=client_credentials";
+		if (scope != null && !scope.trim().isEmpty()) {
+			body += "&scope=" + scope;
+		}
+		req.end(body, "UTF-8");
+	}
+
 	public void getProtectedResource(String path, String accessToken,
 			Handler<HttpClientResponse> handler) {
 		getProtectedResource(path, accessToken, "application/json; charset=UTF-8", handler);
@@ -119,11 +155,59 @@ public class OAuth2Client {
 
 	public void getProtectedResource(String path, String accessToken, String acceptMimeType,
 			Handler<HttpClientResponse> handler) {
-		HttpClientRequest req = httpClient.get(path, handler);
+		sendProtectedResource(accessToken, acceptMimeType, httpClient.get(path, handler));
+	}
+
+	public void postProtectedResource(String path, String accessToken, String body,
+									 Handler<HttpClientResponse> handler) {
+		postProtectedResource(path, accessToken, "application/json; charset=UTF-8", body, handler);
+	}
+
+	public void postProtectedResource(String path, String accessToken, String acceptMimeType,
+			String body, Handler<HttpClientResponse> handler) {
+		sendProtectedResource(accessToken, acceptMimeType, httpClient.post(path, handler), body);
+	}
+
+	public void putProtectedResource(String path, String accessToken, String body,
+									  Handler<HttpClientResponse> handler) {
+		putProtectedResource(path, accessToken, "application/json; charset=UTF-8", body, handler);
+	}
+
+	public void putProtectedResource(String path, String accessToken, String acceptMimeType,
+			String body, Handler<HttpClientResponse> handler) {
+		sendProtectedResource(accessToken, acceptMimeType, httpClient.put(path, handler), body);
+	}
+	public void deleteProtectedResource(String path, String accessToken,
+									  Handler<HttpClientResponse> handler) {
+		deleteProtectedResource(path, accessToken, "application/json; charset=UTF-8", handler);
+	}
+
+	public void deleteProtectedResource(String path, String accessToken, String acceptMimeType,
+									  Handler<HttpClientResponse> handler) {
+		sendProtectedResource(accessToken, acceptMimeType, httpClient.delete(path, handler));
+	}
+
+	private void sendProtectedResource(String accessToken, String acceptMimeType,
+									   HttpClientRequest req) {
+		sendProtectedResource(accessToken, acceptMimeType, req, null);
+	}
+
+	private void sendProtectedResource(String accessToken, String acceptMimeType,
+			HttpClientRequest req, String body) {
 		req.headers()
-		.add("Authorization", "Bearer " + accessToken)
-		.add("Accept", acceptMimeType);
-		req.end();
+				.add("Authorization", "Bearer " + accessToken)
+				.add("Accept", acceptMimeType);
+		if (body != null) {
+			req.end(body);
+		} else {
+			req.end();
+		}
+	}
+
+	public void close() {
+		if (httpClient != null) {
+			httpClient.close();
+		}
 	}
 
 }
