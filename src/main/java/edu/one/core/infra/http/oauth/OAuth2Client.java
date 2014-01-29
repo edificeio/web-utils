@@ -61,6 +61,11 @@ public class OAuth2Client {
 
 	public void authorizationCodeToken(HttpServerRequest request, String state,
 			Handler<JsonObject> handler) {
+		authorizationCodeToken(request, state, true, handler);
+	}
+
+	public void authorizationCodeToken(HttpServerRequest request, String state, boolean basic,
+			Handler<JsonObject> handler) {
 		String s = request.params().get("state");
 		String code = request.params().get("code");
 		String error = request.params().get("error");
@@ -74,13 +79,18 @@ public class OAuth2Client {
 			return;
 		}
 		try {
-			getAccessToken(code, handler);
+			getAccessToken(code, basic, handler);
 		} catch (UnsupportedEncodingException e) {
 			handler.handle(r.putString("error", e.getMessage()));
 		}
 	}
 
 	public void getAccessToken(String code,
+			final Handler<JsonObject> handler) throws UnsupportedEncodingException {
+		getAccessToken(code, true, handler);
+	}
+
+	public void getAccessToken(String code, boolean basic,
 			final Handler<JsonObject> handler) throws UnsupportedEncodingException {
 		HttpClientRequest req = httpClient.post(tokenUrn, new Handler<HttpClientResponse>() {
 
@@ -103,13 +113,18 @@ public class OAuth2Client {
 				});
 			}
 		});
-		req.headers()
-			.add("Authorization", "Basic " + Base64.encodeBytes(
-					(clientId + ":" + secret).getBytes("UTF-8")))
-			.add("Content-Type", "application/x-www-form-urlencoded")
-			.add("Accept", "application/json; charset=UTF-8");
 		String body = "grant_type=authorization_code&code=" + code +
 				"&redirect_uri=" + redirectUri;
+		if (basic) {
+		req.headers()
+			.add("Authorization", "Basic " + Base64.encodeBytes(
+					(clientId + ":" + secret).getBytes("UTF-8")));
+		} else {
+			body += "&client_id=" + clientId + "&client_secret=" + secret;
+		}
+		req.headers()
+			.add("Content-Type", "application/x-www-form-urlencoded")
+			.add("Accept", "application/json; charset=UTF-8");
 		req.end(body, "UTF-8");
 	}
 
