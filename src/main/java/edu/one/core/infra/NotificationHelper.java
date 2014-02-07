@@ -21,11 +21,22 @@ public class NotificationHelper {
 	private final EventBus eb;
 	private final Renders render;
 	private final Logger log;
+	private final String senderEmail;
+	private final String host;
 
 	public NotificationHelper(Vertx vertx, EventBus eb, Container container) {
 		this.eb = eb;
 		this.log = container.logger();
 		this.render = new Renders(vertx, container);
+		this.senderEmail = container.config().getString("email", "noreply@one1d.fr");
+		this.host = container.config().getString("host", "http://localhost:8009");
+	}
+
+	public void sendEmail(HttpServerRequest request, String to, String cc, String bcc,
+			String subject, String templateBody, JsonObject templateParams,
+			boolean translateSubject, final Handler<Message<JsonObject>> handler) {
+		sendEmail(request, to, senderEmail, cc, bcc, subject, templateBody,
+				templateParams, translateSubject, handler);
 	}
 
 	public void sendEmail(HttpServerRequest request, String to, String from, String cc, String bcc,
@@ -63,6 +74,14 @@ public class NotificationHelper {
 				}
 			}
 		});
+	}
+
+	public String getSenderEmail() {
+		return senderEmail;
+	}
+
+	public String getHost() {
+		return host;
 	}
 
 	class ErrorMessage implements Message<JsonObject> {
