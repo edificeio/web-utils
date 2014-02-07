@@ -22,7 +22,7 @@ public class Joiner {
 		for (Object item: items) {
 			sb.append(separator).append(item.toString());
 		}
-		return sb.substring(separator.length());
+		return (sb.length() > separator.length()) ? sb.substring(separator.length()) : "";
 	}
 
 	public String join(Object[] items) {
