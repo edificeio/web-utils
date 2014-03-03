@@ -110,8 +110,12 @@ public abstract class Server extends Verticle {
 			.putString("address", config.getString("app-address", ""));
 			JsonArray actions = StartupUtils.loadSecuredActions();
 			securedActions = StartupUtils.securedActionsToMap(actions);
-			StartupUtils.sendStartup(application, actions,
-					Server.getEventBus(vertx), config.getString("app-registry.address", "wse.app.registry"));
+			if (config.getString("integration-mode","BUS").equals("HTTP")) {
+				StartupUtils.sendStartup(application, actions, vertx, config.getInteger("app-registry.port"));
+			} else {
+				StartupUtils.sendStartup(application, actions,
+						Server.getEventBus(vertx), config.getString("app-registry.address", "wse.app.registry"));
+			}
 		} catch (IOException e) {
 			log.error("Error application not registred.", e);
 		}

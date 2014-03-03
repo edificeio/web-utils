@@ -10,14 +10,32 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.vertx.java.core.Handler;
+import org.vertx.java.core.Vertx;
+import org.vertx.java.core.VoidHandler;
 import org.vertx.java.core.eventbus.EventBus;
 import org.vertx.java.core.eventbus.Message;
+import org.vertx.java.core.http.HttpClientResponse;
 import org.vertx.java.core.json.JsonArray;
 import org.vertx.java.core.json.JsonObject;
 
 import fr.wseduc.webutils.security.SecuredAction;
 
 public class StartupUtils {
+
+	public static void sendStartup(JsonObject app, JsonArray actions, Vertx vertx, Integer appRegistryPort) throws IOException {
+		if (actions == null || actions.size() == 0) {
+			actions = loadSecuredActions();
+		}
+		String s = new JsonObject().putObject("application", app).putArray("actions", actions).encode();
+		vertx.createHttpClient().setHost("localhost").setPort(appRegistryPort)
+				.put("/appregistry/application", new Handler<HttpClientResponse>() {
+					@Override
+					public void handle(HttpClientResponse event) {
+					}
+				})
+				.putHeader("Content-Length", String.valueOf(s.length() + 1))
+				.end(s, "UTF-8");
+	}
 
 	public static void sendStartup(JsonObject app, JsonArray actions, EventBus eb, String address,
 			final Handler<Message<JsonObject>> handler) throws IOException {
