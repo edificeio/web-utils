@@ -5,7 +5,7 @@ import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentMap;
 
-import com.wse.eventbus.EventBusWrapperFactory;
+import fr.wseduc.vertx.eventbus.EventBusWrapperFactory;
 import org.vertx.java.core.AsyncResult;
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.MultiMap;

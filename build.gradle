@@ -2,7 +2,7 @@ apply from: "gradle/vertx.gradle"
 
 dependencies {
 	compile "com.samskivert:jmustache:$mustacheVersion"
-	compile "com.wse:eventbus-wrapper:1.0.0"
+	compile "fr.wseduc:eventbus-wrapper:1.0.1"
 }
 
 test {

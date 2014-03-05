@@ -1,6 +1,6 @@
 package fr.wseduc.webutils.eventbus;
 
-import com.wse.eventbus.EventBusWrapperFactory;
+import fr.wseduc.vertx.eventbus.EventBusWrapperFactory;
 import org.vertx.java.core.Vertx;
 import org.vertx.java.core.eventbus.EventBus;
 
