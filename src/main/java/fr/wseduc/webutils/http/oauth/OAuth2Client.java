@@ -3,6 +3,7 @@ package fr.wseduc.webutils.http.oauth;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URLEncoder;
+import java.util.Map;
 
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.Vertx;
@@ -168,6 +169,11 @@ public class OAuth2Client {
 		getProtectedResource(path, accessToken, "application/json; charset=UTF-8", handler);
 	}
 
+	public void getProtectedResource(String path, String accessToken, Map<String, String> headers,
+			Handler<HttpClientResponse> handler) {
+		sendProtectedResource(accessToken, headers, null, httpClient.get(path, handler));
+	}
+
 	public void getProtectedResource(String path, String accessToken, String acceptMimeType,
 			Handler<HttpClientResponse> handler) {
 		sendProtectedResource(accessToken, acceptMimeType, httpClient.get(path, handler));
@@ -178,9 +184,14 @@ public class OAuth2Client {
 		postProtectedResource(path, accessToken, "application/json; charset=UTF-8", body, handler);
 	}
 
+	public void postProtectedResource(String path, String accessToken, Map<String, String> headers,
+									  String body, Handler<HttpClientResponse> handler) {
+		sendProtectedResource(accessToken, headers, body, httpClient.post(path, handler));
+	}
+
 	public void postProtectedResource(String path, String accessToken, String acceptMimeType,
 			String body, Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, acceptMimeType, httpClient.post(path, handler), body);
+		sendProtectedResource(accessToken, acceptMimeType, httpClient.post(path, handler), body, null);
 	}
 
 	public void putProtectedResource(String path, String accessToken, String body,
@@ -188,13 +199,24 @@ public class OAuth2Client {
 		putProtectedResource(path, accessToken, "application/json; charset=UTF-8", body, handler);
 	}
 
+	public void putProtectedResource(String path, String accessToken, Map<String, String> headers,
+									 String body, Handler<HttpClientResponse> handler) {
+		sendProtectedResource(accessToken, headers, body, httpClient.put(path, handler));
+	}
+
 	public void putProtectedResource(String path, String accessToken, String acceptMimeType,
 			String body, Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, acceptMimeType, httpClient.put(path, handler), body);
+		sendProtectedResource(accessToken, acceptMimeType, httpClient.put(path, handler), body, null);
 	}
+
 	public void deleteProtectedResource(String path, String accessToken,
 									  Handler<HttpClientResponse> handler) {
 		deleteProtectedResource(path, accessToken, "application/json; charset=UTF-8", handler);
+	}
+
+	public void deleteProtectedResource(String path, String accessToken, Map<String, String> headers,
+										Handler<HttpClientResponse> handler) {
+		sendProtectedResource(accessToken, headers, null, httpClient.delete(path, handler));
 	}
 
 	public void deleteProtectedResource(String path, String accessToken, String acceptMimeType,
@@ -202,16 +224,28 @@ public class OAuth2Client {
 		sendProtectedResource(accessToken, acceptMimeType, httpClient.delete(path, handler));
 	}
 
-	private void sendProtectedResource(String accessToken, String acceptMimeType,
-									   HttpClientRequest req) {
-		sendProtectedResource(accessToken, acceptMimeType, req, null);
+	private void sendProtectedResource(String accessToken, Map<String, String> headers, String body,
+			HttpClientRequest req) {
+		String acceptMimeType = "application/json; charset=UTF-8";
+		if (headers != null && headers.containsKey("Accept")) {
+			acceptMimeType = headers.remove("Accept");
+		}
+		sendProtectedResource(accessToken, acceptMimeType, req, body, headers);
 	}
 
 	private void sendProtectedResource(String accessToken, String acceptMimeType,
-			HttpClientRequest req, String body) {
+									   HttpClientRequest req) {
+		sendProtectedResource(accessToken, acceptMimeType, req, null, null);
+	}
+
+	private void sendProtectedResource(String accessToken, String acceptMimeType,
+			HttpClientRequest req, String body, Map<String, String> customHeaders) {
 		req.headers()
 				.add("Authorization", "Bearer " + accessToken)
 				.add("Accept", acceptMimeType);
+		if (customHeaders != null) {
+			req.headers().add(customHeaders);
+		}
 		if (body != null) {
 			req.end(body);
 		} else {
