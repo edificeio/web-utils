@@ -11,30 +11,39 @@ import java.util.Map;
 
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.Vertx;
-import org.vertx.java.core.VoidHandler;
 import org.vertx.java.core.eventbus.EventBus;
 import org.vertx.java.core.eventbus.Message;
+import org.vertx.java.core.http.HttpClient;
 import org.vertx.java.core.http.HttpClientResponse;
 import org.vertx.java.core.json.JsonArray;
 import org.vertx.java.core.json.JsonObject;
 
 import fr.wseduc.webutils.security.SecuredAction;
+import org.vertx.java.core.logging.Logger;
+import org.vertx.java.core.logging.impl.LoggerFactory;
 
 public class StartupUtils {
+
+	private static final Logger log = LoggerFactory.getLogger(StartupUtils.class);
 
 	public static void sendStartup(JsonObject app, JsonArray actions, Vertx vertx, Integer appRegistryPort) throws IOException {
 		if (actions == null || actions.size() == 0) {
 			actions = loadSecuredActions();
 		}
-		String s = new JsonObject().putObject("application", app).putArray("actions", actions).encode();
-		vertx.createHttpClient().setHost("localhost").setPort(appRegistryPort)
-				.put("/appregistry/application", new Handler<HttpClientResponse>() {
-					@Override
-					public void handle(HttpClientResponse event) {
-					}
-				})
-				.putHeader("Content-Length", String.valueOf(s.length() + 1))
-				.end(s, "UTF-8");
+		final String s = new JsonObject().putObject("application", app).putArray("actions", actions).encode();
+		final HttpClient httpClient = vertx.createHttpClient().setHost("localhost")
+				.setPort(appRegistryPort).setKeepAlive(false);
+		httpClient.put("/appregistry/application", new Handler<HttpClientResponse>() {
+			@Override
+			public void handle(HttpClientResponse event) {
+				if (event.statusCode() != 200) {
+					log.error("Error recording application : " + s);
+				}
+				httpClient.close();
+			}
+		})
+		.putHeader("Content-Type", "application/json")
+		.end(s);
 	}
 
 	public static void sendStartup(JsonObject app, JsonArray actions, EventBus eb, String address,
