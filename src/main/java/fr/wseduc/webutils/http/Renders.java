@@ -171,9 +171,8 @@ public class Renders {
 			}
 			path = "view/" + template + ".html";
 		}
-		Template t = templates.get(path);
-		if (t != null) {
-			handler.handle(t);
+		if (!"dev".equals(container.config().getString("mode")) && templates.containsKey(path)) {
+			handler.handle(templates.get(path));
 		} else {
 			final String p = path;
 			vertx.fileSystem().readFile(p, new Handler<AsyncResult<Buffer>>() {
@@ -182,7 +181,11 @@ public class Renders {
 					if (ar.succeeded()) {
 						Mustache.Compiler compiler = Mustache.compiler().defaultValue("");
 						Template template = compiler.compile(ar.result().toString("UTF-8"));
-						templates.putIfAbsent(p, template);
+						if("dev".equals(container.config().getString("mode"))) {
+							templates.put(p, template);
+						} else {
+							templates.putIfAbsent(p, template);
+						}
 						handler.handle(template);
 					} else {
 						handler.handle(null);
