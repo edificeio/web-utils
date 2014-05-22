@@ -6,6 +6,7 @@ import java.util.Locale;
 import java.util.Map;
 
 import org.vertx.java.core.Vertx;
+import org.vertx.java.core.http.HttpServerRequest;
 import org.vertx.java.core.json.JsonObject;
 import org.vertx.java.core.logging.Logger;
 import org.vertx.java.platform.Container;
@@ -51,15 +52,22 @@ public class I18n {
 		}
 	}
 
-	public String translate(String key, String acceptLanguage) {
-		return translate(key, getLocale(acceptLanguage));
+	public String translate(String key, String acceptLanguage, String... args) {
+		return translate(key, getLocale(acceptLanguage), args);
 	}
-	public String translate(String key, Locale locale) {
+
+	public String translate(String key, Locale locale, String... args) {
 		JsonObject bundle = messages.get(locale) != null ? messages.get(locale) : messages.get(defaultLocale);
 		if (bundle == null) {
 			return key;
 		}
-		return bundle.getString(key) != null ? bundle.getString(key) : key;
+		String text =  bundle.getString(key) != null ? bundle.getString(key) : key;
+		if (args.length > 0) {
+			for (int i = 0; i < args.length; i++) {
+				text = text.replaceAll("\\{" + i + "\\}", args[i]);
+			}
+		}
+		return text;
 	}
 
 	public JsonObject load(String acceptLanguage) {
@@ -81,4 +89,10 @@ public class I18n {
 		String[] langs = acceptLanguage.split(",");
 		return Locale.forLanguageTag(langs[0].split("-")[0]);
 	}
+
+	public static String acceptLanguage(HttpServerRequest request) {
+		String acceptLanguage = request.headers().get("Accept-Language");
+		return acceptLanguage != null ? acceptLanguage : "fr";
+	}
+
 }
