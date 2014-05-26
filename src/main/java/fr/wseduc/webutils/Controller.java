@@ -1,5 +1,6 @@
 package fr.wseduc.webutils;
 
+import java.io.*;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -47,6 +48,72 @@ public abstract class Controller extends Renders {
 		this.uriBinding = new HashMap<>();
 		this.securedActions = securedActions;
 		this.eb = Server.getEventBus(vertx);
+		loadRoutes();
+	}
+
+	private void loadRoutes() {
+		InputStream is = Controller.class.getClassLoader().getResourceAsStream(
+				this.getClass().getName() + ".json");
+		if (is != null) {
+			BufferedReader r = null;
+			try {
+				r = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+				String line;
+				while((line = r.readLine()) != null) {
+					JsonObject route = new JsonObject(line);
+					String httpMethod = route.getString("httpMethod");
+					String method = route.getString("method");
+					String path = route.getString("path");
+					if (httpMethod == null || path == null || method == null ||
+							httpMethod.trim().isEmpty() || method.trim().isEmpty()) {
+						continue;
+					}
+					boolean regex = route.getBoolean("regex", false);
+					switch (httpMethod) {
+						case "POST":
+							if (regex) {
+								postWithRegEx(path, method);
+							} else {
+								post(path, method);
+							}
+							break;
+						case "GET":
+							if (regex) {
+								getWithRegEx(path, method);
+							} else {
+								get(path, method);
+							}
+							break;
+						case "DELETE":
+							if (regex) {
+								deleteWithRegEx(path, method);
+							} else {
+								delete(path, method);
+							}
+							break;
+						case "PUT":
+							if (regex) {
+								putWithRegEx(path, method);
+							} else {
+								put(path, method);
+							}
+							break;
+					}
+				}
+			} catch (IOException e) {
+				log.error("Unable to load routes in controller " + this.getClass().getName(), e);
+			} finally {
+				if (r != null) {
+					try {
+						r.close();
+					} catch (IOException e) {
+						log.error("Close inputstream error", e);
+					}
+				}
+			}
+		} else {
+			log.warn("Not found routes file to controller " + this.getClass().getName());
+		}
 	}
 
 	private Handler<HttpServerRequest> execute(final String method) {
