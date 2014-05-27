@@ -1,11 +1,14 @@
 package fr.wseduc.webutils;
 
 import java.io.IOException;
-import java.util.Map;
-import java.util.ServiceLoader;
+import java.util.*;
 import java.util.concurrent.ConcurrentMap;
 
 import fr.wseduc.vertx.eventbus.EventBusWrapperFactory;
+import fr.wseduc.webutils.http.BaseController;
+import fr.wseduc.webutils.http.Binding;
+import fr.wseduc.webutils.request.filter.Filter;
+import fr.wseduc.webutils.request.filter.SecurityHandler;
 import org.vertx.java.core.AsyncResult;
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.MultiMap;
@@ -32,6 +35,7 @@ public abstract class Server extends Verticle {
 	public TracerHelper trace;
 	private I18n i18n;
 	protected Map<String, SecuredAction> securedActions;
+	protected List<Set<Binding>> securedUriBinding = new ArrayList<>();
 	private ConcurrentMap<String, String> staticRessources;
 	private boolean dev;
 
@@ -159,6 +163,22 @@ public abstract class Server extends Verticle {
 			return factory.iterator().next().getEventBus(vertx);
 		}
 		return vertx.eventBus();
+	}
+
+	protected Server addController(BaseController controller) {
+		controller.init(vertx, container, rm, securedActions);
+		securedUriBinding.add(controller.securedUriBinding());
+		return this;
+	}
+
+	protected Server clearFilters() {
+		SecurityHandler.clearFilters();
+		return this;
+	}
+
+	protected Server addFilter(Filter filter) {
+		SecurityHandler.addFilter(filter);
+		return this;
 	}
 
 }

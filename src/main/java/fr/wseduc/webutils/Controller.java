@@ -31,11 +31,11 @@ import fr.wseduc.webutils.security.SecuredAction;
 public abstract class Controller extends Renders {
 
 	private static final MethodHandles.Lookup lookup = MethodHandles.publicLookup();
-	protected final Vertx vertx;
-	protected final Container container;
-	private final RouteMatcher rm;
+	protected Vertx vertx;
+	protected Container container;
+	protected RouteMatcher rm;
 	private final Map<String, Set<Binding>> uriBinding;
-	protected final Map<String, SecuredAction> securedActions;
+	protected Map<String, SecuredAction> securedActions;
 	protected final EventBus eb;
 
 
@@ -48,10 +48,12 @@ public abstract class Controller extends Renders {
 		this.uriBinding = new HashMap<>();
 		this.securedActions = securedActions;
 		this.eb = Server.getEventBus(vertx);
-		loadRoutes();
+		if (rm != null) {
+			loadRoutes();
+		}
 	}
 
-	private void loadRoutes() {
+	protected void loadRoutes() {
 		InputStream is = Controller.class.getClassLoader().getResourceAsStream(
 				this.getClass().getName() + ".json");
 		if (is != null) {
