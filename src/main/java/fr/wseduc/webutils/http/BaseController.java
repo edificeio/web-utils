@@ -1,6 +1,7 @@
 package fr.wseduc.webutils.http;
 
 import fr.wseduc.webutils.Controller;
+import fr.wseduc.webutils.Server;
 import fr.wseduc.webutils.security.SecuredAction;
 import org.vertx.java.core.Vertx;
 import org.vertx.java.core.http.RouteMatcher;
@@ -25,6 +26,8 @@ public class BaseController extends Controller {
 		super.container = container;
 		super.rm = rm;
 		super.securedActions = securedActions;
+		super.eb = Server.getEventBus(vertx);
+		super.pathPrefix = Server.getPathPrefix(container.config());
 		if (rm != null) {
 			loadRoutes();
 		} else {

@@ -15,6 +15,7 @@ import org.vertx.java.core.http.HttpServerRequest;
 import org.vertx.java.core.json.JsonArray;
 import org.vertx.java.core.json.JsonObject;
 import org.vertx.java.core.logging.Logger;
+import org.vertx.java.core.logging.impl.LoggerFactory;
 import org.vertx.java.platform.Container;
 
 import fr.wseduc.webutils.I18n;
@@ -22,17 +23,18 @@ import fr.wseduc.webutils.Server;
 
 public class Renders {
 
-	protected final Logger log;
+	protected static final Logger log = LoggerFactory.getLogger(Renders.class);
 	protected String pathPrefix;
-	private final Container container;
+	protected Container container;
 	private final I18n i18n;
-	private final Vertx vertx;
+	protected Vertx vertx;
 	private static final ConcurrentMap<String, Template> templates = new ConcurrentHashMap<>();
 
 	public Renders(Vertx vertx, Container container) {
-		this.log = container.logger();
 		this.container = container;
-		this.pathPrefix = Server.getPathPrefix(container.config());
+		if (container != null) {
+			this.pathPrefix = Server.getPathPrefix(container.config());
+		}
 		this.i18n = I18n.getInstance();
 		this.vertx = vertx;
 	}

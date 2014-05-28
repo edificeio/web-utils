@@ -35,7 +35,7 @@ public abstract class Server extends Verticle {
 	public TracerHelper trace;
 	private I18n i18n;
 	protected Map<String, SecuredAction> securedActions;
-	protected List<Set<Binding>> securedUriBinding = new ArrayList<>();
+	protected Set<Binding> securedUriBinding = new HashSet<>();
 	private ConcurrentMap<String, String> staticRessources;
 	private boolean dev;
 
@@ -115,10 +115,12 @@ public abstract class Server extends Verticle {
 			JsonArray actions = StartupUtils.loadSecuredActions();
 			securedActions = StartupUtils.securedActionsToMap(actions);
 			if (config.getString("integration-mode","BUS").equals("HTTP")) {
-				StartupUtils.sendStartup(application, actions, vertx, config.getInteger("app-registry.port"));
+				StartupUtils.sendStartup(application, actions, vertx,
+						config.getInteger("app-registry.port", 8012));
 			} else {
 				StartupUtils.sendStartup(application, actions,
-						Server.getEventBus(vertx), config.getString("app-registry.address", "wse.app.registry"));
+						Server.getEventBus(vertx),
+						config.getString("app-registry.address", "wse.app.registry"));
 			}
 		} catch (IOException e) {
 			log.error("Error application not registred.", e);
@@ -167,7 +169,7 @@ public abstract class Server extends Verticle {
 
 	protected Server addController(BaseController controller) {
 		controller.init(vertx, container, rm, securedActions);
-		securedUriBinding.add(controller.securedUriBinding());
+		securedUriBinding.addAll(controller.securedUriBinding());
 		return this;
 	}
 

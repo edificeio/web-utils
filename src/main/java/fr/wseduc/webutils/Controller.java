@@ -31,23 +31,20 @@ import fr.wseduc.webutils.security.SecuredAction;
 public abstract class Controller extends Renders {
 
 	private static final MethodHandles.Lookup lookup = MethodHandles.publicLookup();
-	protected Vertx vertx;
-	protected Container container;
 	protected RouteMatcher rm;
 	private final Map<String, Set<Binding>> uriBinding;
 	protected Map<String, SecuredAction> securedActions;
-	protected final EventBus eb;
-
+	protected EventBus eb;
 
 	public Controller(Vertx vertx, Container container, RouteMatcher rm,
 			Map<String, SecuredAction> securedActions) {
 		super(vertx, container);
-		this.vertx = vertx;
-		this.container = container;
 		this.rm = rm;
 		this.uriBinding = new HashMap<>();
 		this.securedActions = securedActions;
-		this.eb = Server.getEventBus(vertx);
+		if (vertx != null) {
+			this.eb = Server.getEventBus(vertx);
+		}
 		if (rm != null) {
 			loadRoutes();
 		}
