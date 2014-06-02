@@ -113,8 +113,7 @@ public class StartupUtils {
 			String displayName = action.getString("displayName");
 			String type = action.getString("type");
 			if (name != null && type != null && displayName != null
-					&& !name.trim().isEmpty() && !type.trim().isEmpty()
-					&& !displayName.trim().isEmpty()) {
+					&& !name.trim().isEmpty() && !type.trim().isEmpty()) {
 				actions.put(name, new SecuredAction(name, displayName, type));
 			}
 		}
