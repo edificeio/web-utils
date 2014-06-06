@@ -42,11 +42,12 @@ public class UserAuthFilter implements Filter {
 		String scheme = Renders.getScheme(request);
 		String host = Renders.getHost(request);
 		try {
-			callBack = scheme + "://" + URLEncoder.encode(host + request.uri(), "UTF-8");
+			callBack = scheme + "://" + host + request.uri();
 			location = scheme + "://" + host;
 			if (request.headers().get("X-Forwarded-For") == null) {
 				location = location.split(":")[0] + ":8009";
 			}
+			callBack = URLEncoder.encode(callBack, "UTF-8");
 			location += "/auth/login?callback=" + callBack;
 		} catch (UnsupportedEncodingException ex) {
 			ex.printStackTrace();

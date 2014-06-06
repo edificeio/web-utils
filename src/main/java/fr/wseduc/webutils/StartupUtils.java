@@ -1,9 +1,7 @@
 package fr.wseduc.webutils;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileReader;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -28,7 +26,7 @@ public class StartupUtils {
 
 	public static void sendStartup(JsonObject app, JsonArray actions, Vertx vertx, Integer appRegistryPort) throws IOException {
 		if (actions == null || actions.size() == 0) {
-			actions = loadSecuredActions();
+			actions = loadSecuredActions(vertx);
 		}
 		final String s = new JsonObject().putObject("application", app).putArray("actions", actions).encode();
 		final HttpClient httpClient = vertx.createHttpClient().setHost("localhost")
@@ -46,10 +44,10 @@ public class StartupUtils {
 		.end(s);
 	}
 
-	public static void sendStartup(JsonObject app, JsonArray actions, EventBus eb, String address,
+	public static void sendStartup(JsonObject app, JsonArray actions, EventBus eb, String address,Vertx vertx,
 			final Handler<Message<JsonObject>> handler) throws IOException {
 		if (actions == null || actions.size() == 0) {
-			actions = loadSecuredActions();
+			actions = loadSecuredActions(vertx);
 		}
 		JsonObject jo = new JsonObject();
 		jo.putObject("application", app)
@@ -57,35 +55,23 @@ public class StartupUtils {
 		eb.send(address, jo, handler);
 	}
 
-	public static void sendStartup(JsonObject app, JsonArray actions, EventBus eb, String address) throws IOException {
-		sendStartup(app, actions, eb, address, null);
+	public static void sendStartup(JsonObject app, JsonArray actions, EventBus eb, String address, Vertx vertx) throws IOException {
+		sendStartup(app, actions, eb, address, vertx, null);
 	}
 
-	public static void sendStartup(JsonObject app, EventBus eb, String address,
+	public static void sendStartup(JsonObject app, EventBus eb, String address, Vertx vertx,
 			final Handler<Message<JsonObject>> handler) throws IOException {
-		sendStartup(app, null, eb, address, handler);
+		sendStartup(app, null, eb, address, vertx, handler);
 	}
 
 	public static void sendStartup(JsonObject app, EventBus eb, String address) throws IOException {
 		sendStartup(app, null, eb, address, null);
 	}
 
-	public static JsonArray loadSecuredActions() throws IOException {
-		String path = StartupUtils.class.getClassLoader().getResource(".").getPath();
-		File rootResources = new File(path);
+	public static JsonArray loadSecuredActions(Vertx vertx) throws IOException {
+		String [] list = vertx.fileSystem().readDirSync(".", "^SecuredAction-.*json$");
 		JsonArray securedActions = new JsonArray();
-		if (!rootResources.isDirectory()) {
-			return securedActions;
-		}
-
-		File[] actionsFiles = rootResources.listFiles(new FilenameFilter() {
-			@Override
-			public boolean accept(File dir, String name) {
-				return name.startsWith("SecuredAction") && name.endsWith("json");
-			}
-		});
-
-		for (File f : actionsFiles) {
+		for (String f : list) {
 			BufferedReader in = null;
 			try {
 				in = new BufferedReader(new FileReader(f));

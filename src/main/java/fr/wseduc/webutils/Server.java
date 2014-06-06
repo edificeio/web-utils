@@ -112,7 +112,7 @@ public abstract class Server extends Verticle {
 			.putString("name", config.getString("app-name", this.getClass().getSimpleName()))
 			.putString("icon", config.getString("app-icon", ""))
 			.putString("address", config.getString("app-address", ""));
-			JsonArray actions = StartupUtils.loadSecuredActions();
+			JsonArray actions = StartupUtils.loadSecuredActions(vertx);
 			securedActions = StartupUtils.securedActionsToMap(actions);
 			if (config.getString("integration-mode","BUS").equals("HTTP")) {
 				StartupUtils.sendStartup(application, actions, vertx,
@@ -120,7 +120,7 @@ public abstract class Server extends Verticle {
 			} else {
 				StartupUtils.sendStartup(application, actions,
 						Server.getEventBus(vertx),
-						config.getString("app-registry.address", "wse.app.registry"));
+						config.getString("app-registry.address", "wse.app.registry"), vertx);
 			}
 		} catch (IOException e) {
 			log.error("Error application not registred.", e);

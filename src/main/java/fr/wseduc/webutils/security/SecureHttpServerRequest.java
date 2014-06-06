@@ -105,6 +105,11 @@ public class SecureHttpServerRequest implements HttpServerRequest {
 	}
 
 	@Override
+	public InetSocketAddress localAddress() {
+		return request.localAddress();
+	}
+
+	@Override
 	public X509Certificate[] peerCertificateChain() throws SSLPeerUnverifiedException {
 		return request.peerCertificateChain();
 	}

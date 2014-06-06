@@ -5,6 +5,7 @@ import org.vertx.java.core.Handler;
 import org.vertx.java.core.buffer.Buffer;
 import org.vertx.java.core.eventbus.EventBus;
 import org.vertx.java.core.eventbus.Message;
+import org.vertx.java.core.eventbus.ReplyException;
 import org.vertx.java.core.json.JsonArray;
 import org.vertx.java.core.json.JsonObject;
 import org.vertx.java.core.logging.Logger;
@@ -82,8 +83,16 @@ public class EventBusWithLogger implements EventBus {
 				}
 			});
 		} else {
-			return eb.send(address, message, replyHandler);
+			return eb.send(address, message, null);
 		}
+	}
+
+	@Override
+	public <T> EventBus sendWithTimeout(String address, Object message, long timeout,
+			final Handler<AsyncResult<Message<T>>> replyHandler) {
+		final String logMessageId = sendLogwithResponse(address, message.toString());
+		return eb.sendWithTimeout(address, message, timeout,
+					timoutReplyHandler(replyHandler, logMessageId));
 	}
 
 	@Override
@@ -91,6 +100,14 @@ public class EventBusWithLogger implements EventBus {
 			final Handler<Message<T>> replyHandler) {
 		final String logMessageId = sendLogwithResponse(address, message.encode());
 		return eb.send(address, message, replyHandler(replyHandler, logMessageId));
+	}
+
+	@Override
+	public <T> EventBus sendWithTimeout(String address, JsonObject message, long timeout,
+			Handler<AsyncResult<Message<T>>> replyHandler) {
+		final String logMessageId = sendLogwithResponse(address, message.encode());
+		return eb.sendWithTimeout(address, message, timeout,
+				timoutReplyHandler(replyHandler, logMessageId));
 	}
 
 	private <T> Handler<Message<T>> replyHandler(
@@ -103,6 +120,28 @@ public class EventBusWithLogger implements EventBus {
 			@Override
 			public void handle(Message<T> event) {
 				responseLog(logMessageId, event.body());
+				replyHandler.handle(event);
+			}
+		};
+	}
+
+	private <T> Handler<AsyncResult<Message<T>>> timoutReplyHandler(
+			final Handler<AsyncResult<Message<T>>> replyHandler, final String logMessageId) {
+		if (replyHandler == null) {
+			return null;
+		}
+		return new Handler<AsyncResult<Message<T>>>() {
+			@Override
+			public void handle(AsyncResult<Message<T>> event) {
+				if (event.succeeded()) {
+					responseLog(logMessageId, event.result().body());
+				} else {
+					ReplyException ex = (ReplyException)event.cause();
+					logger.error("MessageId : " + logMessageId);
+					logger.error("Failure type: " + ex.failureType());
+					logger.error("Failure code: " + ex.failureCode());
+					logger.error("Failure message: " + ex.getMessage());
+				}
 				replyHandler.handle(event);
 			}
 		};
@@ -122,6 +161,14 @@ public class EventBusWithLogger implements EventBus {
 	}
 
 	@Override
+	public <T> EventBus sendWithTimeout(String address, JsonArray message, long timeout,
+			Handler<AsyncResult<Message<T>>> replyHandler) {
+		final String logMessageId = sendLogwithResponse(address, message.encode());
+		return eb.sendWithTimeout(address, message, timeout,
+				timoutReplyHandler(replyHandler, logMessageId));
+	}
+
+	@Override
 	public EventBus send(String address, JsonArray message) {
 		sendLog(address, message.encode());
 		return eb.send(address, message);
@@ -133,6 +180,12 @@ public class EventBusWithLogger implements EventBus {
 //		final String logMessageId = sendLogwithResponse(address, message.toString());
 //		return eb.send(address, message, replyHandler(replyHandler, logMessageId));
 		return eb.send(address, message, replyHandler);
+	}
+
+	@Override
+	public <T> EventBus sendWithTimeout(String address, Buffer message, long timeout,
+			Handler<AsyncResult<Message<T>>> replyHandler) {
+		return eb.sendWithTimeout(address, message, timeout, replyHandler);
 	}
 
 	@Override
@@ -149,6 +202,14 @@ public class EventBusWithLogger implements EventBus {
 	}
 
 	@Override
+	public <T> EventBus sendWithTimeout(String address, byte[] message, long timeout,
+			Handler<AsyncResult<Message<T>>> replyHandler) {
+		final String logMessageId = sendLogwithResponse(address, new String(message));
+		return eb.sendWithTimeout(address, message, timeout,
+				timoutReplyHandler(replyHandler, logMessageId));
+	}
+
+	@Override
 	public EventBus send(String address, byte[] message) {
 		sendLog(address, new String(message));
 		return eb.send(address, message);
@@ -159,6 +220,14 @@ public class EventBusWithLogger implements EventBus {
 			final Handler<Message<T>> replyHandler) {
 		final String logMessageId = sendLogwithResponse(address, message);
 		return eb.send(address, message, replyHandler(replyHandler, logMessageId));
+	}
+
+	@Override
+	public <T> EventBus sendWithTimeout(String address, String message, long timeout,
+			Handler<AsyncResult<Message<T>>> replyHandler) {
+		final String logMessageId = sendLogwithResponse(address, message);
+		return eb.sendWithTimeout(address, message, timeout,
+				timoutReplyHandler(replyHandler, logMessageId));
 	}
 
 	@Override
@@ -175,6 +244,14 @@ public class EventBusWithLogger implements EventBus {
 	}
 
 	@Override
+	public <T> EventBus sendWithTimeout(String address, Integer message, long timeout,
+			Handler<AsyncResult<Message<T>>> replyHandler) {
+		final String logMessageId = sendLogwithResponse(address, message.toString());
+		return eb.sendWithTimeout(address, message, timeout,
+				timoutReplyHandler(replyHandler, logMessageId));
+	}
+
+	@Override
 	public EventBus send(String address, Integer message) {
 		sendLog(address, message.toString());
 		return eb.send(address, message);
@@ -185,6 +262,14 @@ public class EventBusWithLogger implements EventBus {
 			final Handler<Message<T>> replyHandler) {
 		final String logMessageId = sendLogwithResponse(address, message.toString());
 		return eb.send(address, message, replyHandler(replyHandler, logMessageId));
+	}
+
+	@Override
+	public <T> EventBus sendWithTimeout(String address, Long message, long timeout,
+			Handler<AsyncResult<Message<T>>> replyHandler) {
+		final String logMessageId = sendLogwithResponse(address, message.toString());
+		return eb.sendWithTimeout(address, message, timeout,
+				timoutReplyHandler(replyHandler, logMessageId));
 	}
 
 	@Override
@@ -201,6 +286,14 @@ public class EventBusWithLogger implements EventBus {
 	}
 
 	@Override
+	public <T> EventBus sendWithTimeout(String address, Float message, long timeout,
+			Handler<AsyncResult<Message<T>>> replyHandler) {
+		final String logMessageId = sendLogwithResponse(address, message.toString());
+		return eb.sendWithTimeout(address, message, timeout,
+				timoutReplyHandler(replyHandler, logMessageId));
+	}
+
+	@Override
 	public EventBus send(String address, Float message) {
 		sendLog(address, message.toString());
 		return eb.send(address, message);
@@ -211,6 +304,14 @@ public class EventBusWithLogger implements EventBus {
 			final Handler<Message<T>> replyHandler) {
 		final String logMessageId = sendLogwithResponse(address, message.toString());
 		return eb.send(address, message, replyHandler(replyHandler, logMessageId));
+	}
+
+	@Override
+	public <T> EventBus sendWithTimeout(String address, Double message, long timeout,
+			Handler<AsyncResult<Message<T>>> replyHandler) {
+		final String logMessageId = sendLogwithResponse(address, message.toString());
+		return eb.sendWithTimeout(address, message, timeout,
+				timoutReplyHandler(replyHandler, logMessageId));
 	}
 
 	@Override
@@ -227,6 +328,14 @@ public class EventBusWithLogger implements EventBus {
 	}
 
 	@Override
+	public <T> EventBus sendWithTimeout(String address, Boolean message, long timeout,
+			Handler<AsyncResult<Message<T>>> replyHandler) {
+		final String logMessageId = sendLogwithResponse(address, message.toString());
+		return eb.sendWithTimeout(address, message, timeout,
+				timoutReplyHandler(replyHandler, logMessageId));
+	}
+
+	@Override
 	public EventBus send(String address, Boolean message) {
 		sendLog(address, message.toString());
 		return eb.send(address, message);
@@ -237,6 +346,14 @@ public class EventBusWithLogger implements EventBus {
 			final Handler<Message<T>> replyHandler) {
 		final String logMessageId = sendLogwithResponse(address, message.toString());
 		return eb.send(address, message, replyHandler(replyHandler, logMessageId));
+	}
+
+	@Override
+	public <T> EventBus sendWithTimeout(String address, Short message, long timeout,
+			Handler<AsyncResult<Message<T>>> replyHandler) {
+		final String logMessageId = sendLogwithResponse(address, message.toString());
+		return eb.sendWithTimeout(address, message, timeout,
+				timoutReplyHandler(replyHandler, logMessageId));
 	}
 
 	@Override
@@ -253,6 +370,14 @@ public class EventBusWithLogger implements EventBus {
 	}
 
 	@Override
+	public <T> EventBus sendWithTimeout(String address, Character message, long timeout,
+			Handler<AsyncResult<Message<T>>> replyHandler) {
+		final String logMessageId = sendLogwithResponse(address, message.toString());
+		return eb.sendWithTimeout(address, message, timeout,
+				timoutReplyHandler(replyHandler, logMessageId));
+	}
+
+	@Override
 	public EventBus send(String address, Character message) {
 		sendLog(address, message.toString());
 		return eb.send(address, message);
@@ -263,6 +388,14 @@ public class EventBusWithLogger implements EventBus {
 			final Handler<Message<T>> replyHandler) {
 		final String logMessageId = sendLogwithResponse(address, message.toString());
 		return eb.send(address, message, replyHandler(replyHandler, logMessageId));
+	}
+
+	@Override
+	public <T> EventBus sendWithTimeout(String address, Byte message, long timeout,
+			Handler<AsyncResult<Message<T>>> replyHandler) {
+		final String logMessageId = sendLogwithResponse(address, message.toString());
+		return eb.sendWithTimeout(address, message, timeout,
+				timoutReplyHandler(replyHandler, logMessageId));
 	}
 
 	@Override
@@ -385,6 +518,16 @@ public class EventBusWithLogger implements EventBus {
 	public EventBus registerLocalHandler(String address,
 			Handler<? extends Message> handler) {
 		return eb.registerLocalHandler(address, handler);
+	}
+
+	@Override
+	public EventBus setDefaultReplyTimeout(long timeoutMs) {
+		return eb.setDefaultReplyTimeout(timeoutMs);
+	}
+
+	@Override
+	public long getDefaultReplyTimeout() {
+		return eb.getDefaultReplyTimeout();
 	}
 
 }
