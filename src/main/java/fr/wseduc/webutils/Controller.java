@@ -97,9 +97,12 @@ public abstract class Controller extends Renders {
 								put(path, method);
 							}
 							break;
+						case "BUS":
+							registerMethod(path, method);
+							break;
 					}
 				}
-			} catch (IOException e) {
+			} catch (IOException | NoSuchMethodException | IllegalAccessException e) {
 				log.error("Unable to load routes in controller " + this.getClass().getName(), e);
 			} finally {
 				if (r != null) {
