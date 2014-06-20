@@ -201,12 +201,27 @@ public class Renders {
 		request.response().setStatusCode(400).end();
 	}
 
+	public static void badRequest(HttpServerRequest request, String message) {
+		request.response().setStatusCode(400).end(
+				new JsonObject().putString("message", message).encode());
+	}
+
 	public static void unauthorized(HttpServerRequest request) {
 		request.response().setStatusCode(401).end();
 	}
 
+	public static void unauthorized(HttpServerRequest request, String message) {
+		request.response().setStatusCode(401).end(
+				new JsonObject().putString("message", message).encode());
+	}
+
 	public static void notFound(HttpServerRequest request) {
 		request.response().setStatusCode(404).end();
+	}
+
+	public static void notFound(HttpServerRequest request, String message) {
+		request.response().setStatusCode(404).end(
+				new JsonObject().putString("message", message).encode());
 	}
 
 	public static void notModified(HttpServerRequest request) {
