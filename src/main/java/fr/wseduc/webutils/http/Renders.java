@@ -198,30 +198,39 @@ public class Renders {
 	}
 
 	public static void badRequest(HttpServerRequest request) {
-		request.response().setStatusCode(400).end();
+		request.response().setStatusCode(400).setStatusMessage("Bad Request").end();
 	}
 
 	public static void badRequest(HttpServerRequest request, String message) {
-		request.response().setStatusCode(400).end(
-				new JsonObject().putString("message", message).encode());
+		request.response().setStatusCode(400).setStatusMessage("Bad Request").end(
+				new JsonObject().putString("error", message).encode());
 	}
 
 	public static void unauthorized(HttpServerRequest request) {
-		request.response().setStatusCode(401).end();
+		request.response().setStatusCode(401).setStatusMessage("Unauthorized").end();
 	}
 
 	public static void unauthorized(HttpServerRequest request, String message) {
-		request.response().setStatusCode(401).end(
-				new JsonObject().putString("message", message).encode());
+		request.response().setStatusCode(401).setStatusMessage("Unauthorized").end(
+				new JsonObject().putString("error", message).encode());
+	}
+
+	public static void forbidden(HttpServerRequest request) {
+		request.response().setStatusCode(403).setStatusMessage("Forbidden").end();
+	}
+
+	public static void forbidden(HttpServerRequest request, String message) {
+		request.response().setStatusCode(403).setStatusMessage("Forbidden").end(
+				new JsonObject().putString("error", message).encode());
 	}
 
 	public static void notFound(HttpServerRequest request) {
-		request.response().setStatusCode(404).end();
+		request.response().setStatusCode(404).setStatusMessage("Not Found").end();
 	}
 
 	public static void notFound(HttpServerRequest request, String message) {
-		request.response().setStatusCode(404).end(
-				new JsonObject().putString("message", message).encode());
+		request.response().setStatusCode(404).setStatusMessage("Not Found").end(
+				new JsonObject().putString("error", message).encode());
 	}
 
 	public static void notModified(HttpServerRequest request) {
@@ -232,11 +241,11 @@ public class Renders {
 		if (fileId != null && !fileId.trim().isEmpty()) {
 			request.response().headers().add("ETag", fileId);
 		}
-		request.response().setStatusCode(304).end();
+		request.response().setStatusCode(304).setStatusMessage("Not Modified").end();
 	}
 
 	public static void renderError(HttpServerRequest request, JsonObject error) {
-		request.response().setStatusCode(500);
+		request.response().setStatusCode(500).setStatusMessage("Internal Server Error");
 		if (error != null) {
 			request.response().end(error.encode());
 		} else {
@@ -249,7 +258,7 @@ public class Renders {
 	}
 
 	public static void renderJson(HttpServerRequest request, JsonObject jo, int status) {
-		request.response().putHeader("content-type", "text/json");
+		request.response().putHeader("content-type", "application/json");
 		request.response().setStatusCode(status);
 		request.response().end(jo.encode());
 	}
@@ -259,7 +268,7 @@ public class Renders {
 	}
 
 	public static void renderJson(HttpServerRequest request, JsonArray jo) {
-		request.response().putHeader("content-type", "text/json");
+		request.response().putHeader("content-type", "application/json");
 		request.response().end(jo.encode());
 	}
 
