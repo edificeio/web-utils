@@ -407,85 +407,85 @@ public class EventBusWithLogger implements EventBus {
 	@Override
 	public EventBus publish(String address, Object message) {
 		publishLog(address, message.toString());
-		return eb.send(address, message);
+		return eb.publish(address, message);
 	}
 
 	@Override
 	public EventBus publish(String address, JsonObject message) {
 		publishLog(address, message.encode());
-		return eb.send(address, message);
+		return eb.publish(address, message);
 	}
 
 	@Override
 	public EventBus publish(String address, JsonArray message) {
 		publishLog(address, message.encode());
-		return eb.send(address, message);
+		return eb.publish(address, message);
 	}
 
 	@Override
 	public EventBus publish(String address, Buffer message) {
 		//publishLog(address, message.toString());
-		return eb.send(address, message);
+		return eb.publish(address, message);
 	}
 
 	@Override
 	public EventBus publish(String address, byte[] message) {
 		publishLog(address, new String(message));
-		return eb.send(address, message);
+		return eb.publish(address, message);
 	}
 
 	@Override
 	public EventBus publish(String address, String message) {
 		publishLog(address, message);
-		return eb.send(address, message);
+		return eb.publish(address, message);
 	}
 
 	@Override
 	public EventBus publish(String address, Integer message) {
 		publishLog(address, message.toString());
-		return eb.send(address, message);
+		return eb.publish(address, message);
 	}
 
 	@Override
 	public EventBus publish(String address, Long message) {
 		publishLog(address, message.toString());
-		return eb.send(address, message);
+		return eb.publish(address, message);
 	}
 
 	@Override
 	public EventBus publish(String address, Float message) {
 		publishLog(address, message.toString());
-		return eb.send(address, message);
+		return eb.publish(address, message);
 	}
 
 	@Override
 	public EventBus publish(String address, Double message) {
 		publishLog(address, message.toString());
-		return eb.send(address, message);
+		return eb.publish(address, message);
 	}
 
 	@Override
 	public EventBus publish(String address, Boolean message) {
 		publishLog(address, message.toString());
-		return eb.send(address, message);
+		return eb.publish(address, message);
 	}
 
 	@Override
 	public EventBus publish(String address, Short message) {
 		publishLog(address, message.toString());
-		return eb.send(address, message);
+		return eb.publish(address, message);
 	}
 
 	@Override
 	public EventBus publish(String address, Character message) {
 		publishLog(address, message.toString());
-		return eb.send(address, message);
+		return eb.publish(address, message);
 	}
 
 	@Override
 	public EventBus publish(String address, Byte message) {
 		publishLog(address, message.toString());
-		return eb.send(address, message);
+		return eb.publish(address, message);
 	}
 
 	@Override
