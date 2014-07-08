@@ -110,6 +110,24 @@ public class Utils {
 		return false;
 	}
 
+	public static <T> boolean defaultValidationParamsNull(
+			Handler<Either<String, T>> result, Object ... params) {
+		return validationParamsNull(result, "null.parameter", params);
+	}
+
+	public static <T> boolean validationParamsNull(Handler<Either<String, T>> result,
+			String errorMessage, Object ... params) {
+		if (params.length > 0) {
+			for (Object s : params) {
+				if (s == null) {
+					result.handle(new Either.Left<String, T>(errorMessage));
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
 	public static <T extends Enum<T>> T stringToEnum(String name, T defaultValue, Class<T> type) {
 		if (name != null) {
 			try {
