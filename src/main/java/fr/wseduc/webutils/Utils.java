@@ -139,4 +139,21 @@ public class Utils {
 		return defaultValue;
 	}
 
+	public static JsonArray flatten(JsonArray array) {
+		JsonArray a = new JsonArray();
+		if (array != null) {
+			for (Object o : array) {
+				if (o instanceof JsonArray) {
+					JsonArray r = flatten((JsonArray) o);
+					for (Object object : r) {
+						a.add(object);
+					}
+				} else {
+					a.add(o);
+				}
+			}
+		}
+		return a;
+	}
+
 }
