@@ -47,6 +47,11 @@ public class FileUtils {
 
 	public static void gridfsWriteUploadFile(final HttpServerRequest request, final EventBus eb,
 			final String gridfsAddress, final Handler<JsonObject> handler) {
+		gridfsWriteUploadFile(request, eb, gridfsAddress, null, handler);
+	}
+
+	public static void gridfsWriteUploadFile(final HttpServerRequest request, final EventBus eb,
+			final String gridfsAddress, final Long maxSize, final Handler<JsonObject> handler) {
 		request.expectMultiPart(true);
 		request.uploadHandler(new Handler<HttpServerFileUpload>() {
 			@Override
@@ -68,6 +73,11 @@ public class FileUtils {
 						final JsonObject metadata = metadata(event);
 						if (metadata != null && metadata.getLong("size", 0l).equals(0l)) {
 							metadata.putNumber("size", buff.length());
+						}
+						if (maxSize != null && metadata != null && maxSize < metadata.getLong("size", 0l)) {
+							handler.handle(new JsonObject().putString("status", "error")
+								.putString("message", "file.too.large"));
+							return;
 						}
 						byte [] header = null;
 						try {
