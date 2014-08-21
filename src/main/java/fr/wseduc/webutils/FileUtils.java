@@ -64,6 +64,10 @@ public class FileUtils {
 						save.putString("action", "save");
 						save.putString("content-type", event.contentType());
 						save.putString("filename", event.filename());
+						final JsonObject metadata = metadata(event);
+						if (metadata != null && metadata.getLong("size", 0l).equals(0l)) {
+							metadata.putNumber("size", buff.length());
+						}
 						byte [] header = null;
 						try {
 							header = save.toString().getBytes("UTF-8");
@@ -78,7 +82,7 @@ public class FileUtils {
 								@Override
 								public void handle(Message<JsonObject> message) {
 									handler.handle(message.body()
-											.putObject("metadata", metadata(event)));
+											.putObject("metadata", metadata));
 								}
 							});
 						}
