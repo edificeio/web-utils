@@ -23,6 +23,8 @@ public class SecureHttpServerRequest implements HttpServerRequest {
 	private final HttpServerRequest request;
 	private JsonObject session;
 	private final Map<String, String> attributes;
+	private Buffer body;
+	private boolean end;
 
 	public SecureHttpServerRequest(HttpServerRequest request) {
 		this.request = request;
@@ -48,8 +50,22 @@ public class SecureHttpServerRequest implements HttpServerRequest {
 	}
 
 	@Override
-	public HttpServerRequest endHandler(Handler<Void> endHandler) {
-		request.endHandler(endHandler);
+	public HttpServerRequest endHandler(final Handler<Void> endHandler) {
+		if (end) {
+			if (endHandler != null) {
+				endHandler.handle(null);
+			}
+			return this;
+		}
+		request.endHandler(new Handler<Void>() {
+			@Override
+			public void handle(Void event) {
+				end = true;
+				if (endHandler != null) {
+					endHandler.handle(null);
+				}
+			}
+		});
 		return this;
 	}
 
@@ -120,8 +136,22 @@ public class SecureHttpServerRequest implements HttpServerRequest {
 	}
 
 	@Override
-	public HttpServerRequest bodyHandler(Handler<Buffer> bodyHandler) {
-		request.bodyHandler(bodyHandler);
+	public HttpServerRequest bodyHandler(final Handler<Buffer> bodyHandler) {
+		if (body != null) {
+			if (bodyHandler != null) {
+				bodyHandler.handle(body);
+			}
+			return this;
+		}
+		request.bodyHandler(new Handler<Buffer>() {
+			@Override
+			public void handle(Buffer event) {
+				body = event;
+				if (bodyHandler != null) {
+					bodyHandler.handle(body);
+				}
+			}
+		});
 		return this;
 	}
 
