@@ -9,6 +9,7 @@ import org.vertx.java.core.eventbus.Message;
 import org.vertx.java.core.http.HttpServerFileUpload;
 import org.vertx.java.core.http.HttpServerRequest;
 import org.vertx.java.core.http.HttpServerResponse;
+import org.vertx.java.core.json.JsonArray;
 import org.vertx.java.core.json.JsonObject;
 
 import fr.wseduc.webutils.http.ETag;
@@ -154,9 +155,20 @@ public class FileUtils {
 
 	public static void gridfsRemoveFile(String id, EventBus eb, String gridfsAddress,
 			final Handler<JsonObject> handler) {
+		gridfsRemoveFiles(new JsonArray().add(id), eb, gridfsAddress, handler);
+	}
+
+	public static void gridfsRemoveFiles(JsonArray ids, EventBus eb, String gridfsAddress,
+			final Handler<JsonObject> handler) {
 		JsonObject find = new JsonObject();
 		find.putString("action", "remove");
-		find.putObject("query", new JsonObject("{ \"_id\": \"" + id + "\"}"));
+		JsonObject query = new JsonObject();
+		if (ids != null && ids.size() == 1) {
+			query.putString("_id", ids.<String>get(0));
+		} else {
+			query.putObject("_id", new JsonObject().putArray("$in", ids));
+		}
+		find.putObject("query", query);
 		byte [] header = null;
 		try {
 			header = find.toString().getBytes("UTF-8");
