@@ -108,8 +108,10 @@ public abstract class Server extends Verticle {
 		});
 
 		try {
+			final String appName = config.getString("app-name", this.getClass().getSimpleName());
 			JsonObject application = new JsonObject()
-			.putString("name", config.getString("app-name", this.getClass().getSimpleName()))
+			.putString("name", appName)
+			.putString("displayName", config.getString("app-displayName", appName.toLowerCase()))
 			.putString("icon", config.getString("app-icon", ""))
 			.putString("address", config.getString("app-address", ""));
 			JsonArray actions = StartupUtils.loadSecuredActions(vertx);
