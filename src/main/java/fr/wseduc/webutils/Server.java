@@ -7,6 +7,8 @@ import java.util.concurrent.ConcurrentMap;
 import fr.wseduc.vertx.eventbus.EventBusWrapperFactory;
 import fr.wseduc.webutils.http.BaseController;
 import fr.wseduc.webutils.http.Binding;
+import fr.wseduc.webutils.logging.Tracer;
+import fr.wseduc.webutils.logging.TracerFactory;
 import fr.wseduc.webutils.request.filter.Filter;
 import fr.wseduc.webutils.request.filter.SecurityHandler;
 import org.vertx.java.core.AsyncResult;
@@ -32,7 +34,7 @@ public abstract class Server extends Verticle {
 	public Logger log;
 	public JsonObject config;
 	public RouteMatcher rm;
-	public TracerHelper trace;
+	public Tracer trace;
 	private I18n i18n;
 	protected Map<String, SecuredAction> securedActions;
 	protected Set<Binding> securedUriBinding = new HashSet<>();
@@ -49,7 +51,7 @@ public abstract class Server extends Verticle {
 			container.config().mergeIn(config);
 		}
 		rm = new RouteMatcher();
-		trace = new TracerHelper(Server.getEventBus(vertx), "log.address", this.getClass().getSimpleName());
+		trace = TracerFactory.getTracer(this.getClass().getSimpleName());
 		i18n = I18n.getInstance();
 		i18n.init(container, vertx);
 		CookieHelper.getInstance().init((String) vertx
