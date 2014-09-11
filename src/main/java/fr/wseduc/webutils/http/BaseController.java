@@ -27,7 +27,9 @@ public class BaseController extends Controller {
 		super.rm = rm;
 		super.securedActions = securedActions;
 		super.eb = Server.getEventBus(vertx);
-		super.pathPrefix = Server.getPathPrefix(container.config());
+		if (pathPrefix == null) {
+			super.pathPrefix = Server.getPathPrefix(container.config());
+		}
 		if (rm != null) {
 			loadRoutes();
 		} else {
