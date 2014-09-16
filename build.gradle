@@ -8,39 +8,38 @@ dependencies {
 test {
 }
 
-repositories{
-		maven {
-			credentials {
-				username 'admin'
-				password 'We_1234'
-			}
-			url "http://maven.web-education.net:8081/nexus/content/groups/public"
-		}
-}
 
 def configurePom(def pom) {
 	pom.project {
-		description 'One Core Infra'
+    name 'web-utils'
+		description 'Vert.x web utils framework'
 		inceptionYear '2013'
-		packaging 'zip'
-		url 'http://code.web-education.net/projects/one-core'
+		packaging 'jar'
+		url 'https://github.com/web-education/web-utils'
 
 		developers {
 			developer {
 				id 'rafik.djedjig'
 				name 'Rafik Djedjig'
-				email 'rafik.djedjig@web-educcation.net'
+				email 'rafik.djedjig@web-education.net'
 			}
+      developer {
+        id 'dboissin'
+        name 'Damien BOISSIN'
+        email 'damien.boissin@web-education.net'
+      }
 		}
 
 		scm {
-			url 'git@code.web-education.net:one/one-core.git'
+      connection 'scm:git:ssh://git@github.com:web-education/web-utils.git'
+      developerConnection 'scm:git:ssh://git@github.com:web-education/web-utils.git'
+      url 'https://github.com/web-education/web-utils.git'
 		}
 
 		licenses {
 			license {
-				name 'GNU Affero General Public License, Version 2.0'
-				url 'https://www.gnu.org/licenses/agpl.txt'
+        name 'The Apache Software License, Version 2.0'
+        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
 				distribution 'repo'
 			}
 		}
