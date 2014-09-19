@@ -111,4 +111,13 @@ public class I18n {
 		return acceptLanguage != null ? acceptLanguage : "fr";
 	}
 
+	public void add(Locale locale, JsonObject keys) {
+		JsonObject m = messages.get(locale);
+		if (m == null) {
+			messages.put(locale, keys);
+		} else {
+			m.mergeIn(keys);
+		}
+	}
+
 }
