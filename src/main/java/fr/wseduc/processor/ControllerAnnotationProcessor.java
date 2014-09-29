@@ -54,6 +54,7 @@ public class ControllerAnnotationProcessor extends AbstractProcessor {
 		String prefix = "";
 		for (Element element : roundEnv.getElementsAnnotatedWith(ApiPrefixDoc.class)) {
 			ApiPrefixDoc annotation = element.getAnnotation(ApiPrefixDoc.class);
+			if (annotation == null) continue;
 			prefix = annotation.value();
 			if (prefix.isEmpty()) {
 				prefix = element.getSimpleName().toString().toLowerCase();
