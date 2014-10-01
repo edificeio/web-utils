@@ -213,6 +213,14 @@ public class Renders {
 		}
 	}
 
+	public static void ok(HttpServerRequest request) {
+		request.response().end();
+	}
+
+	public static void created(HttpServerRequest request) {
+		request.response().setStatusCode(201).setStatusMessage("Created").end();
+	}
+
 	public static void badRequest(HttpServerRequest request) {
 		request.response().setStatusCode(400).setStatusMessage("Bad Request").end();
 	}
@@ -246,6 +254,15 @@ public class Renders {
 
 	public static void notFound(HttpServerRequest request, String message) {
 		request.response().setStatusCode(404).setStatusMessage("Not Found").end(
+				new JsonObject().putString("error", message).encode());
+	}
+
+	public static void conflict(HttpServerRequest request) {
+		request.response().setStatusCode(409).setStatusMessage("Conflict").end();
+	}
+
+	public static void conflict(HttpServerRequest request, String message) {
+		request.response().setStatusCode(409).setStatusMessage("Conflict").end(
 				new JsonObject().putString("error", message).encode());
 	}
 
