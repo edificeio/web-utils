@@ -131,7 +131,9 @@ public abstract class Server extends Verticle {
 			.putString("name", appName)
 			.putString("displayName", config.getString("app-displayName", appName.toLowerCase()))
 			.putString("icon", config.getString("app-icon", ""))
-			.putString("address", config.getString("app-address", ""));
+			.putString("address", config.getString("app-address", ""))
+			.putBoolean("display", config.getBoolean("display", true))
+			.putString("prefix", getPathPrefix(config));
 			JsonArray actions = StartupUtils.loadSecuredActions(vertx);
 			securedActions = StartupUtils.securedActionsToMap(actions);
 			if (config.getString("integration-mode","BUS").equals("HTTP")) {
