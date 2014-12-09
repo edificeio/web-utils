@@ -167,7 +167,7 @@ public class FileUtils {
 						}
 					}
 					response.putHeader("Content-Disposition",
-							"attachment; filename=" + name);
+							"attachment; filename=\"" + name +"\"");
 				} else {
 					ETag.addHeader(response, id);
 				}
