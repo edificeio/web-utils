@@ -18,6 +18,7 @@ package fr.wseduc.processor;
 
 import fr.wseduc.bus.BusAddress;
 import fr.wseduc.rs.*;
+import fr.wseduc.security.ActionType;
 import fr.wseduc.security.SecuredAction;
 
 import javax.annotation.processing.*;
@@ -223,7 +224,7 @@ public class ControllerAnnotationProcessor extends AbstractProcessor {
 				continue;
 			}
 
-			// TODO check right method type else compile error ?
+			checkRights(annotation, clazz);
 			Set<String> controllerActions = getController(actions, clazz);
 			controllerActions.add("{ \"name\" : \"" + clazz.getQualifiedName().toString() + "|" +
 					element.getSimpleName().toString() +
@@ -232,6 +233,12 @@ public class ControllerAnnotationProcessor extends AbstractProcessor {
 		}
 
 		writeFile("SecuredAction-", actions);
+	}
+
+	protected void checkRights(SecuredAction annotation, TypeElement clazz) {
+		if (ActionType.WORKFLOW.equals(annotation.type()) && annotation.value().isEmpty()) {
+			throw new RuntimeException("Workflow action can't contains empty value.");
+		}
 	}
 
 	protected void writeFile(String prefixFilename, Map<String, Set<String>> actions) {
