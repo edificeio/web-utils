@@ -82,41 +82,55 @@ public class FileUtils {
 				event.endHandler(new Handler<Void>() {
 					@Override
 					public void handle(Void end) {
-						JsonObject save = new JsonObject();
-						save.putString("action", "save");
-						save.putString("content-type", event.contentType());
-						save.putString("filename", event.filename());
-						final JsonObject metadata = metadata(event);
-						if (metadata != null && metadata.getLong("size", 0l).equals(0l)) {
-							metadata.putNumber("size", buff.length());
-						}
-						if (maxSize != null && metadata != null && maxSize < metadata.getLong("size", 0l)) {
-							handler.handle(new JsonObject().putString("status", "error")
-								.putString("message", "file.too.large"));
-							return;
-						}
-						byte [] header = null;
-						try {
-							header = save.toString().getBytes("UTF-8");
-						} catch (UnsupportedEncodingException e) {
-							JsonObject json = new JsonObject().putString("status", "error")
-									.putString("message", e.getMessage());
-							handler.handle(json);
-						}
-						if (header != null) {
-							buff.appendBytes(header).appendInt(header.length);
-							eb.send("wse.gridfs.persistor", buff, new Handler<Message<JsonObject>>() {
-								@Override
-								public void handle(Message<JsonObject> message) {
-									handler.handle(message.body()
-											.putObject("metadata", metadata));
-								}
-							});
-						}
+						gridfsWriteBuffer(buff, maxSize, handler, eb,
+								event.contentType(), event.filename(), metadata(event));
 					}
 				});
 			}
 		});
+	}
+
+	public static void gridfsWriteBuffer(Buffer buff, String contentType,
+			String filename, EventBus eb, final Handler<JsonObject> handler) {
+		gridfsWriteBuffer(buff, null, handler, eb, contentType, filename, null);
+	}
+
+	private static void gridfsWriteBuffer(Buffer buff, Long maxSize,
+		final Handler<JsonObject> handler, EventBus eb, String contentType,
+		String filename, final JsonObject m) {
+		JsonObject save = new JsonObject();
+		save.putString("action", "save");
+		save.putString("content-type", contentType);
+		save.putString("filename", filename);
+		final JsonObject metadata = (m != null) ? m : new JsonObject()
+				.putString("content-type", contentType)
+				.putString("filename", filename);
+		if (metadata.getLong("size", 0l).equals(0l)) {
+			metadata.putNumber("size", buff.length());
+		}
+		if (maxSize != null && maxSize < metadata.getLong("size", 0l)) {
+			handler.handle(new JsonObject().putString("status", "error")
+				.putString("message", "file.too.large"));
+			return;
+		}
+		byte [] header = null;
+		try {
+			header = save.toString().getBytes("UTF-8");
+		} catch (UnsupportedEncodingException e) {
+			JsonObject json = new JsonObject().putString("status", "error")
+					.putString("message", e.getMessage());
+			handler.handle(json);
+		}
+		if (header != null) {
+			buff.appendBytes(header).appendInt(header.length);
+			eb.send("wse.gridfs.persistor", buff, new Handler<Message<JsonObject>>() {
+				@Override
+				public void handle(Message<JsonObject> message) {
+					handler.handle(message.body()
+							.putObject("metadata", metadata));
+				}
+			});
+		}
 	}
 
 	public static void gridfsReadFile(String id, final EventBus eb,
