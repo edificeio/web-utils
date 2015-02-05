@@ -51,6 +51,8 @@ public abstract class Controller extends Renders {
 	private final Map<String, Set<Binding>> uriBinding;
 	protected Map<String, SecuredAction> securedActions;
 	protected EventBus eb;
+	protected String busPrefix = "";
+	protected boolean busLocalHandler = true;
 
 	public Controller(Vertx vertx, Container container, RouteMatcher rm,
 			Map<String, SecuredAction> securedActions) {
@@ -196,7 +198,7 @@ public abstract class Controller extends Renders {
 			throws NoSuchMethodException, IllegalAccessException {
 		final MethodHandle mh = lookup.bind(this, method,
 				MethodType.methodType(void.class, Message.class));
-		Server.getEventBus(vertx).registerHandler(address, new Handler<Message<JsonObject>>() {
+		Handler<Message<JsonObject>> handler = new Handler<Message<JsonObject>>() {
 
 			@Override
 			public void handle(Message<JsonObject> message) {
@@ -209,7 +211,12 @@ public abstract class Controller extends Renders {
 					message.reply(json);
 				}
 			}
-		});
+		};
+		if (busLocalHandler) {
+			Server.getEventBus(vertx).registerLocalHandler(busPrefix + address, handler);
+		} else {
+			Server.getEventBus(vertx).registerHandler(busPrefix + address, handler);
+		}
 	}
 
 	private Handler<HttpServerRequest> bindHandler(String method) {
