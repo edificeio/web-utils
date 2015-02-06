@@ -81,14 +81,7 @@ public class JsonSchemaValidator {
 													.putString("key", key)
 													.putObject("jsonSchema",
 															new JsonObject(event.result().toString()));
-											eb.send(address, j, new Handler<Message<JsonObject>>() {
-												@Override
-												public void handle(Message<JsonObject> event) {
-													if (!"ok".equals(event.body().getString("status"))) {
-														log.error(event.body().getString("message"));
-													}
-												}
-											});
+											eb.publish(address, j);
 										} else {
 											log.error("Error loading json schema : " + path, event.cause());
 										}
