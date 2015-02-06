@@ -83,7 +83,7 @@ public class FileUtils {
 					@Override
 					public void handle(Void end) {
 						gridfsWriteBuffer(buff, maxSize, handler, eb,
-								event.contentType(), event.filename(), metadata(event));
+								event.contentType(), event.filename(), metadata(event), gridfsAddress);
 					}
 				});
 			}
@@ -91,13 +91,13 @@ public class FileUtils {
 	}
 
 	public static void gridfsWriteBuffer(Buffer buff, String contentType,
-			String filename, EventBus eb, final Handler<JsonObject> handler) {
-		gridfsWriteBuffer(buff, null, handler, eb, contentType, filename, null);
+			String filename, EventBus eb, final Handler<JsonObject> handler, String gridfsAddress) {
+		gridfsWriteBuffer(buff, null, handler, eb, contentType, filename, null, gridfsAddress);
 	}
 
 	private static void gridfsWriteBuffer(Buffer buff, Long maxSize,
 		final Handler<JsonObject> handler, EventBus eb, String contentType,
-		String filename, final JsonObject m) {
+		String filename, final JsonObject m, final String gridfsAddress) {
 		JsonObject save = new JsonObject();
 		save.putString("action", "save");
 		save.putString("content-type", contentType);
@@ -123,7 +123,7 @@ public class FileUtils {
 		}
 		if (header != null) {
 			buff.appendBytes(header).appendInt(header.length);
-			eb.send("wse.gridfs.persistor", buff, new Handler<Message<JsonObject>>() {
+			eb.send(gridfsAddress, buff, new Handler<Message<JsonObject>>() {
 				@Override
 				public void handle(Message<JsonObject> message) {
 					handler.handle(message.body()
