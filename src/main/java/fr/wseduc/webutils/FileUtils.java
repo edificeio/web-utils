@@ -82,7 +82,7 @@ public class FileUtils {
 				event.endHandler(new Handler<Void>() {
 					@Override
 					public void handle(Void end) {
-						gridfsWriteBuffer(buff, maxSize, handler, eb,
+						gridfsWriteBuffer(null, buff, maxSize, handler, eb,
 								event.contentType(), event.filename(), metadata(event), gridfsAddress);
 					}
 				});
@@ -92,16 +92,24 @@ public class FileUtils {
 
 	public static void gridfsWriteBuffer(Buffer buff, String contentType,
 			String filename, EventBus eb, final Handler<JsonObject> handler, String gridfsAddress) {
-		gridfsWriteBuffer(buff, null, handler, eb, contentType, filename, null, gridfsAddress);
+		gridfsWriteBuffer(null, buff, null, handler, eb, contentType, filename, null, gridfsAddress);
 	}
 
-	private static void gridfsWriteBuffer(Buffer buff, Long maxSize,
+	public static void gridfsWriteBuffer(String id, Buffer buff, String contentType,
+			String filename, EventBus eb, final Handler<JsonObject> handler, String gridfsAddress) {
+		gridfsWriteBuffer(id, buff, null, handler, eb, contentType, filename, null, gridfsAddress);
+	}
+
+	private static void gridfsWriteBuffer(String id, Buffer buff, Long maxSize,
 		final Handler<JsonObject> handler, EventBus eb, String contentType,
 		String filename, final JsonObject m, final String gridfsAddress) {
 		JsonObject save = new JsonObject();
 		save.putString("action", "save");
 		save.putString("content-type", contentType);
 		save.putString("filename", filename);
+		if (id != null && !id.trim().isEmpty()) {
+			save.putString("_id", id);
+		}
 		final JsonObject metadata = (m != null) ? m : new JsonObject()
 				.putString("content-type", contentType)
 				.putString("filename", filename);
