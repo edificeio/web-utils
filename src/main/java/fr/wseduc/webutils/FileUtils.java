@@ -155,10 +155,14 @@ public class FileUtils {
 		if (header != null) {
 			Buffer buf = new Buffer(header);
 			buf.appendInt(header.length);
-			eb.send(gridfsAddress, buf, new  Handler<Message<Buffer>>() {
+			eb.send(gridfsAddress, buf, new  Handler<Message>() {
 			@Override
-			public void handle(Message<Buffer> res) {
-				handler.handle(res.body());
+			public void handle(Message res) {
+				if (res.body() instanceof Buffer) {
+					handler.handle((Buffer) res.body());
+				} else {
+					handler.handle(null);
+				}
 			}
 		});
 		}
@@ -170,6 +174,10 @@ public class FileUtils {
 		gridfsReadFile(id, eb, gridfsAddress, new Handler<Buffer>() {
 			@Override
 			public void handle(Buffer file) {
+				if (file == null) {
+					response.setStatusCode(404).setStatusMessage("Not Found").end();
+					return;
+				}
 				if (!inline) {
 					String name = downloadName;
 					if (metadata != null && metadata.getString("filename") != null) {
