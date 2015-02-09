@@ -18,6 +18,7 @@ package fr.wseduc.webutils;
 
 import java.io.UnsupportedEncodingException;
 
+import org.vertx.java.core.AsyncResult;
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.buffer.Buffer;
 import org.vertx.java.core.eventbus.EventBus;
@@ -171,11 +172,19 @@ public class FileUtils {
 	public static void gridfsSendFile(final String id, final String downloadName, final EventBus eb,
 			final String gridfsAddress, final HttpServerResponse response, final boolean inline,
 			final JsonObject metadata) {
+		gridfsSendFile(id, downloadName, eb, gridfsAddress, response, inline, metadata, null);
+	}
+	public static void gridfsSendFile(final String id, final String downloadName, final EventBus eb,
+			final String gridfsAddress, final HttpServerResponse response, final boolean inline,
+			final JsonObject metadata, final Handler<AsyncResult<Void>> resultHandler) {
 		gridfsReadFile(id, eb, gridfsAddress, new Handler<Buffer>() {
 			@Override
 			public void handle(Buffer file) {
 				if (file == null) {
 					response.setStatusCode(404).setStatusMessage("Not Found").end();
+					if (resultHandler != null) {
+						resultHandler.handle(new DefaultAsyncResult<>((Void) null));
+					}
 					return;
 				}
 				if (!inline) {
@@ -205,6 +214,9 @@ public class FileUtils {
 					response.putHeader("Content-Type", metadata.getString("content-type"));
 				}
 				response.end(file);
+				if (resultHandler != null) {
+					resultHandler.handle(new DefaultAsyncResult<>((Void) null));
+				}
 			}
 		});
 	}
