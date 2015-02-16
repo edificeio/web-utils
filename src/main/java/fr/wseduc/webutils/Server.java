@@ -89,7 +89,7 @@ public abstract class Server extends Verticle {
 					if (staticRessources.containsKey(request.uri())) {
 						StaticResource.serveRessource(request,
 								"." + request.path().substring(prefix.length()),
-								staticRessources.get(request.uri()));
+								staticRessources.get(request.uri()), dev);
 					} else {
 						vertx.fileSystem().props("." + request.path().substring(prefix.length()),
 								new Handler<AsyncResult<FileProps>>(){
@@ -100,7 +100,7 @@ public abstract class Server extends Verticle {
 									staticRessources.put(request.uri(), lastModified);
 									StaticResource.serveRessource(request,
 											"." + request.path().substring(prefix.length()),
-											lastModified);
+											lastModified, dev);
 								} else {
 									request.response().sendFile("." + request.path().substring(prefix.length()));
 								}
