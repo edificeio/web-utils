@@ -34,7 +34,7 @@ import fr.wseduc.webutils.http.Renders;
 
 public class NotificationHelper {
 
-	private static final String EMAIL_ADDRESS = "wse.email";
+	private final String emailAddress;
 	private final EventBus eb;
 	private final Renders render;
 	private final Logger log;
@@ -45,6 +45,11 @@ public class NotificationHelper {
 		this.eb = eb;
 		this.log = container.logger();
 		this.render = new Renders(vertx, container);
+		String node = (String) vertx.sharedData().getMap("server").get("node");
+		if (node == null) {
+			node = "";
+		}
+		this.emailAddress = node + "wse.email";
 		this.senderEmail = container.config().getString("email", "noreply@one1d.fr");
 		this.host = container.config().getString("host", "http://localhost:8009");
 	}
@@ -76,7 +81,7 @@ public class NotificationHelper {
 				if (body != null) {
 					try {
 						json.putString("body", new String(body.getBytes("UTF-8"), "ISO-8859-1"));
-						eb.send(EMAIL_ADDRESS, json, handler);
+						eb.send(emailAddress, json, handler);
 					} catch (UnsupportedEncodingException e) {
 						log.error(e.getMessage(), e);
 						Message<JsonObject> m = new ErrorMessage();
