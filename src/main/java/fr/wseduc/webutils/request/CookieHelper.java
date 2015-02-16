@@ -16,6 +16,7 @@
 
 package fr.wseduc.webutils.request;
 
+import fr.wseduc.webutils.http.Renders;
 import io.netty.handler.codec.http.Cookie;
 import io.netty.handler.codec.http.CookieDecoder;
 import io.netty.handler.codec.http.DefaultCookie;
@@ -27,7 +28,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Set;
 
 import org.vertx.java.core.http.HttpServerRequest;
-import org.vertx.java.core.http.HttpServerResponse;
 import org.vertx.java.core.logging.Logger;
 
 import fr.wseduc.webutils.security.HmacSha1;
@@ -64,30 +64,32 @@ public class CookieHelper {
 		return null;
 	}
 
-	public static void set(String name, String value, HttpServerResponse response) {
-		set(name, value, Long.MIN_VALUE, response);
+	public static void set(String name, String value, HttpServerRequest request) {
+		set(name, value, Long.MIN_VALUE, request);
 	}
 
-	public static void set(String name, String value, long timeout, HttpServerResponse response) {
-		set(name, value, timeout, "/", response);
+	public static void set(String name, String value, long timeout, HttpServerRequest request) {
+		set(name, value, timeout, "/", request);
 	}
 
-	public static void set(String name, String value, long timeout, String path, HttpServerResponse response) {
+	public static void set(String name, String value, long timeout, String path, HttpServerRequest request) {
 		Cookie cookie = new DefaultCookie(name, value);
 		cookie.setMaxAge(timeout);
+		cookie.setSecure("https".equals(Renders.getScheme(request)));
 		if (path != null && !path.trim().isEmpty()) {
 			cookie.setPath(path);
 		}
-		response.headers().set("Set-Cookie", ServerCookieEncoder.encode(cookie));
+		request.response().headers().set("Set-Cookie", ServerCookieEncoder.encode(cookie));
 	}
 
-	public void setSigned(String name, String value, long timeout, HttpServerResponse response) {
-		setSigned(name, value, timeout, "/", response);
+	public void setSigned(String name, String value, long timeout, HttpServerRequest request) {
+		setSigned(name, value, timeout, "/", request);
 	}
 
-	public void setSigned(String name, String value, long timeout, String path, HttpServerResponse response) {
+	public void setSigned(String name, String value, long timeout, String path, HttpServerRequest request) {
 		Cookie cookie = new DefaultCookie(name, value);
 		cookie.setMaxAge(timeout);
+		cookie.setSecure("https".equals(Renders.getScheme(request)));
 		if (path != null && !path.trim().isEmpty()) {
 			cookie.setPath(path);
 		}
@@ -99,7 +101,7 @@ public class CookieHelper {
 				log.error(e);
 				return;
 			}
-			response.headers().set("Set-Cookie", ServerCookieEncoder.encode(cookie));
+			request.response().headers().set("Set-Cookie", ServerCookieEncoder.encode(cookie));
 		}
 	}
 
