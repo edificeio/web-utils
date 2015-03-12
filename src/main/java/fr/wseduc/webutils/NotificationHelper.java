@@ -102,8 +102,11 @@ public class NotificationHelper {
 		return senderEmail;
 	}
 
-	public String getHost() {
-		return host;
+	public String getHost(HttpServerRequest request) {
+		if (request == null) {
+			return host;
+		}
+		return Renders.getScheme(request) + "://" + request.headers().get("Host");
 	}
 
 	class ErrorMessage implements Message<JsonObject> {
