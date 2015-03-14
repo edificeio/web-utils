@@ -310,6 +310,10 @@ public class Renders {
 	}
 
 	public static void redirect(HttpServerRequest request, String host, String location) {
+		if (host == null || !host.startsWith("http")) {
+			redirect(request, (host != null ? host : "") + location);
+			return;
+		}
 		request.response().setStatusCode(302);
 		request.response().putHeader("Location", host + location);
 		request.response().end();
