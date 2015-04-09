@@ -3,6 +3,7 @@ apply from: "gradle/vertx.gradle"
 dependencies {
 	compile "com.samskivert:jmustache:$mustacheVersion"
 	compile "fr.wseduc:eventbus-wrapper:$eventbusWrapperVersion"
+//  compile "org.owasp.esapi:esapi:$esapiVersion"
 }
 
 test {

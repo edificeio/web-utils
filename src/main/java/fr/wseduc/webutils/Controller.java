@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import fr.wseduc.webutils.request.filter.XSSHandler;
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.Vertx;
 import org.vertx.java.core.eventbus.EventBus;
@@ -140,10 +141,10 @@ public abstract class Controller extends Renders {
 		try {
 			final MethodHandle mh = lookup.bind(this, method,
 					MethodType.methodType(void.class, HttpServerRequest.class));
-			return new Handler<HttpServerRequest>() {
+			return new XSSHandler() {
 
 				@Override
-				public void handle(HttpServerRequest request) {
+				public void filter(HttpServerRequest request) {
 					try {
 						mh.invokeExact(request);
 					} catch (Throwable e) {

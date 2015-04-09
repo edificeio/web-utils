@@ -19,6 +19,7 @@ package fr.wseduc.webutils.request.filter;
 import java.util.ArrayList;
 import java.util.List;
 
+import fr.wseduc.webutils.security.XssSecuredHttpServerRequest;
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.http.HttpServerRequest;
 
@@ -70,7 +71,7 @@ public abstract class SecurityHandler implements Handler<HttpServerRequest> {
 	@Override
 	public void handle(HttpServerRequest request) {
 		if (chain != null && !chain.isEmpty()) {
-			SecureHttpServerRequest sr = new SecureHttpServerRequest(request);
+			SecureHttpServerRequest sr = new XssSecuredHttpServerRequest(request);
 			chain.get(0).canAccess(sr, chainToHandler(sr));
 		} else {
 			filter(request);

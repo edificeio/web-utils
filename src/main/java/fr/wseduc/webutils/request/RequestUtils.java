@@ -17,6 +17,7 @@
 package fr.wseduc.webutils.request;
 
 import fr.wseduc.webutils.http.Renders;
+import fr.wseduc.webutils.security.XSSUtils;
 import fr.wseduc.webutils.validation.JsonSchemaValidator;
 import org.vertx.java.core.AsyncResult;
 import org.vertx.java.core.AsyncResultHandler;
@@ -39,7 +40,7 @@ public class RequestUtils {
 			@Override
 			public void handle(Buffer event) {
 				try {
-					JsonObject json = new JsonObject(event.toString("UTF-8"));
+					JsonObject json = new JsonObject(XSSUtils.stripXSS(event.toString("UTF-8")));
 					handler.handle(json);
 				} catch (RuntimeException e) {
 					log.warn(e.getMessage(), e);
@@ -55,7 +56,7 @@ public class RequestUtils {
 			@Override
 			public void handle(Buffer event) {
 				try {
-					final JsonObject json = new JsonObject(event.toString("UTF-8"));
+					final JsonObject json = new JsonObject(XSSUtils.stripXSS(event.toString("UTF-8")));
 					validator.validate(schema, json, new AsyncResultHandler<Message<JsonObject>>() {
 						@Override
 						public void handle(AsyncResult<Message<JsonObject>> event) {
