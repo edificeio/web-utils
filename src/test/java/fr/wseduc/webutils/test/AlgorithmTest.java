@@ -14,10 +14,20 @@
  * limitations under the License.
  */
 
-package fr.wseduc.webutils.test.integration;
+package fr.wseduc.webutils.test;
 
-import org.vertx.java.platform.Verticle;
+import fr.wseduc.webutils.security.Md5;
+import org.junit.Test;
 
-public class Test extends Verticle {
+import java.security.NoSuchAlgorithmException;
+
+import static org.junit.Assert.assertEquals;
+
+public class AlgorithmTest {
+
+	@Test
+	public void hashMd5() throws NoSuchAlgorithmException {
+		assertEquals("0127f712fc008f857e77a2f3f179c710", Md5.hash("Javarmi.com"));
+	}
 
 }
