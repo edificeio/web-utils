@@ -30,13 +30,21 @@ import org.vertx.java.core.http.HttpServerRequest;
 public class UserAuthFilter implements Filter {
 
 	private final OAuthResourceProvider oauth;
+	private final AbstractBasicFilter basicFilter;
 
 	public UserAuthFilter() {
 		this.oauth = null;
+		this.basicFilter  = null;
 	}
 
 	public UserAuthFilter(OAuthResourceProvider oauth) {
 		this.oauth = oauth;
+		this.basicFilter = null;
+	}
+
+	public UserAuthFilter(OAuthResourceProvider oauth, AbstractBasicFilter basicFilter) {
+		this.oauth = oauth;
+		this.basicFilter = basicFilter;
 	}
 
 	@Override
@@ -44,6 +52,9 @@ public class UserAuthFilter implements Filter {
 		String oneSeesionId = CookieHelper.getInstance().getSigned("oneSessionId", request);
 		if (oneSeesionId != null && !oneSeesionId.trim().isEmpty()) {
 			handler.handle(true);
+		} else if (basicFilter != null && request instanceof SecureHttpServerRequest &&
+				basicFilter.hasBasicHeader(request)) {
+			basicFilter.validate((SecureHttpServerRequest) request, handler);
 		} else if (oauth != null && request instanceof SecureHttpServerRequest) {
 			oauth.validToken((SecureHttpServerRequest) request, handler);
 		} else {
