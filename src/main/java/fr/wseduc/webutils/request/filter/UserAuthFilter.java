@@ -25,12 +25,18 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 
 import org.vertx.java.core.Handler;
+import org.vertx.java.core.Vertx;
 import org.vertx.java.core.http.HttpServerRequest;
+import org.vertx.java.core.logging.Logger;
+import org.vertx.java.core.logging.impl.LoggerFactory;
+import org.vertx.java.core.shareddata.ConcurrentSharedMap;
 
-public class UserAuthFilter implements Filter {
+public class UserAuthFilter implements Filter, WithVertx {
 
+	private static final Logger log = LoggerFactory.getLogger(UserAuthFilter.class);
 	private final OAuthResourceProvider oauth;
 	private final AbstractBasicFilter basicFilter;
+	private Vertx vertx;
 
 	public UserAuthFilter() {
 		this.oauth = null;
@@ -75,13 +81,38 @@ public class UserAuthFilter implements Filter {
 				location = location.split(":")[0] + ":8009";
 			}
 			callBack = URLEncoder.encode(callBack, "UTF-8");
-			location += "/auth/login?callback=" + callBack;
+			ConcurrentSharedMap<Object, Object> confServer = null;
+			if (vertx != null) {
+				confServer = vertx.sharedData().getMap("server");
+			}
+			String loginUri = null;
+			if (confServer != null) {
+				loginUri = (String) confServer.get("loginUri");
+			}
+			if (loginUri != null && !loginUri.trim().isEmpty()) {
+				if (loginUri.startsWith("http")) {
+					location = loginUri;
+				} else {
+					location += loginUri;
+				}
+				String callbackParam = (String) confServer.get("callbackParam");
+				if (callbackParam != null && !callbackParam.trim().isEmpty()) {
+					location += (location.contains("?") ? "&" : "?") + callbackParam + "=" + callBack;
+				}
+			} else {
+				location += "/auth/login?callback=" + callBack;
+			}
 		} catch (UnsupportedEncodingException ex) {
-			ex.printStackTrace();
+			log.error(ex.getMessage(), ex);
 		}
 		request.response().setStatusCode(302);
 		request.response().putHeader("Location", location);
 		request.response().end();
+	}
+
+	@Override
+	public void setVertx(Vertx vertx) {
+		this.vertx = vertx;
 	}
 
 }

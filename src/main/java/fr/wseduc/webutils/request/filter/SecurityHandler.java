@@ -21,6 +21,7 @@ import java.util.List;
 
 import fr.wseduc.webutils.security.XssSecuredHttpServerRequest;
 import org.vertx.java.core.Handler;
+import org.vertx.java.core.Vertx;
 import org.vertx.java.core.http.HttpServerRequest;
 
 import fr.wseduc.webutils.security.SecureHttpServerRequest;
@@ -32,7 +33,6 @@ public abstract class SecurityHandler implements Handler<HttpServerRequest> {
 	static protected List<Filter> chain = new ArrayList<>();
 	static {
 		chain.add(new UserAuthFilter());
-		chain.add(new AppAuthFilter());
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -84,6 +84,16 @@ public abstract class SecurityHandler implements Handler<HttpServerRequest> {
 
 	public static void clearFilters() {
 		chain.clear();
+	}
+
+	public static void setVertx(Vertx vertx) {
+		if (chain != null) {
+			for (Filter f : chain) {
+				if (f instanceof WithVertx) {
+					((WithVertx) f).setVertx(vertx);
+				}
+			}
+		}
 	}
 
 	public abstract void filter(HttpServerRequest request);

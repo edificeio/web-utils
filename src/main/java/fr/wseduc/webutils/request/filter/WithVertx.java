@@ -16,19 +16,10 @@
 
 package fr.wseduc.webutils.request.filter;
 
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.http.HttpServerRequest;
+import org.vertx.java.core.Vertx;
 
-public class AppAuthFilter implements Filter {
+public interface WithVertx {
 
-	@Override
-	public void canAccess(HttpServerRequest request, Handler<Boolean> handler) {
-		handler.handle(true);
-	}
-
-	@Override
-	public void deny(HttpServerRequest request) {
-		throw new UnsupportedOperationException("Not supported yet.");
-	}
+	void setVertx(Vertx vertx);
 
 }
