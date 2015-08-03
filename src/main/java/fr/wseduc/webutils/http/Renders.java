@@ -108,7 +108,7 @@ public class Renders {
 	/*
 	 * Render a Mustache template : see http://mustache.github.com/mustache.5.html
 	 * TODO : modularize
-	 * TODO : isolate sscope management 
+	 * TODO : isolate sscope management
 	 */
 	public void renderView(HttpServerRequest request, JsonObject params) {
 		renderView(request, params, null, null, 200);
@@ -148,7 +148,7 @@ public class Renders {
 		});
 	}
 
-	private void processTemplate(final HttpServerRequest request,
+	public void processTemplate(final HttpServerRequest request,
 			JsonObject p, String resourceName, Reader r, final Handler<Writer> handler) {
 		final JsonObject params = (p == null) ? new JsonObject() : p;
 		getTemplate(request, resourceName, r, new Handler<Template>() {
