@@ -17,6 +17,8 @@
 package fr.wseduc.webutils;
 
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.vertx.java.core.AsyncResult;
 import org.vertx.java.core.Handler;
@@ -58,25 +60,81 @@ public class NotificationHelper {
 			String subject, String templateBody, JsonObject templateParams,
 			boolean translateSubject, final Handler<Message<JsonObject>> handler) {
 		sendEmail(request, to, senderEmail, cc, bcc, subject, templateBody,
-				templateParams, translateSubject, handler);
+				templateParams, translateSubject, null, handler);
+	}
+
+	public void sendEmail(HttpServerRequest request, String to, String cc, String bcc,
+			String subject, String templateBody, JsonObject templateParams,
+			boolean translateSubject, JsonArray headers, final Handler<Message<JsonObject>> handler) {
+		sendEmail(request, to, senderEmail, cc, bcc, subject, templateBody,
+				templateParams, translateSubject, headers, handler);
 	}
 
 	public void sendEmail(HttpServerRequest request, String to, String from, String cc, String bcc,
 			String subject, String templateBody, JsonObject templateParams,
 			boolean translateSubject, final Handler<Message<JsonObject>> handler) {
+		sendEmail(request, to, from, cc, bcc, subject, templateBody,
+				templateParams, translateSubject, null, handler);
+	}
+
+	public void sendEmail(HttpServerRequest request, String to, String from, String cc, String bcc,
+			String subject, String templateBody, JsonObject templateParams,
+			boolean translateSubject, JsonArray headers, final Handler<Message<JsonObject>> handler) {
+
+		ArrayList<Object> toList = null;
+		ArrayList<Object> ccList = null;
+		ArrayList<Object> bccList = null;
+
+		if(to != null){
+			toList = new ArrayList<Object>();
+			toList.add(to);
+		}
+		if(cc != null){
+			ccList = new ArrayList<Object>();
+			ccList.add(cc);
+		}
+		if(bcc != null){
+			bccList = new ArrayList<Object>();
+			bccList.add(bcc);
+		}
+
+		sendEmail(request, toList, senderEmail, ccList, bccList, subject, templateBody,
+				templateParams, translateSubject, headers, handler);
+	}
+
+	public void sendEmail(HttpServerRequest request, List<Object> to, List<Object> cc, List<Object> bcc,
+			String subject, String templateBody, JsonObject templateParams,
+			boolean translateSubject, final Handler<Message<JsonObject>> handler) {
+		sendEmail(request, to, senderEmail, cc, bcc, subject, templateBody,
+				templateParams, translateSubject, null, handler);
+	}
+
+	public void sendEmail(HttpServerRequest request, List<Object> to, String from, List<Object> cc, List<Object> bcc,
+			String subject, String templateBody, JsonObject templateParams,
+			boolean translateSubject, JsonArray headers, final Handler<Message<JsonObject>> handler) {
 		final JsonObject json = new JsonObject()
-		.putString("to", to)
-		.putString("from", from)
-		.putString("cc", cc)
-		.putString("bcc", bcc);
+			.putArray("to", new JsonArray(to))
+			.putString("from", from);
+
+		if(cc != null){
+			json.putArray("cc", new JsonArray(cc));
+		}
+		if(bcc != null){
+			json.putArray("bcc", new JsonArray(bcc));
+		}
+
 		if (translateSubject) {
 			json.putString("subject", I18n.getInstance().translate(
 					subject, request.headers().get("Accept-Language")));
 		} else {
 			json.putString("subject", subject);
 		}
-		render.processTemplate(request, templateBody, templateParams, new Handler<String>() {
-			@Override
+
+		if(headers != null){
+			json.putArray("headers", headers);
+		}
+
+		Handler<String> mailHandler = new Handler<String>() {
 			public void handle(String body) {
 				if (body != null) {
 					try {
@@ -95,7 +153,13 @@ public class NotificationHelper {
 					handler.handle(m);
 				}
 			}
-		});
+		};
+
+		if(templateParams != null){
+			render.processTemplate(request, templateBody, templateParams, mailHandler);
+		} else {
+			mailHandler.handle(templateBody);
+		}
 	}
 
 	public String getSenderEmail() {
