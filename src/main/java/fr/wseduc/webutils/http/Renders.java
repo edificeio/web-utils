@@ -86,6 +86,21 @@ public class Renders {
 						"8001", "/infra/public", path));
 			}
 		});
+
+		ctx.put("formatBirthDate", new Mustache.Lambda() {
+			@Override
+			public void execute(Template.Fragment frag, Writer out) throws IOException {
+				String date = frag.execute();
+				if(date != null && date.trim().length() > 0){
+					String[] splitted = date.split("-");
+					if(splitted.length == 3){
+						out.write(splitted[2] + "/" + splitted[1] + "/" + splitted[0]);
+						return;
+					}
+				}
+				out.write(date);
+			}
+		});
 	}
 
 	private String staticResource(HttpServerRequest request,
