@@ -17,6 +17,7 @@
 package fr.wseduc.webutils;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Collections;
@@ -27,6 +28,7 @@ import org.vertx.java.core.Handler;
 import org.vertx.java.core.Vertx;
 import org.vertx.java.core.eventbus.EventBus;
 import org.vertx.java.core.eventbus.Message;
+import org.vertx.java.core.file.FileProps;
 import org.vertx.java.core.http.HttpClient;
 import org.vertx.java.core.http.HttpClientResponse;
 import org.vertx.java.core.json.JsonArray;
@@ -40,7 +42,7 @@ public class StartupUtils {
 
 	private static final Logger log = LoggerFactory.getLogger(StartupUtils.class);
 
-	public static void sendStartup(JsonObject app, JsonArray actions, Vertx vertx, Integer appRegistryPort) throws IOException {
+	public static void sendStartup(final JsonObject app, JsonArray actions, final Vertx vertx, Integer appRegistryPort) throws IOException {
 		if (actions == null || actions.size() == 0) {
 			actions = loadSecuredActions(vertx);
 		}
@@ -52,15 +54,36 @@ public class StartupUtils {
 			public void handle(HttpClientResponse event) {
 				if (event.statusCode() != 200) {
 					log.error("Error recording application : " + s);
+					httpClient.close();
+				} else {
+					final JsonArray widgetsArray = loadWidgets(app.getString("name"), vertx);
+					if(widgetsArray.size() == 0){
+						httpClient.close();
+						return;
+					}
+
+					final String widgets = new JsonObject().putArray("widgets", widgetsArray).encode();
+					httpClient.post("/appregistry/widget", new Handler<HttpClientResponse>() {
+						@Override
+						public void handle(HttpClientResponse event) {
+							if (event.statusCode() != 200) {
+								log.error("Error recording widgets for application " + app.getString("name"));
+							} else {
+								log.info("Successfully registered widgets for application " + app.getString("name"));
+							}
+							httpClient.close();
+						}
+					})
+					.putHeader("Content-Type", "application/json")
+					.end(widgets);
 				}
-				httpClient.close();
 			}
 		})
 		.putHeader("Content-Type", "application/json")
 		.end(s);
 	}
 
-	public static void sendStartup(JsonObject app, JsonArray actions, EventBus eb, String address,Vertx vertx,
+	public static void sendStartup(final JsonObject app, JsonArray actions, final EventBus eb, final String address, final Vertx vertx,
 			final Handler<Message<JsonObject>> handler) throws IOException {
 		if (actions == null || actions.size() == 0) {
 			actions = loadSecuredActions(vertx);
@@ -68,7 +91,33 @@ public class StartupUtils {
 		JsonObject jo = new JsonObject();
 		jo.putObject("application", app)
 		.putArray("actions", actions);
-		eb.send(address, jo, handler);
+		eb.send(address, jo, new Handler<Message<JsonObject>>() {
+			public void handle(final Message<JsonObject> appEvent) {
+				if("error".equals(appEvent.body().getString("status"))){
+					log.error("Error registering application " + app.getString("name"));
+					if(handler != null) handler.handle(appEvent);
+					return;
+				}
+
+				final JsonArray widgetsArray = loadWidgets(app.getString("name"), vertx);
+				if(widgetsArray.size() == 0){
+					if(handler != null) handler.handle(appEvent);
+					return;
+				}
+
+				final String widgets = new JsonObject().putArray("widgets", widgetsArray).encode();
+				eb.send(address+".widgets", widgets, new Handler<Message<JsonObject>>() {
+					public void handle(Message<JsonObject> event) {
+						if("error".equals(event.body().getString("status"))){
+							log.error("Error registering wigets for application " + app.getString("name"));
+						} else {
+							log.info("Successfully registered widgets for application " + app.getString("name"));
+						}
+						if(handler != null) handler.handle(appEvent);
+					}
+				});
+			}
+		});
 	}
 
 	public static void sendStartup(JsonObject app, JsonArray actions, EventBus eb, String address, Vertx vertx) throws IOException {
@@ -120,6 +169,32 @@ public class StartupUtils {
 			}
 		}
 		return actions;
+	}
+
+	public static JsonArray loadWidgets(String appName, Vertx vertx){
+		JsonArray widgets = new JsonArray();
+
+		if(vertx.fileSystem().existsSync("public/widgets")){
+			String[] paths = vertx.fileSystem().readDirSync("public/widgets");
+			for(final String path: paths){
+				FileProps props = vertx.fileSystem().propsSync(path);
+				if(props.isDirectory()){
+					final String widgetName = new File(path).getName();
+					JsonObject widget = new JsonObject()
+						.putString("name", new File(widgetName).getName())
+						.putString("js", "/public/widgets/"+widgetName+"/"+widgetName+".js")
+						.putString("path", "/public/widgets/"+widgetName+"/"+widgetName+".html")
+						.putString("applicationName", appName);
+
+					if(vertx.fileSystem().existsSync("public/widgets/"+widgetName+"/i18n")){
+						widget.putString("i18n", "/public/widgets/"+widgetName+"/i18n");
+					}
+
+					widgets.add(widget);
+				}
+			}
+		}
+		return widgets;
 	}
 
 }
