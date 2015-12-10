@@ -26,4 +26,6 @@ public @interface BusAddress {
 
 	String value();
 
+	boolean local() default true;
+
 }

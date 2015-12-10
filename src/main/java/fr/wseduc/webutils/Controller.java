@@ -53,7 +53,6 @@ public abstract class Controller extends Renders {
 	protected Map<String, SecuredAction> securedActions;
 	protected EventBus eb;
 	protected String busPrefix = "";
-	protected boolean busLocalHandler = true;
 
 	public Controller(Vertx vertx, Container container, RouteMatcher rm,
 			Map<String, SecuredAction> securedActions) {
@@ -117,7 +116,7 @@ public abstract class Controller extends Renders {
 							}
 							break;
 						case "BUS":
-							registerMethod(path, method);
+							registerMethod(path, method, route.getBoolean("local", true));
 							break;
 					}
 				}
@@ -195,7 +194,7 @@ public abstract class Controller extends Renders {
 		}
 	}
 
-	public void registerMethod(String address, String method)
+	public void registerMethod(String address, String method, boolean local)
 			throws NoSuchMethodException, IllegalAccessException {
 		final MethodHandle mh = lookup.bind(this, method,
 				MethodType.methodType(void.class, Message.class));
@@ -213,7 +212,7 @@ public abstract class Controller extends Renders {
 				}
 			}
 		};
-		if (busLocalHandler) {
+		if (local) {
 			Server.getEventBus(vertx).registerLocalHandler(busPrefix + address, handler);
 		} else {
 			Server.getEventBus(vertx).registerHandler(busPrefix + address, handler);

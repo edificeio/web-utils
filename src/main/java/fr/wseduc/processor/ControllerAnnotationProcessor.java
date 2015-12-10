@@ -199,7 +199,8 @@ public class ControllerAnnotationProcessor extends AbstractProcessor {
 			}
 			Set<String> controllerRoutes = getController(routes, clazz);
 			controllerRoutes.add("{ \"httpMethod\" : \"BUS\", \"path\" : \"" +
-					annotation.value() + "\", \"method\" : \"" + element.getSimpleName().toString() + "\"}");
+					annotation.value() + "\", \"method\" : \"" + element.getSimpleName().toString() +
+					"\", \"local\" : " + annotation.local() + "}");
 		}
 
 		writeFile("", routes);
