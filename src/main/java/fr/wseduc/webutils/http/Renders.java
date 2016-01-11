@@ -55,7 +55,7 @@ public class Renders {
 		this.vertx = vertx;
 	}
 
-	private void setLambdaTemplateRequest(final HttpServerRequest request,
+	protected void setLambdaTemplateRequest(final HttpServerRequest request,
 			Map<String, Object> ctx) {
 		ctx.put("i18n", new Mustache.Lambda() {
 
@@ -123,7 +123,7 @@ public class Renders {
 	/*
 	 * Render a Mustache template : see http://mustache.github.com/mustache.5.html
 	 * TODO : modularize
-	 * TODO : isolate sscope management
+	 * TODO : isolate scope management
 	 */
 	public void renderView(HttpServerRequest request, JsonObject params) {
 		renderView(request, params, null, null, 200);
