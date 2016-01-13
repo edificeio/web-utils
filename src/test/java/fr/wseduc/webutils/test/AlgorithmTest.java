@@ -16,9 +16,11 @@
 
 package fr.wseduc.webutils.test;
 
+import fr.wseduc.webutils.security.Blowfish;
 import fr.wseduc.webutils.security.Md5;
 import org.junit.Test;
 
+import java.security.GeneralSecurityException;
 import java.security.NoSuchAlgorithmException;
 
 import static org.junit.Assert.assertEquals;
@@ -28,6 +30,15 @@ public class AlgorithmTest {
 	@Test
 	public void hashMd5() throws NoSuchAlgorithmException {
 		assertEquals("0127f712fc008f857e77a2f3f179c710", Md5.hash("Javarmi.com"));
+	}
+
+	@Test
+	public void blowfishTest() throws GeneralSecurityException {
+		final String data = "Lorem ipsum";
+		final String key = "key-1234";
+		String encryptedData = Blowfish.encrypt(data, key);
+		String decryptedData = Blowfish.decrypt(encryptedData, key);
+		assertEquals(data, decryptedData);
 	}
 
 }
