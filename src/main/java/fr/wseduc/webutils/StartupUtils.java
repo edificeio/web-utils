@@ -105,11 +105,11 @@ public class StartupUtils {
 					return;
 				}
 
-				final String widgets = new JsonObject().putArray("widgets", widgetsArray).encode();
+				final JsonObject widgets = new JsonObject().putArray("widgets", widgetsArray);
 				eb.send(address+".widgets", widgets, new Handler<Message<JsonObject>>() {
 					public void handle(Message<JsonObject> event) {
 						if("error".equals(event.body().getString("status"))){
-							log.error("Error registering wigets for application " + app.getString("name"));
+							log.error("Error registering widgets for application " + app.getString("name"));
 						} else {
 							log.info("Successfully registered widgets for application " + app.getString("name"));
 						}
