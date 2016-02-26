@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-package fr.wseduc.webutils;
+package fr.wseduc.webutils.email;
 
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 
+import fr.wseduc.webutils.I18n;
 import org.vertx.java.core.AsyncResult;
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.Vertx;
@@ -34,24 +35,16 @@ import org.vertx.java.platform.Container;
 
 import fr.wseduc.webutils.http.Renders;
 
-public class NotificationHelper {
+public abstract class NotificationHelper implements SendEmail {
 
-	private final String emailAddress;
-	private final EventBus eb;
-	private final Renders render;
-	private final Logger log;
-	private final String senderEmail;
-	private final String host;
+	protected final Renders render;
+	protected final Logger log;
+	protected final String senderEmail;
+	protected final String host;
 
-	public NotificationHelper(Vertx vertx, EventBus eb, Container container) {
-		this.eb = eb;
+	public NotificationHelper(Vertx vertx, Container container) {
 		this.log = container.logger();
 		this.render = new Renders(vertx, container);
-		String node = (String) vertx.sharedData().getMap("server").get("node");
-		if (node == null) {
-			node = "";
-		}
-		this.emailAddress = node + "wse.email";
 		this.senderEmail = container.config().getString("email", "noreply@one1d.fr");
 		this.host = container.config().getString("host", "http://localhost:8009");
 	}
@@ -137,15 +130,8 @@ public class NotificationHelper {
 		Handler<String> mailHandler = new Handler<String>() {
 			public void handle(String body) {
 				if (body != null) {
-					try {
-						json.putString("body", new String(body.getBytes("UTF-8"), "ISO-8859-1"));
-						eb.send(emailAddress, json, handler);
-					} catch (UnsupportedEncodingException e) {
-						log.error(e.getMessage(), e);
-						Message<JsonObject> m = new ErrorMessage();
-						m.body().putString("error", e.getMessage());
-						handler.handle(m);
-					}
+						json.putString("body", body);
+						NotificationHelper.this.sendEmail(json, handler);
 				} else {
 					log.error("Message is null.");
 					Message<JsonObject> m = new ErrorMessage();
@@ -161,6 +147,8 @@ public class NotificationHelper {
 			mailHandler.handle(templateBody);
 		}
 	}
+
+	protected abstract void sendEmail(JsonObject json, Handler<Message<JsonObject>> handler);
 
 	public String getSenderEmail() {
 		return senderEmail;
