@@ -209,7 +209,7 @@ public class ControllerAnnotationProcessor extends AbstractProcessor {
 	private Set<String> getController(Map<String, Set<String>> routes, TypeElement clazz) {
 		Set<String> controllerRoutes = routes.get(clazz.getQualifiedName().toString());
 		if (controllerRoutes == null) {
-			controllerRoutes = new TreeSet<>();
+			controllerRoutes = new TreeSet<>(Collections.reverseOrder());
 			routes.put(clazz.getQualifiedName().toString(), controllerRoutes);
 		}
 		return controllerRoutes;
