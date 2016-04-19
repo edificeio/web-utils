@@ -16,7 +16,6 @@
 
 package fr.wseduc.webutils.email;
 
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,7 +24,6 @@ import org.vertx.java.core.AsyncResult;
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.Vertx;
 import org.vertx.java.core.buffer.Buffer;
-import org.vertx.java.core.eventbus.EventBus;
 import org.vertx.java.core.eventbus.Message;
 import org.vertx.java.core.http.HttpServerRequest;
 import org.vertx.java.core.json.JsonArray;
@@ -45,8 +43,19 @@ public abstract class NotificationHelper implements SendEmail {
 	public NotificationHelper(Vertx vertx, Container container) {
 		this.log = container.logger();
 		this.render = new Renders(vertx, container);
-		this.senderEmail = container.config().getString("email", "noreply@one1d.fr");
-		this.host = container.config().getString("host", "http://localhost:8009");
+		final Object encodedEmailConfig = vertx.sharedData().getMap("server").get("emailConfig");
+
+		String defaultMail = "noreply@one1d.fr";
+		String defaultHost = "http://localhost:8009";
+
+		if(encodedEmailConfig != null){
+			JsonObject emailConfig = new JsonObject(encodedEmailConfig.toString());
+			defaultMail = emailConfig.getString("email", defaultMail);
+			defaultHost = emailConfig.getString("host", defaultHost);
+		}
+
+		this.senderEmail = container.config().getString("email", defaultMail);
+		this.host = container.config().getString("host", defaultHost);
 	}
 
 	public void sendEmail(HttpServerRequest request, String to, String cc, String bcc,
