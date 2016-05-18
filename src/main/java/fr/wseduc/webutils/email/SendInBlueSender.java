@@ -29,6 +29,7 @@ import org.vertx.java.core.eventbus.Message;
 import org.vertx.java.core.http.HttpClient;
 import org.vertx.java.core.http.HttpClientRequest;
 import org.vertx.java.core.http.HttpClientResponse;
+import org.vertx.java.core.json.DecodeException;
 import org.vertx.java.core.json.JsonArray;
 import org.vertx.java.core.json.JsonObject;
 import org.vertx.java.core.logging.Logger;
@@ -43,6 +44,8 @@ import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class SendInBlueSender extends NotificationHelper implements EmailSender {
 
@@ -50,6 +53,7 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 	private final HttpClient httpClient;
 	private final String apiKey;
 	private final String dedicatedIp;
+	private final boolean splitRecipients;
 	private final ObjectMapper mapper;
 	private static final String DATE_FORMAT = "yyyy-MM-dd";
 
@@ -66,6 +70,7 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 					.setKeepAlive(false);
 			apiKey = config.getString("api-key");
 			dedicatedIp = config.getString("ip");
+			splitRecipients = config.getBoolean("split-recipients", false);
 			mapper = new ObjectMapper();
 			mapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
 		} else {
@@ -133,6 +138,35 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 			handler.handle(new ResultMessage().error("invalid.parameters"));
 			return;
 		}
+		if (splitRecipients && json.getArray("to").size() > 1) {
+			final AtomicInteger count = new AtomicInteger(json.getArray("to").size());
+			final AtomicBoolean success = new AtomicBoolean(true);
+			final JsonArray errors = new JsonArray();
+			final Handler<Message<JsonObject>> h = new Handler<Message<JsonObject>>() {
+				@Override
+				public void handle(Message<JsonObject> message) {
+					if (!"ok".equals(message.body().getString("status"))) {
+						success.set(false);
+						errors.addString(message.body().getString("message"));
+					}
+					if (count.decrementAndGet() == 0) {
+						if (success.get()) {
+							handler.handle(new ResultMessage());
+						} else {
+							handler.handle(new ResultMessage().error(errors.encode()));
+						}
+					}
+				}
+			};
+			for (Object to: json.getArray("to")) {
+				send(json.copy().putArray("to", new JsonArray().addString(to.toString())), h);
+			}
+		} else {
+			send(json, handler);
+		}
+	}
+
+	private void send(JsonObject json, final Handler<Message<JsonObject>> handler) {
 		HttpClientRequest req = httpClient.post("/v2.0/email", new Handler<HttpClientResponse>() {
 			@Override
 			public void handle(HttpClientResponse resp) {
@@ -142,8 +176,12 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 					resp.bodyHandler(new Handler<Buffer>() {
 						@Override
 						public void handle(Buffer buffer) {
-							JsonObject err = new JsonObject(buffer.toString());
-							handler.handle(new ResultMessage().error(err.getString("message")));
+							try {
+								JsonObject err = new JsonObject(buffer.toString());
+								handler.handle(new ResultMessage().error(err.getString("message")));
+							} catch (DecodeException e) {
+								handler.handle(new ResultMessage().error(buffer.toString()));
+							}
 						}
 					});
 				}
