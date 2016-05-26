@@ -236,6 +236,10 @@ public class Renders {
 		request.response().setStatusCode(201).setStatusMessage("Created").end();
 	}
 
+	public static void noContent(HttpServerRequest request) {
+		request.response().setStatusCode(204).setStatusMessage("No Content").end();
+	}
+
 	public static void badRequest(HttpServerRequest request) {
 		request.response().setStatusCode(400).setStatusMessage("Bad Request").end();
 	}
