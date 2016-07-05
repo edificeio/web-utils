@@ -18,6 +18,7 @@ package fr.wseduc.webutils.test;
 
 import fr.wseduc.webutils.security.Blowfish;
 import fr.wseduc.webutils.security.Md5;
+import fr.wseduc.webutils.security.Sha256;
 import org.junit.Test;
 
 import java.security.GeneralSecurityException;
@@ -39,6 +40,11 @@ public class AlgorithmTest {
 		String encryptedData = Blowfish.encrypt(data, key);
 		String decryptedData = Blowfish.decrypt(encryptedData, key);
 		assertEquals(data, decryptedData);
+	}
+
+	@Test
+	public void hashSha256() throws NoSuchAlgorithmException {
+		assertEquals("278cb091126f9b2eebdf8c008b53ec592e190e5b417a1f2fb5e5d7faf1d0b874", Sha256.hash("Javarmi.com"));
 	}
 
 }
