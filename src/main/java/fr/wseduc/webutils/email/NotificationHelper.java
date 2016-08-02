@@ -127,7 +127,7 @@ public abstract class NotificationHelper implements SendEmail {
 
 		if (translateSubject) {
 			json.putString("subject", I18n.getInstance().translate(
-					subject, request.headers().get("Accept-Language")));
+					subject, getHost(request), request.headers().get("Accept-Language")));
 		} else {
 			json.putString("subject", subject);
 		}

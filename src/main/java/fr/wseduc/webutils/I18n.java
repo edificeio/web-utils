@@ -36,7 +36,8 @@ public class I18n {
 	private Logger log;
 	private final static String messagesDir = "./i18n";
 	private final static Locale defaultLocale = Locale.FRENCH;
-	private Map<Locale, JsonObject> messages = new HashMap<>();
+	public final static String DEFAULT_DOMAIN = "default-domain";
+	private Map<String, Map<Locale, JsonObject>> messagesByDomains = new HashMap<>();
 
 	private I18n(){}
 
@@ -52,6 +53,11 @@ public class I18n {
 		try {
 			log = container.logger();
 			if (vertx.fileSystem().existsSync(messagesDir)) {
+				Map<Locale, JsonObject> messages = messagesByDomains.get(DEFAULT_DOMAIN);
+				if (messages == null) {
+					messages = new HashMap<>();
+					messagesByDomains.put(DEFAULT_DOMAIN, messages);
+				}
 				for(String path : vertx.fileSystem().readDirSync(messagesDir)) {
 					if (vertx.fileSystem().propsSync(path).isRegularFile()) {
 						Locale l = Locale.forLanguageTag(new File(path).getName().split("\\.")[0]);
@@ -63,16 +69,24 @@ public class I18n {
 				log.warn("I18n directory " + messagesDir + " doesn't exist.");
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
-			log.error(e.getMessage());
+			log.error(e.getMessage(), e);
 		}
 	}
 
-	public String translate(String key, String acceptLanguage, String... args) {
-		return translate(key, getLocale(acceptLanguage), args);
+	public String translate(String key, String domain, String acceptLanguage, String... args) {
+		return translate(key, domain, getLocale(acceptLanguage), args);
 	}
 
+	@Deprecated
 	public String translate(String key, Locale locale, String... args) {
+		return translate(key, DEFAULT_DOMAIN, locale, args);
+	}
+
+	public String translate(String key, String domain, Locale locale, String... args) {
+		Map<Locale, JsonObject> messages = getMessagesMap(domain);
+		if (messages == null) {
+			return key;
+		}
 		JsonObject bundle = messages.get(locale) != null ? messages.get(locale) : messages.get(defaultLocale);
 		if (bundle == null) {
 			return key;
@@ -86,7 +100,24 @@ public class I18n {
 		return text;
 	}
 
+	private Map<Locale, JsonObject> getMessagesMap(String domain) {
+		Map<Locale, JsonObject> messages = messagesByDomains.get(domain);
+		if (messages == null) {
+			messages = messagesByDomains.get(DEFAULT_DOMAIN);
+		}
+		return messages;
+	}
+
+	@Deprecated
 	public JsonObject load(String acceptLanguage) {
+		return load(acceptLanguage, DEFAULT_DOMAIN);
+	}
+
+	public JsonObject load(String acceptLanguage, String domain) {
+		Map<Locale, JsonObject> messages = getMessagesMap(domain);
+		if (messages == null) {
+			return new JsonObject();
+		}
 		Locale l = getLocale(acceptLanguage);
 		JsonObject bundle = messages.get(l) != null ? messages.get(l) : messages.get(defaultLocale);
 		if (bundle == null) {
@@ -111,7 +142,20 @@ public class I18n {
 		return acceptLanguage != null ? acceptLanguage : "fr";
 	}
 
+	@Deprecated
 	public void add(Locale locale, JsonObject keys) {
+		add(DEFAULT_DOMAIN, locale, keys);
+	}
+
+	public void add(String domain, Locale locale, JsonObject keys) {
+		Map<Locale, JsonObject> messages = messagesByDomains.get(domain);
+		if (messages == null) {
+			HashMap<Locale, JsonObject> defaultMessages = (HashMap<Locale, JsonObject>)
+					messagesByDomains.get(DEFAULT_DOMAIN);
+			if (defaultMessages == null) return;
+			messages = (Map<Locale, JsonObject>) defaultMessages.clone();
+			messagesByDomains.put(domain, messages);
+		}
 		JsonObject m = messages.get(locale);
 		if (m == null) {
 			messages.put(locale, keys);

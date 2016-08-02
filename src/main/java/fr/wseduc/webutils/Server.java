@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentMap;
 import fr.wseduc.vertx.eventbus.EventBusWrapperFactory;
 import fr.wseduc.webutils.http.BaseController;
 import fr.wseduc.webutils.http.Binding;
+import fr.wseduc.webutils.http.Renders;
 import fr.wseduc.webutils.logging.Tracer;
 import fr.wseduc.webutils.logging.TracerFactory;
 import fr.wseduc.webutils.request.filter.Filter;
@@ -114,7 +115,8 @@ public abstract class Server extends Verticle {
 		rm.get(prefix + "/i18n", new Handler<HttpServerRequest>() {
 			@Override
 			public void handle(HttpServerRequest request) {
-				Controller.renderJson(request, i18n.load(request.headers().get("Accept-Language")));
+				Controller.renderJson(request, i18n.load(
+						request.headers().get("Accept-Language"), Renders.getHost(request)));
 			}
 		});
 

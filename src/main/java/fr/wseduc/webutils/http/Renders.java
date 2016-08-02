@@ -62,7 +62,7 @@ public class Renders {
 			@Override
 			public void execute(Template.Fragment frag, Writer out) throws IOException {
 				String key = frag.execute();
-				String text = i18n.translate(key, request.headers().get("Accept-Language"));
+				String text = i18n.translate(key, getHost(request), request.headers().get("Accept-Language"));
 				out.write(text);
 			}
 		});
