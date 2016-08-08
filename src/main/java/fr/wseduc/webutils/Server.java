@@ -115,8 +115,14 @@ public abstract class Server extends Verticle {
 		rm.get(prefix + "/i18n", new Handler<HttpServerRequest>() {
 			@Override
 			public void handle(HttpServerRequest request) {
-				Controller.renderJson(request, i18n.load(
-						request.headers().get("Accept-Language"), Renders.getHost(request)));
+				i18nMessages(request);
+			}
+		});
+
+		rm.get(prefix + "/languages", new Handler<HttpServerRequest>() {
+			@Override
+			public void handle(HttpServerRequest request) {
+				Controller.renderJson(request, i18n.getLanguages(Renders.getHost(request)));
 			}
 		});
 
@@ -152,6 +158,10 @@ public abstract class Server extends Verticle {
 		vertx.createHttpServer().requestHandler(rm).listen(config.getInteger("port"));
 	}
 
+	protected void i18nMessages(HttpServerRequest request) {
+		Controller.renderJson(request, i18n.load(
+				I18n.acceptLanguage(request), Renders.getHost(request)));
+	}
 
 	/**
 	 * @deprecated Use request.formAttributes() instead

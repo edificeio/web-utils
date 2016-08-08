@@ -21,19 +21,20 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
+import fr.wseduc.webutils.security.SecureHttpServerRequest;
 import org.vertx.java.core.Vertx;
 import org.vertx.java.core.http.HttpServerRequest;
+import org.vertx.java.core.json.DecodeException;
+import org.vertx.java.core.json.JsonArray;
 import org.vertx.java.core.json.JsonObject;
 import org.vertx.java.core.logging.Logger;
+import org.vertx.java.core.logging.impl.LoggerFactory;
 import org.vertx.java.platform.Container;
 
 
-/*
- * Dummy implementation
- */
 public class I18n {
 
-	private Logger log;
+	private static final Logger log = LoggerFactory.getLogger(I18n.class);
 	private final static String messagesDir = "./i18n";
 	private final static Locale defaultLocale = Locale.FRENCH;
 	public final static String DEFAULT_DOMAIN = "default-domain";
@@ -51,7 +52,6 @@ public class I18n {
 
 	public void init(Container container, Vertx vertx) {
 		try {
-			log = container.logger();
 			if (vertx.fileSystem().existsSync(messagesDir)) {
 				Map<Locale, JsonObject> messages = messagesByDomains.get(DEFAULT_DOMAIN);
 				if (messages == null) {
@@ -138,8 +138,23 @@ public class I18n {
 	}
 
 	public static String acceptLanguage(HttpServerRequest request) {
-		String acceptLanguage = request.headers().get("Accept-Language");
-		return acceptLanguage != null ? acceptLanguage : "fr";
+		final String acceptLanguage = request.headers().get("Accept-Language") != null ?
+				request.headers().get("Accept-Language") : "fr";
+		if (request instanceof SecureHttpServerRequest) {
+			JsonObject session = ((SecureHttpServerRequest) request).getSession();
+			if (session != null && session.getObject("cache") != null &&
+					session.getObject("cache").getObject("preferences") != null &&
+					Utils.isNotEmpty(session.getObject("cache").getObject("preferences").getString("language"))) {
+				try {
+					JsonObject language = new JsonObject(session.getObject("cache").getObject("preferences")
+							.getString("language"));
+					return language.getString(DEFAULT_DOMAIN, acceptLanguage);
+				} catch (DecodeException e) {
+					log.error("Error getting language in cache.", e);
+				}
+			}
+		}
+		return acceptLanguage;
 	}
 
 	@Deprecated
@@ -162,6 +177,17 @@ public class I18n {
 		} else {
 			m.mergeIn(keys);
 		}
+	}
+
+	public JsonArray getLanguages(String domain) {
+		final Map<Locale, JsonObject> messages = getMessagesMap(domain);
+		final JsonArray languages = new JsonArray();
+		if (messages != null) {
+			for (Locale l : messages.keySet()) {
+				languages.addString(l.getLanguage());
+			}
+		}
+		return languages;
 	}
 
 }
