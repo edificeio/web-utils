@@ -168,7 +168,10 @@ public class I18n {
 			HashMap<Locale, JsonObject> defaultMessages = (HashMap<Locale, JsonObject>)
 					messagesByDomains.get(DEFAULT_DOMAIN);
 			if (defaultMessages == null) return;
-			messages = (Map<Locale, JsonObject>) defaultMessages.clone();
+			messages = new HashMap<Locale, JsonObject>();
+			for(Locale l : defaultMessages.keySet()){
+				messages.put(l, defaultMessages.get(l).copy());
+			}
 			messagesByDomains.put(domain, messages);
 		}
 		JsonObject m = messages.get(locale);
