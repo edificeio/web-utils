@@ -139,7 +139,7 @@ public class Renders {
 			@Override
 			public void handle(Writer writer) {
 				if (writer != null) {
-				request.response().putHeader("content-type", "text/html");
+				request.response().putHeader("content-type", "text/html; charset=utf-8");
 				request.response().setStatusCode(status);
 				request.response().end(writer.toString());
 				} else {
