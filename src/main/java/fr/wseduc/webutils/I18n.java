@@ -93,8 +93,12 @@ public class I18n {
 		}
 		String text =  bundle.getString(key) != null ? bundle.getString(key) : key;
 		if (args.length > 0) {
-			for (int i = 0; i < args.length; i++) {
-				text = text.replaceAll("\\{" + i + "\\}", args[i]);
+			try {
+				for (int i = 0; i < args.length; i++) {
+					text = text.replaceAll("\\{" + i + "\\}", args[i]);
+				}
+			} catch (RuntimeException e) {
+				log.error("Error replacing i18n variable", e);
 			}
 		}
 		return text;
