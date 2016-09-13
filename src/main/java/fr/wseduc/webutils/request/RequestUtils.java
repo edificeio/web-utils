@@ -30,10 +30,14 @@ import org.vertx.java.core.json.JsonObject;
 import org.vertx.java.core.logging.Logger;
 import org.vertx.java.core.logging.impl.LoggerFactory;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public class RequestUtils {
 
 	private static final Logger log = LoggerFactory.getLogger(RequestUtils.class);
 	private static final JsonSchemaValidator validator = JsonSchemaValidator.getInstance();
+	private static final Pattern versionPatter = Pattern.compile("version=([0-9]+\\.[0-9]+)");
 
 	public static void bodyToJson(final HttpServerRequest request, final Handler<JsonObject> handler) {
 		request.bodyHandler(new Handler<Buffer>() {
@@ -81,6 +85,19 @@ public class RequestUtils {
 				}
 			}
 		});
+	}
+
+	public static String acceptVersion(HttpServerRequest request) {
+		final String accept = request.headers().get("Accept");
+		return getAcceptVersion(accept);
+	}
+
+	public static String getAcceptVersion(String accept) {
+		Matcher m;
+		if (accept != null && (m = versionPatter.matcher(accept)).find()) {
+			return m.group(1);
+		}
+		return "";
 	}
 
 }
