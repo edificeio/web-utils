@@ -29,6 +29,8 @@ import org.vertx.java.core.json.impl.Base64;
 import org.vertx.java.core.logging.Logger;
 import org.vertx.java.core.logging.impl.LoggerFactory;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.UnsupportedEncodingException;
@@ -41,21 +43,23 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static fr.wseduc.webutils.Utils.isEmpty;
 import static fr.wseduc.webutils.Utils.isNotEmpty;
 
 public final class JWT {
 
 	private static final Logger log = LoggerFactory.getLogger(JWT.class);
-	private final HttpClient httpClient;
-	private final String certsPath;
+	private String secret;
+	private HttpClient httpClient;
+	private String certsPath;
 	private final ConcurrentMap<String, PublicKey> certificates = new ConcurrentHashMap<>();
 	private final List<Key> privateKeys = new ArrayList<>();
-	//private final ConcurrentMap<String, PrivateKey> privateKeys = new ConcurrentHashMap<>();
 
 	private class Key {
 		private final String kid;
@@ -68,7 +72,7 @@ public final class JWT {
 	}
 
 	private enum Algorithm {
-		RS256("SHA256withRSA"), RS384("SHA384withRSA"), RS512("SHA512withRSA");
+		RS256("SHA256withRSA"), RS384("SHA384withRSA"), RS512("SHA512withRSA"), HS256("HmacSHA256");
 
 		private final String algo;
 
@@ -83,14 +87,21 @@ public final class JWT {
 	}
 
 	public JWT(Vertx vertx, URI certsUri) {
-		this.httpClient = vertx.createHttpClient()
-				.setHost(certsUri.getHost())
-				.setPort(certsUri.getPort())
-				.setSSL("https".equals(certsUri.getScheme()))
-				.setMaxPoolSize(4)
-				.setKeepAlive(false);
-		this.certsPath = certsUri.getPath();
-		findCertificates(null);
+		this(vertx, null, certsUri);
+	}
+
+	public JWT(Vertx vertx, String secret, URI certsUri) {
+		if (certsUri != null) {
+			this.httpClient = vertx.createHttpClient()
+					.setHost(certsUri.getHost())
+					.setPort(certsUri.getPort())
+					.setSSL("https".equals(certsUri.getScheme()))
+					.setMaxPoolSize(4)
+					.setKeepAlive(false);
+			this.certsPath = certsUri.getPath();
+			findCertificates(null);
+		}
+		this.secret = secret;
 	}
 
 	public JWT(final Vertx vertx, String keysPath) {
@@ -240,20 +251,35 @@ public final class JWT {
 			handler.handle(null);
 			return;
 		}
-		final String kid = header.getString("kid");
-		if (kid != null) {
-			PublicKey publicKey = certificates.get(kid);
-			if (publicKey == null) {
-				findCertificates(new VoidHandler() {
-					@Override
-					protected void handle() {
-						handler.handle(verifyAndGet(token, certificates.get(kid)));
+		switch (Algorithm.valueOf(header.getString("alg"))) {
+			case RS256:
+			case RS384:
+			case RS512:
+				final String kid = header.getString("kid");
+				if (kid != null) {
+					PublicKey publicKey = certificates.get(kid);
+					if (publicKey == null) {
+						findCertificates(new VoidHandler() {
+							@Override
+							protected void handle() {
+								handler.handle(verifyAndGet(token, certificates.get(kid)));
+							}
+						});
+					} else {
+						handler.handle(verifyAndGet(token, publicKey));
 					}
-				});
-			} else {
-				handler.handle(verifyAndGet(token, publicKey));
-			}
+				} else {
+					log.error("missing key id");
+					handler.handle(null);
+				}
+			break;
+			case HS256:
+				verifyAndGet(token, secret);
+				break;
+			default:
+				log.error("Unsupported signature algorithm.");
 		}
+
 	}
 
 	public static JsonObject verifyAndGet(String token, PublicKey publicKey) {
@@ -270,6 +296,30 @@ public final class JWT {
 			sign.initVerify(publicKey);
 			sign.update((t[0] + "." + t[1]).getBytes("UTF-8"));
 			if (sign.verify(signature)) {
+				return payload;
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
+		return null;
+	}
+
+	public static JsonObject verifyAndGet(String token, String secret) {
+		log.debug(token);
+		final String[] t = token.split("\\.");
+		if (t.length != 3 || isEmpty(secret)) {
+			return null;
+		}
+		try {
+			final JsonObject header = new JsonObject(base64Decode(t[0]));
+			final JsonObject payload = new JsonObject(base64Decode(t[1]));
+			final String algo = Algorithm.valueOf(header.getString("alg")).getAlgo();
+			final SecretKeySpec signingKey = new SecretKeySpec(secret.getBytes(), algo);
+			final Mac mac = Mac.getInstance(algo);
+			mac.init(signingKey);
+			byte[] signed = mac.doFinal((t[0] + "." + t[1]).getBytes("UTF-8"));
+			byte[] signature = base64DecodeToByte(t[2]);
+			if (Arrays.equals(signature, signed)) {
 				return payload;
 			}
 		} catch (Exception e) {

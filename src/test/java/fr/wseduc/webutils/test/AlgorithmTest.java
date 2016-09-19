@@ -75,4 +75,11 @@ public class AlgorithmTest {
 		assertEquals("{\"sub\":\"5554823602\",\"email\":\"isabelle.aobzyo@ac-versailles.fr\",\"name\":\"Madame Polonio\",\"iss\":\"https:one\",\"aud\":\"testoic\",\"iat\":1473146250,\"exp\":1473149850}", j.encode());
 	}
 
+	@Test
+	public void verifyJWTHS256() {
+		final String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ";
+		JsonObject j = JWT.verifyAndGet(token, "secret");
+		assertEquals("{\"sub\":\"1234567890\",\"name\":\"John Doe\",\"admin\":true}", j.encode());
+	}
+
 }
