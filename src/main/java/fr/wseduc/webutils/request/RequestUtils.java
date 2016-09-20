@@ -54,6 +54,22 @@ public class RequestUtils {
 		});
 	}
 
+	public static void bodyToJsonArray(final HttpServerRequest request, final Handler<JsonArray> handler) {
+		request.bodyHandler(new Handler<Buffer>() {
+			@Override
+			public void handle(Buffer event) {
+				try {
+					String obj = XSSUtils.stripXSS(event.toString("UTF-8"));
+					JsonArray json = new JsonArray(obj);
+					handler.handle(json);
+				} catch (RuntimeException e) {
+					log.warn(e.getMessage(), e);
+					Renders.badRequest(request, e.getMessage());
+				}
+			}
+		});
+	}
+
 	public static void bodyToJson(final HttpServerRequest request, final String schema,
 			final Handler<JsonObject> handler) {
 		request.bodyHandler(new Handler<Buffer>() {
