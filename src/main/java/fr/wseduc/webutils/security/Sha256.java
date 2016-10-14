@@ -19,6 +19,7 @@ package fr.wseduc.webutils.security;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 
 public class Sha256 {
 
@@ -31,6 +32,17 @@ public class Sha256 {
 			hash = "0" + hash;
 		}
 		return hash;
+	}
+
+	public static byte[] hash(byte [] input) throws NoSuchAlgorithmException {
+		if(input == null) return null;
+		MessageDigest digest = MessageDigest.getInstance("SHA-256");
+		digest.update(input, 0, input.length);
+		return digest.digest();
+	}
+
+	public static boolean equality(byte [] input, byte [] sum) throws NoSuchAlgorithmException {
+		return Arrays.equals(hash(input), sum);
 	}
 
 }

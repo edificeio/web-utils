@@ -20,6 +20,6 @@ test-tmp
 *.class
 mods
 */mods
-data
+./data
 developer.id
 *.mod.json
