@@ -19,15 +19,24 @@ package fr.wseduc.webutils.http.oauth;
 import fr.wseduc.webutils.security.JWT;
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.Vertx;
+import org.vertx.java.core.buffer.Buffer;
+import org.vertx.java.core.http.HttpClientResponse;
 import org.vertx.java.core.http.HttpServerRequest;
 import org.vertx.java.core.json.JsonObject;
 
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLEncoder;
+
+import static fr.wseduc.webutils.Utils.isNotEmpty;
 
 public final class OpenIdConnectClient extends OAuth2Client {
 
 	private final JWT jwt;
+	private String userInfoUrn;
+	private boolean basic = true;
+	private String logoutUri;
 
 	public OpenIdConnectClient(URI uri, String clientId, String secret, String authorizeUrn,
 			String tokenUrn, String redirectUri, Vertx vertx, int poolSize, String certificatesUri)
@@ -38,23 +47,100 @@ public final class OpenIdConnectClient extends OAuth2Client {
 
 	@Override
 	public void authorizationCodeToken(HttpServerRequest request, String state, Handler<JsonObject> handler) {
-		authorizationCodeToken(request, state, true, handler);
+		authorizationCodeToken(request, state, null, handler);
 	}
 
-	@Override
-	public void authorizationCodeToken(HttpServerRequest request, String state, boolean basic,
+	public void authorizationCodeToken(HttpServerRequest request, String state, final String nonce,
 			final Handler<JsonObject> handler) {
 		super.authorizationCodeToken(request, state, basic, new Handler<JsonObject>() {
 			@Override
 			public void handle(JsonObject res) {
 				if ("ok".equals(res.getString("status"))) {
-					String idToken = res.getObject("token", new JsonObject()).getString("id_token");
-					jwt.verifyAndGet(idToken, handler);
+					final JsonObject token = res.getObject("token");
+					if (token == null) {
+						log.error("invalid token");
+						handler.handle(null);
+						return;
+					}
+					final String idToken = token.getString("id_token");
+					jwt.verifyAndGet(idToken, new Handler<JsonObject>() {
+						@Override
+						public void handle(JsonObject payload) {
+							if (payload == null) {
+								log.error("invalid payload.");
+								handler.handle(null);
+								return;
+							}
+							final String nce = payload.getString("nonce");
+							if (nce != null && !nce.equals(nonce)) {
+								log.error("invalid nonce");
+								handler.handle(null);
+								return;
+							}
+							payload.putString("id_token_hint", idToken);
+							if (isNotEmpty(userInfoUrn)) {
+								getUserInfo(token.getString("access_token"), payload, handler);
+							} else {
+								handler.handle(payload);
+							}
+						}
+					});
 				} else {
 					handler.handle(null);
 				}
 			}
 		});
+	}
+
+	private void getUserInfo(String accessToken, final JsonObject payload, final Handler<JsonObject> handler) {
+		getProtectedResource(userInfoUrn, accessToken, new Handler<HttpClientResponse>() {
+			@Override
+			public void handle(HttpClientResponse resp) {
+				if (resp.statusCode() == 200) {
+					resp.bodyHandler(new Handler<Buffer>() {
+						@Override
+						public void handle(Buffer buffer) {
+							try {
+								JsonObject j = new JsonObject(buffer.toString());
+								payload.mergeIn(j);
+							} catch (RuntimeException e) {
+								log.error("Get userinfo error.", e);
+							} finally {
+								handler.handle(payload);
+							}
+						}
+					});
+				}else {
+					handler.handle(payload);
+				}
+			}
+		});
+	}
+
+	public String logoutUri(String state, String hint, String callback) {
+		if (isNotEmpty(logoutUri)) {
+			StringBuilder sb = new StringBuilder();
+			try {
+				sb.append(logoutUri).append("?id_token_hint=").append(hint).append("&state=").append(state)
+						.append("&post_logout_redirect_uri=").append(URLEncoder.encode(callback, "UTF-8"));
+				return sb.toString();
+			} catch (UnsupportedEncodingException e) {
+				log.error(e.getMessage(), e);
+			}
+		}
+		return callback;
+	}
+
+	public void setUserInfoUrn(String userInfoUrn) {
+		this.userInfoUrn = userInfoUrn;
+	}
+
+	public void setLogoutUri(String logoutUri) {
+		this.logoutUri = logoutUri;
+	}
+
+	public void setBasic(boolean basic) {
+		this.basic = basic;
 	}
 
 }
