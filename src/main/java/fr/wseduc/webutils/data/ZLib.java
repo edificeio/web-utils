@@ -16,6 +16,8 @@
 
 package fr.wseduc.webutils.data;
 
+import org.vertx.java.core.json.impl.Base64;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.zip.DataFormatException;
@@ -26,6 +28,15 @@ public class ZLib {
 
 	public static byte[] compress(byte[] data) throws IOException {
 		Deflater deflater = new Deflater();
+		return deflaterProcess(data, deflater);
+	}
+
+	public static byte[] deflate(byte[] data) throws IOException {
+		Deflater deflater = new Deflater(Deflater.DEFLATED, true);
+		return deflaterProcess(data, deflater);
+	}
+
+	private static byte[] deflaterProcess(byte[] data, Deflater deflater) throws IOException {
 		deflater.setInput(data);
 		ByteArrayOutputStream outputStream = new ByteArrayOutputStream(data.length);
 		deflater.finish();
@@ -49,6 +60,14 @@ public class ZLib {
 		}
 		outputStream.close();
 		return outputStream.toByteArray();
+	}
+
+	public static String compressAndEncode(String data) throws IOException {
+		return Base64.encodeBytes(compress(data.getBytes()), Base64.DONT_BREAK_LINES);
+	}
+
+	public static String deflateAndEncode(String data) throws IOException {
+		return Base64.encodeBytes(deflate(data.getBytes()), Base64.DONT_BREAK_LINES);
 	}
 
 }

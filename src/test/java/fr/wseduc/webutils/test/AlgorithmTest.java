@@ -16,6 +16,7 @@
 
 package fr.wseduc.webutils.test;
 
+import fr.wseduc.webutils.data.ZLib;
 import fr.wseduc.webutils.security.Blowfish;
 import fr.wseduc.webutils.security.JWT;
 import fr.wseduc.webutils.security.Md5;
@@ -25,6 +26,7 @@ import org.vertx.java.core.json.JsonObject;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.security.NoSuchAlgorithmException;
@@ -80,6 +82,12 @@ public class AlgorithmTest {
 		final String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ";
 		JsonObject j = JWT.verifyAndGet(token, "secret");
 		assertEquals("{\"sub\":\"1234567890\",\"name\":\"John Doe\",\"admin\":true}", j.encode());
+	}
+
+	@Test
+	public void deflateAndEncodeTest() throws IOException {
+		final String content = "<test>bla</test>";
+		assertEquals("sylJLS6xS8pJtNEHswA=", ZLib.deflateAndEncode(content));
 	}
 
 }
