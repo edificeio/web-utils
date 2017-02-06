@@ -90,6 +90,7 @@ public class CookieHelper {
 		Cookie cookie = new DefaultCookie(name, value);
 		cookie.setMaxAge(timeout);
 		cookie.setSecure("https".equals(Renders.getScheme(request)));
+		cookie.setHttpOnly(true);
 		if (path != null && !path.trim().isEmpty()) {
 			cookie.setPath(path);
 		}
