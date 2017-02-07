@@ -37,9 +37,11 @@ public final class XSSUtils {
 			Pattern.compile("expression\\((.*?)\\)", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.DOTALL),
 			Pattern.compile("javascript:", Pattern.CASE_INSENSITIVE),
 			Pattern.compile("vbscript:", Pattern.CASE_INSENSITIVE),
-			Pattern.compile("onload(.*?)=", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.DOTALL),
-			Pattern.compile("onmouse(.*?)=", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.DOTALL),
-			Pattern.compile("onclick(.*?)=", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.DOTALL)
+			Pattern.compile("on(click|context|mouse|dblclick|key|abort|error|before|hash|load|page|" +
+					"resize|scroll|unload|blur|change|focus|in|reset|se|submit|drag|drop|copy|cut|paste|" +
+					"after| before|can|end|duration|emp|p|seek|stall|sus|time|volume|waiting|message|open|touch|" +
+					"on|off|pop|show|storage|toggle|wheel)(.*?)=",
+					Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.DOTALL),
 	};
 
 	public static MultiMap safeMultiMap(MultiMap m) {
