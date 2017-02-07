@@ -45,6 +45,7 @@ public class Renders {
 	private final I18n i18n;
 	protected Vertx vertx;
 	private static final ConcurrentMap<String, Template> templates = new ConcurrentHashMap<>();
+	private HookProcess hookRenderProcess;
 
 	public Renders(Vertx vertx, Container container) {
 		this.container = container;
@@ -137,11 +138,20 @@ public class Renders {
 			String resourceName, Reader r, final int status) {
 		processTemplate(request, params, resourceName, r, new Handler<Writer>() {
 			@Override
-			public void handle(Writer writer) {
+			public void handle(final Writer writer) {
 				if (writer != null) {
-				request.response().putHeader("content-type", "text/html; charset=utf-8");
-				request.response().setStatusCode(status);
-				request.response().end(writer.toString());
+					request.response().putHeader("content-type", "text/html; charset=utf-8");
+					request.response().setStatusCode(status);
+					if (hookRenderProcess != null) {
+						hookRenderProcess.execute(request, new Handler<Boolean>() {
+							@Override
+							public void handle(Boolean result) {
+								request.response().end(writer.toString());
+							}
+						});
+					} else {
+						request.response().end(writer.toString());
+					}
 				} else {
 					renderError(request);
 				}
@@ -367,4 +377,9 @@ public class Renders {
 		}
 		return request.headers().get("Host");
 	}
+
+	public void setHookRenderProcess(HookProcess hookRenderProcess) {
+		this.hookRenderProcess = hookRenderProcess;
+	}
+
 }
