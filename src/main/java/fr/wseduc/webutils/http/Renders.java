@@ -17,6 +17,8 @@
 package fr.wseduc.webutils.http;
 
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -26,6 +28,7 @@ import com.samskivert.mustache.Template;
 import org.vertx.java.core.AsyncResult;
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.Vertx;
+import org.vertx.java.core.VoidHandler;
 import org.vertx.java.core.buffer.Buffer;
 import org.vertx.java.core.http.HttpServerRequest;
 import org.vertx.java.core.json.JsonArray;
@@ -45,7 +48,7 @@ public class Renders {
 	private final I18n i18n;
 	protected Vertx vertx;
 	private static final ConcurrentMap<String, Template> templates = new ConcurrentHashMap<>();
-	private HookProcess hookRenderProcess;
+	private List<HookProcess> hookRenderProcess;
 
 	public Renders(Vertx vertx, Container container) {
 		this.container = container;
@@ -143,9 +146,9 @@ public class Renders {
 					request.response().putHeader("content-type", "text/html; charset=utf-8");
 					request.response().setStatusCode(status);
 					if (hookRenderProcess != null) {
-						hookRenderProcess.execute(request, new Handler<Boolean>() {
+						executeHandlersHookRender(request, new VoidHandler() {
 							@Override
-							public void handle(Boolean result) {
+							protected void handle() {
 								request.response().end(writer.toString());
 							}
 						});
@@ -157,6 +160,21 @@ public class Renders {
 				}
 			}
 		});
+	}
+
+	private void executeHandlersHookRender(final HttpServerRequest request, VoidHandler endHandler) {
+		final VoidHandler[] handlers = new VoidHandler[hookRenderProcess.size() + 1];
+		handlers[handlers.length - 1] = endHandler;
+		for (int i = hookRenderProcess.size() - 1; i >= 0; i--) {
+			final int j = i;
+			handlers[i] = new VoidHandler() {
+				@Override
+				protected void handle() {
+					hookRenderProcess.get(j).execute(request, handlers[j + 1]);
+				}
+			};
+		}
+		handlers[0].handle(null);
 	}
 
 	public void processTemplate(HttpServerRequest request, String template, JsonObject params,
@@ -378,8 +396,11 @@ public class Renders {
 		return request.headers().get("Host");
 	}
 
-	public void setHookRenderProcess(HookProcess hookRenderProcess) {
-		this.hookRenderProcess = hookRenderProcess;
+	public void addHookRenderProcess(HookProcess hookRenderProcess) {
+		if (this.hookRenderProcess == null) {
+			this.hookRenderProcess = new ArrayList<>();
+		}
+		this.hookRenderProcess.add(hookRenderProcess);
 	}
 
 }

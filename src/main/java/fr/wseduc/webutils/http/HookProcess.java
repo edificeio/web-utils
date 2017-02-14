@@ -16,11 +16,11 @@
 
 package fr.wseduc.webutils.http;
 
-import org.vertx.java.core.Handler;
+import org.vertx.java.core.VoidHandler;
 import org.vertx.java.core.http.HttpServerRequest;
 
 public interface HookProcess {
 
-	void execute(HttpServerRequest request, Handler<Boolean> handler);
+	void execute(HttpServerRequest request, VoidHandler handler);
 
 }
