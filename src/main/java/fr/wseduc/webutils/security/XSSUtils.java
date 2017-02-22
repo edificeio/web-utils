@@ -37,9 +37,9 @@ public final class XSSUtils {
 			Pattern.compile("expression\\((.*?)\\)", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.DOTALL),
 			Pattern.compile("javascript:", Pattern.CASE_INSENSITIVE),
 			Pattern.compile("vbscript:", Pattern.CASE_INSENSITIVE),
-			Pattern.compile("on(click|context|mouse|dblclick|key|abort|error|before|hash|load|page|" +
-					"resize|scroll|unload|blur|change|focus|in|reset|se|submit|drag|drop|copy|cut|paste|" +
-					"after| before|can|end|duration|emp|p|seek|stall|sus|time|volume|waiting|message|open|touch|" +
+			Pattern.compile("('|\")\\s*on(click|context|mouse|dblclick|key|abort|error|before|hash|load|page|" +
+					"resize|scroll|unload|blur|change|focus|in|reset|search|select|submit|drag|drop|copy|cut|paste|" +
+					"after| before|can|end|duration|emp|play|progress|seek|stall|sus|time|volume|waiting|message|open|touch|" +
 					"on|off|pop|show|storage|toggle|wheel)(.*?)=",
 					Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.DOTALL),
 	};
