@@ -25,7 +25,22 @@ import org.vertx.java.core.json.JsonObject;
 
 public class ResultMessage implements Message<JsonObject> {
 
-	private final JsonObject body = new JsonObject().putString("status", "ok");
+	private final JsonObject body;
+
+	public ResultMessage() {
+		this(null);
+	}
+
+	public ResultMessage(JsonObject j) {
+		if (j == null) {
+			body = new JsonObject().putString("status", "ok");
+		} else {
+			body = j;
+			if (!j.containsField("status")) {
+				j.putString("status", "ok");
+			}
+		}
+	}
 
 	public ResultMessage put(String attr, Object o) {
 		body.putValue(attr, o);
