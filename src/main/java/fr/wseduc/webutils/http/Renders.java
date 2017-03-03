@@ -17,6 +17,7 @@
 package fr.wseduc.webutils.http;
 
 import java.io.*;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -381,7 +382,11 @@ public class Renders {
 		if (proto != null && !proto.trim().isEmpty()) {
 			return proto;
 		}
-		String scheme = request.absoluteURI().getScheme();
+		final URI uri = request.absoluteURI();
+		String scheme = null;
+		if (uri != null) {
+			scheme = uri.getScheme();
+		}
 		if (scheme == null) {
 			scheme = "http";
 		}
