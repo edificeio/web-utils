@@ -34,6 +34,7 @@ import org.vertx.java.core.shareddata.ConcurrentSharedMap;
 public class UserAuthFilter implements Filter, WithVertx {
 
 	private static final Logger log = LoggerFactory.getLogger(UserAuthFilter.class);
+	public static final String SESSION_ID = "oneSessionId";
 	private final OAuthResourceProvider oauth;
 	private final AbstractBasicFilter basicFilter;
 	private Vertx vertx;
@@ -55,7 +56,7 @@ public class UserAuthFilter implements Filter, WithVertx {
 
 	@Override
 	public void canAccess(HttpServerRequest request, Handler<Boolean> handler) {
-		String oneSeesionId = CookieHelper.getInstance().getSigned("oneSessionId", request);
+		String oneSeesionId = CookieHelper.getInstance().getSigned(SESSION_ID, request);
 		if (oneSeesionId != null && !oneSeesionId.trim().isEmpty()) {
 			handler.handle(true);
 		} else if (basicFilter != null && request instanceof SecureHttpServerRequest &&
@@ -70,6 +71,10 @@ public class UserAuthFilter implements Filter, WithVertx {
 
 	@Override
 	public void deny(HttpServerRequest request) {
+		redirectLogin(vertx, request);
+	}
+
+	public static void redirectLogin(Vertx vertx, HttpServerRequest request) {
 		String callBack = "";
 		String location = "";
 		String scheme = Renders.getScheme(request);
@@ -104,6 +109,9 @@ public class UserAuthFilter implements Filter, WithVertx {
 			}
 		} catch (UnsupportedEncodingException ex) {
 			log.error(ex.getMessage(), ex);
+		}
+		if (CookieHelper.getInstance().getSigned(SESSION_ID, request) != null) {
+			CookieHelper.set(SESSION_ID, "", 0l, request);
 		}
 		request.response().setStatusCode(302);
 		request.response().putHeader("Location", location);
