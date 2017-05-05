@@ -56,9 +56,14 @@ public class ZLib {
 		byte[] buffer = new byte[1024];
 		while (!inflater.finished()) {
 			int count = inflater.inflate(buffer);
-			outputStream.write(buffer, 0, count);
+			if (count > 0) {
+				outputStream.write(buffer, 0, count);
+			} else {
+				break;
+			}
 		}
 		outputStream.close();
+		inflater.end();
 		return outputStream.toByteArray();
 	}
 
