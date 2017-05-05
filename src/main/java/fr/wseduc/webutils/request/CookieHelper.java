@@ -28,6 +28,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Set;
 
 import org.vertx.java.core.http.HttpServerRequest;
+import org.vertx.java.core.http.ServerWebSocket;
 import org.vertx.java.core.logging.Logger;
 
 import fr.wseduc.webutils.security.HmacSha1;
@@ -122,31 +123,49 @@ public class CookieHelper {
 	public String getSigned(String name, String path, HttpServerRequest request) {
 		if (request.headers().get("Cookie") != null) {
 			Set<Cookie> cookies = CookieDecoder.decode(request.headers().get("Cookie"));
-			for (Cookie c : cookies) {
-				if (c.getName().equals(name) && c.getValue().contains(":")) {
-					int idx = c.getValue().lastIndexOf(":");
-					if (idx > c.getValue().length() - 1) continue;
-					String value = c.getValue().substring(0, idx);
-					String signature = c.getValue().substring(idx+1);
-					String calcSign = null;
-					String cookiePath = path;
-					if (cookiePath == null || cookiePath.trim().isEmpty()) {
-						cookiePath = c.getPath();
-					}
-					try {
-						calcSign = HmacSha1.sign(
-								c.getDomain()+c.getName()+
-								cookiePath+value, signKey);
-					} catch (InvalidKeyException | NoSuchAlgorithmException
-							| IllegalStateException
-							| UnsupportedEncodingException e) {
-					}
-					if (calcSign != null && calcSign.equals(signature)) {
-						return value;
-					}
+			return getSignedCookie(name, path, cookies);
+		}
+		return null;
+	}
+
+	public String getSigned(String name, ServerWebSocket ws) {
+		return getSigned(name, "/", ws);
+	}
+
+	public String getSigned(String name, String path, ServerWebSocket ws) {
+		if (ws.headers().get("Cookie") != null) {
+			Set<Cookie> cookies = CookieDecoder.decode(ws.headers().get("Cookie"));
+			return getSignedCookie(name, path, cookies);
+		}
+		return null;
+	}
+
+	private String getSignedCookie(String name, String path, Set<Cookie> cookies) {
+		for (Cookie c : cookies) {
+			if (c.getName().equals(name) && c.getValue().contains(":")) {
+				int idx = c.getValue().lastIndexOf(":");
+				if (idx > c.getValue().length() - 1) continue;
+				String value = c.getValue().substring(0, idx);
+				String signature = c.getValue().substring(idx+1);
+				String calcSign = null;
+				String cookiePath = path;
+				if (cookiePath == null || cookiePath.trim().isEmpty()) {
+					cookiePath = c.getPath();
+				}
+				try {
+					calcSign = HmacSha1.sign(
+							c.getDomain() + c.getName() +
+									cookiePath + value, signKey);
+				} catch (InvalidKeyException | NoSuchAlgorithmException
+						| IllegalStateException
+						| UnsupportedEncodingException e) {
+				}
+				if (calcSign != null && calcSign.equals(signature)) {
+					return value;
 				}
 			}
 		}
 		return null;
 	}
+
 }
