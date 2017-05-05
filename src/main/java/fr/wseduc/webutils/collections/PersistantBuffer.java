@@ -89,9 +89,7 @@ public class PersistantBuffer {
 		final Handler<AsyncResult<Void>> h = new Handler<AsyncResult<Void>>() {
 			@Override
 			public void handle(AsyncResult<Void> ar) {
-				log.info("before : " + writeLength);
 				writeLength += buffer.length();
-				log.info("after : " + writeLength);
 				buffer = tmp;
 				lock = false;
 				tmp = new Buffer();
@@ -148,10 +146,8 @@ public class PersistantBuffer {
 	}
 
 	public void appendBuffer(Buffer b) {
-		log.info("append buffer");
 		length += buffer.length();
 		if (lock) {
-			log.info("append when lock");
 			tmp.appendBuffer(b);
 			return;
 		}
