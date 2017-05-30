@@ -41,6 +41,8 @@ import org.vertx.java.platform.Container;
 import fr.wseduc.webutils.I18n;
 import fr.wseduc.webutils.Server;
 
+import static fr.wseduc.webutils.Utils.isNotEmpty;
+
 public class Renders {
 
 	protected static final Logger log = LoggerFactory.getLogger(Renders.class);
@@ -404,6 +406,14 @@ public class Renders {
 			return host;
 		}
 		return request.headers().get("Host");
+	}
+
+	public static String getIp(HttpServerRequest request) {
+		String ip = request.headers().get("X-Forwarded-For");
+		if (isNotEmpty(ip)) {
+			return ip;
+		}
+		return request.remoteAddress().getHostString();
 	}
 
 	public void addHookRenderProcess(HookProcess hookRenderProcess) {
