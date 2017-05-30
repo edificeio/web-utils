@@ -56,6 +56,7 @@ public class DefaultOAuthResourceProvider implements OAuthResourceProvider {
 					request.setAttribute("client_id", res.body().getString("client_id"));
 					request.setAttribute("remote_user", res.body().getString("remote_user"));
 					request.setAttribute("scope", res.body().getString("scope"));
+					request.setAttribute("authorization_type", "Bearer");
 					handler.handle(customValidation(request));
 				} else {
 					handler.handle(false);

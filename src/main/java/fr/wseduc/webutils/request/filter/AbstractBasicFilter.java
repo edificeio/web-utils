@@ -37,6 +37,7 @@ public abstract class AbstractBasicFilter {
 						if (res) {
 							request.setAttribute("client_id", c[0]);
 							request.setAttribute("scope", scope);
+							request.setAttribute("authorization_type", "Basic");
 						}
 						handler.handle(res);
 					}
