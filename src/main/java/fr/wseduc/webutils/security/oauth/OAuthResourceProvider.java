@@ -19,9 +19,11 @@ package fr.wseduc.webutils.security.oauth;
 import org.vertx.java.core.Handler;
 
 import fr.wseduc.webutils.security.SecureHttpServerRequest;
+import org.vertx.java.core.http.HttpServerRequest;
 
 public interface OAuthResourceProvider {
 
 	void validToken(SecureHttpServerRequest request, Handler<Boolean> handler);
 
+	boolean hasBearerHeader(HttpServerRequest request);
 }

@@ -62,7 +62,8 @@ public class UserAuthFilter implements Filter, WithVertx {
 		} else if (basicFilter != null && request instanceof SecureHttpServerRequest &&
 				basicFilter.hasBasicHeader(request)) {
 			basicFilter.validate((SecureHttpServerRequest) request, handler);
-		} else if (oauth != null && request instanceof SecureHttpServerRequest) {
+		} else if (oauth != null && request instanceof SecureHttpServerRequest &&
+				oauth.hasBearerHeader(request)) {
 			oauth.validToken((SecureHttpServerRequest) request, handler);
 		} else {
 			handler.handle(false);

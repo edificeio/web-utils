@@ -19,6 +19,7 @@ package fr.wseduc.webutils.security.oauth;
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.eventbus.EventBus;
 import org.vertx.java.core.eventbus.Message;
+import org.vertx.java.core.http.HttpServerRequest;
 import org.vertx.java.core.json.JsonObject;
 
 import fr.wseduc.webutils.security.SecureHttpServerRequest;
@@ -55,12 +56,22 @@ public class DefaultOAuthResourceProvider implements OAuthResourceProvider {
 					request.setAttribute("client_id", res.body().getString("client_id"));
 					request.setAttribute("remote_user", res.body().getString("remote_user"));
 					request.setAttribute("scope", res.body().getString("scope"));
-					handler.handle(true);
+					handler.handle(customValidation(request));
 				} else {
 					handler.handle(false);
 				}
 			}
 		});
+	}
+
+	protected boolean customValidation(SecureHttpServerRequest request) {
+		return true;
+	}
+
+	@Override
+	public boolean hasBearerHeader(HttpServerRequest request) {
+		String authorization = request.headers().get("Authorization");
+		return authorization != null && authorization.startsWith("Bearer ");
 	}
 
 }
