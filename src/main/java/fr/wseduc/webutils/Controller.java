@@ -28,9 +28,11 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import fr.wseduc.webutils.request.AccessLogger;
 import fr.wseduc.webutils.request.filter.XSSHandler;
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.Vertx;
+import org.vertx.java.core.VoidHandler;
 import org.vertx.java.core.eventbus.EventBus;
 import org.vertx.java.core.eventbus.Message;
 import org.vertx.java.core.http.HttpServerRequest;
@@ -53,6 +55,7 @@ public abstract class Controller extends Renders {
 	protected Map<String, SecuredAction> securedActions;
 	protected EventBus eb;
 	protected String busPrefix = "";
+	private AccessLogger accessLogger;
 
 	public Controller(Vertx vertx, Container container, RouteMatcher rm,
 			Map<String, SecuredAction> securedActions) {
@@ -66,6 +69,7 @@ public abstract class Controller extends Renders {
 		if (rm != null) {
 			loadRoutes();
 		}
+		this.accessLogger = new AccessLogger();
 	}
 
 	protected void loadRoutes() {
@@ -143,13 +147,18 @@ public abstract class Controller extends Renders {
 			return new XSSHandler() {
 
 				@Override
-				public void filter(HttpServerRequest request) {
-					try {
-						mh.invokeExact(request);
-					} catch (Throwable e) {
-						log.error("Error invoking secured method : " + method, e);
-						request.response().setStatusCode(500).end();
-					}
+				public void filter(final HttpServerRequest request) {
+					accessLogger.log(request, new VoidHandler() {
+						@Override
+						protected void handle() {
+							try {
+								mh.invokeExact(request);
+							} catch (Throwable e) {
+								log.error("Error invoking secured method : " + method, e);
+								request.response().setStatusCode(500).end();
+							}
+						}
+					});
 				}
 			};
 		} catch (NoSuchMethodException | IllegalAccessException e) {
@@ -358,6 +367,10 @@ public abstract class Controller extends Renders {
 			return pathPrefix + "/" + pattern.trim();
 		}
 		return pathPrefix + pattern.trim();
+	}
+
+	public void setAccessLogger(AccessLogger accessLogger) {
+		this.accessLogger = accessLogger;
 	}
 
 }

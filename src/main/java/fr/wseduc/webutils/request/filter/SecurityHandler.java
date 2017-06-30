@@ -19,6 +19,7 @@ package fr.wseduc.webutils.request.filter;
 import java.util.ArrayList;
 import java.util.List;
 
+import fr.wseduc.webutils.request.AccessLogger;
 import fr.wseduc.webutils.security.XssSecuredHttpServerRequest;
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.Vertx;
@@ -32,6 +33,7 @@ public abstract class SecurityHandler implements Handler<HttpServerRequest> {
 
 	static protected List<Filter> chain = new ArrayList<>();
 	static {
+		chain.add(new AccessLoggerFilter(new AccessLogger()));
 		chain.add(new UserAuthFilter());
 	}
 
