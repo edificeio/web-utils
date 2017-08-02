@@ -277,6 +277,8 @@ public class Renders {
 
 	public static void badRequest(HttpServerRequest request, String message) {
 		request.response().putHeader("content-type", "application/json");
+		request.response().putHeader("Cache-Control", "no-cache, must-revalidate");
+		request.response().putHeader("Expires", "-1");
 		request.response().setStatusCode(400).setStatusMessage("Bad Request").end(
 				new JsonObject().putString("error", message).encode());
 	}
@@ -287,6 +289,8 @@ public class Renders {
 
 	public static void unauthorized(HttpServerRequest request, String message) {
 		request.response().putHeader("content-type", "application/json");
+		request.response().putHeader("Cache-Control", "no-cache, must-revalidate");
+		request.response().putHeader("Expires", "-1");
 		request.response().setStatusCode(401).setStatusMessage("Unauthorized").end(
 				new JsonObject().putString("error", message).encode());
 	}
@@ -297,6 +301,8 @@ public class Renders {
 
 	public static void forbidden(HttpServerRequest request, String message) {
 		request.response().putHeader("content-type", "application/json");
+		request.response().putHeader("Cache-Control", "no-cache, must-revalidate");
+		request.response().putHeader("Expires", "-1");
 		request.response().setStatusCode(403).setStatusMessage("Forbidden").end(
 				new JsonObject().putString("error", message).encode());
 	}
@@ -307,6 +313,8 @@ public class Renders {
 
 	public static void notFound(HttpServerRequest request, String message) {
 		request.response().putHeader("content-type", "application/json");
+		request.response().putHeader("Cache-Control", "no-cache, must-revalidate");
+		request.response().putHeader("Expires", "-1");
 		request.response().setStatusCode(404).setStatusMessage("Not Found").end(
 				new JsonObject().putString("error", message).encode());
 	}
@@ -317,6 +325,8 @@ public class Renders {
 
 	public static void conflict(HttpServerRequest request, String message) {
 		request.response().putHeader("content-type", "application/json");
+		request.response().putHeader("Cache-Control", "no-cache, must-revalidate");
+		request.response().putHeader("Expires", "-1");
 		request.response().setStatusCode(409).setStatusMessage("Conflict").end(
 				new JsonObject().putString("error", message).encode());
 	}
@@ -333,6 +343,9 @@ public class Renders {
 	}
 
 	public static void renderError(HttpServerRequest request, JsonObject error) {
+		request.response().putHeader("content-type", "application/json");
+		request.response().putHeader("Cache-Control", "no-cache, must-revalidate");
+		request.response().putHeader("Expires", "-1");
 		request.response().setStatusCode(500).setStatusMessage("Internal Server Error");
 		if (error != null) {
 			request.response().end(error.encode());
@@ -347,6 +360,8 @@ public class Renders {
 
 	public static void renderJson(HttpServerRequest request, JsonObject jo, int status) {
 		request.response().putHeader("content-type", "application/json");
+		request.response().putHeader("Cache-Control", "no-cache, must-revalidate");
+		request.response().putHeader("Expires", "-1");
 		request.response().setStatusCode(status);
 		request.response().end(jo.encode());
 	}
@@ -357,6 +372,8 @@ public class Renders {
 
 	public static void renderJson(HttpServerRequest request, JsonArray jo) {
 		request.response().putHeader("content-type", "application/json");
+		request.response().putHeader("Cache-Control", "no-cache, must-revalidate");
+		request.response().putHeader("Expires", "-1");
 		request.response().end(jo.encode());
 	}
 
