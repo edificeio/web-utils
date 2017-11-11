@@ -30,6 +30,7 @@ public abstract class AbstractBasicFilter {
 			String credentials = new String(Base64.decode(authorization.substring(6)));
 			final String[] c = credentials.split(":");
 			if (c.length == 2) {
+				request.pause();
 				validateClientScope(c[0], c[1], new Handler<String>() {
 					@Override
 					public void handle(String scope) {
@@ -39,6 +40,7 @@ public abstract class AbstractBasicFilter {
 							request.setAttribute("scope", scope);
 							request.setAttribute("authorization_type", "Basic");
 						}
+						request.resume();
 						handler.handle(res);
 					}
 				});
