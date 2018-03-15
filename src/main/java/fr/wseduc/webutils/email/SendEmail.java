@@ -35,6 +35,10 @@ public interface SendEmail {
 						  boolean translateSubject, final Handler<Message<JsonObject>> handler);
 
 	void sendEmail(HttpServerRequest request, String to, String cc, String bcc,
+				   String subject, JsonArray attachments, String templateBody, JsonObject templateParams,
+				   boolean translateSubject, final Handler<Message<JsonObject>> handler);
+
+	void sendEmail(HttpServerRequest request, String to, String cc, String bcc,
 						  String subject, String templateBody, JsonObject templateParams,
 						  boolean translateSubject, JsonArray headers, final Handler<Message<JsonObject>> handler);
 
@@ -43,15 +47,23 @@ public interface SendEmail {
 						  boolean translateSubject, final Handler<Message<JsonObject>> handler);
 
 	void sendEmail(HttpServerRequest request, String to, String from, String cc, String bcc,
-						  String subject, String templateBody, JsonObject templateParams,
-						  boolean translateSubject, JsonArray headers, final Handler<Message<JsonObject>> handler);
+				   String subject, String templateBody, JsonObject templateParams,
+				   boolean translateSubject, JsonArray headers, final Handler<Message<JsonObject>> handler);
+
+	void sendEmail(HttpServerRequest request, String to, String from, String cc, String bcc,
+				   String subject, JsonArray attachments, String templateBody, JsonObject templateParams,
+				   boolean translateSubject, JsonArray headers, final Handler<Message<JsonObject>> handler);
 
 	void sendEmail(HttpServerRequest request, List<Object> to, List<Object> cc, List<Object> bcc,
 						  String subject, String templateBody, JsonObject templateParams,
 						  boolean translateSubject, final Handler<Message<JsonObject>> handler);
 
 	void sendEmail(HttpServerRequest request, List<Object> to, String from, List<Object> cc, List<Object> bcc,
-						  String subject, String templateBody, JsonObject templateParams,
-						  boolean translateSubject, JsonArray headers, final Handler<Message<JsonObject>> handler);
+				   String subject, String templateBody, JsonObject templateParams,
+				   boolean translateSubject, JsonArray headers, final Handler<Message<JsonObject>> handler);
+
+	void sendEmail(HttpServerRequest request, List<Object> to, String from, List<Object> cc, List<Object> bcc,
+				   String subject, JsonArray attachments, String templateBody, JsonObject templateParams,
+				   boolean translateSubject, JsonArray headers, final Handler<Message<JsonObject>> handler);
 
 }

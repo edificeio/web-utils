@@ -55,6 +55,7 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 	private final String dedicatedIp;
 	private final boolean splitRecipients;
 	private final ObjectMapper mapper;
+	private final int maxSize;
 	private static final String DATE_FORMAT = "yyyy-MM-dd";
 
 	public SendInBlueSender(Vertx vertx, Container container, JsonObject config)
@@ -71,8 +72,10 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 			apiKey = config.getString("api-key");
 			dedicatedIp = config.getString("ip");
 			splitRecipients = config.getBoolean("split-recipients", false);
+			maxSize = config.getInteger("max-size", 0);
 			mapper = new ObjectMapper();
 			mapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
+
 		} else {
 			throw new InvalidConfigurationException("missing.parameters");
 		}
@@ -225,6 +228,24 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 			}
 			payload.putObject("bcc", bcc);
 		}
+
+		int mailSize = json.getString("body").getBytes().length;
+
+		if(json.getArray("attachments") !=  null && json.getArray("attachments").size() > 0) {
+			JsonObject atts = new JsonObject();
+			for(Object o : json.getArray("attachments")) {
+				JsonObject att = (JsonObject)o;
+				mailSize += att.getString("content").getBytes().length;
+				if(maxSize > 0 && mailSize > maxSize) {
+					mailSize -= att.getString("content").getBytes().length;
+					log.warn("Mail too big, can't attach " + att.getString("name"));
+				} else {
+					atts.putString(att.getString("name"), att.getString("content"));
+				}
+			}
+			payload.putObject("attachment", atts);
+		}
+
 		req.end(payload.encode());
 	}
 

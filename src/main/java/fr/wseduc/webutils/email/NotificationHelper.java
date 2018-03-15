@@ -66,6 +66,13 @@ public abstract class NotificationHelper implements SendEmail {
 	}
 
 	public void sendEmail(HttpServerRequest request, String to, String cc, String bcc,
+				   String subject, JsonArray attachments, String templateBody, JsonObject templateParams,
+				   boolean translateSubject, final Handler<Message<JsonObject>> handler) {
+		sendEmail(request, to, senderEmail, cc, bcc, subject, attachments, templateBody,
+				templateParams, translateSubject, null, handler);
+	}
+
+	public void sendEmail(HttpServerRequest request, String to, String cc, String bcc,
 			String subject, String templateBody, JsonObject templateParams,
 			boolean translateSubject, JsonArray headers, final Handler<Message<JsonObject>> handler) {
 		sendEmail(request, to, senderEmail, cc, bcc, subject, templateBody,
@@ -82,7 +89,13 @@ public abstract class NotificationHelper implements SendEmail {
 	public void sendEmail(HttpServerRequest request, String to, String from, String cc, String bcc,
 			String subject, String templateBody, JsonObject templateParams,
 			boolean translateSubject, JsonArray headers, final Handler<Message<JsonObject>> handler) {
+		sendEmail(request, to, senderEmail, cc, bcc, subject, null, templateBody,
+				templateParams, translateSubject, headers, handler);
+	}
 
+	public void sendEmail(HttpServerRequest request, String to, String from, String cc, String bcc,
+				   String subject, JsonArray attachments, String templateBody, JsonObject templateParams,
+				   boolean translateSubject, JsonArray headers, final Handler<Message<JsonObject>> handler) {
 		ArrayList<Object> toList = null;
 		ArrayList<Object> ccList = null;
 		ArrayList<Object> bccList = null;
@@ -100,7 +113,7 @@ public abstract class NotificationHelper implements SendEmail {
 			bccList.add(bcc);
 		}
 
-		sendEmail(request, toList, senderEmail, ccList, bccList, subject, templateBody,
+		sendEmail(request, toList, senderEmail, ccList, bccList, subject, attachments, templateBody,
 				templateParams, translateSubject, headers, handler);
 	}
 
@@ -112,8 +125,15 @@ public abstract class NotificationHelper implements SendEmail {
 	}
 
 	public void sendEmail(HttpServerRequest request, List<Object> to, String from, List<Object> cc, List<Object> bcc,
-			String subject, String templateBody, JsonObject templateParams,
-			boolean translateSubject, JsonArray headers, final Handler<Message<JsonObject>> handler) {
+						  String subject, String templateBody, JsonObject templateParams,
+						  boolean translateSubject, JsonArray headers, final Handler<Message<JsonObject>> handler) {
+		sendEmail(request, to, from, cc, bcc, subject, null, templateBody,
+				templateParams, translateSubject, headers, handler);
+	}
+
+	public void sendEmail(HttpServerRequest request, List<Object> to, String from, List<Object> cc, List<Object> bcc,
+						  String subject, JsonArray attachments, String templateBody, JsonObject templateParams,
+						  boolean translateSubject, JsonArray headers, final Handler<Message<JsonObject>> handler) {
 		final JsonObject json = new JsonObject()
 			.putArray("to", new JsonArray(to))
 			.putString("from", from);
@@ -123,6 +143,17 @@ public abstract class NotificationHelper implements SendEmail {
 		}
 		if(bcc != null){
 			json.putArray("bcc", new JsonArray(bcc));
+		}
+
+		if(attachments != null){
+			JsonArray attList = new JsonArray();
+			for(Object o : attachments) {
+				if(!(o instanceof JsonObject)) continue;
+				JsonObject att = (JsonObject)o;
+				if(att.getString("name") == null || att.getString("content") == null) continue;
+				attList.addObject(att);
+			}
+			json.putArray("attachments", attList);
 		}
 
 		if (translateSubject) {
