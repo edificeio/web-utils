@@ -19,9 +19,11 @@ package fr.wseduc.webutils.http.oauth;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URLEncoder;
+import java.security.PrivateKey;
 import java.util.Base64;
 import java.util.Map;
 
+import fr.wseduc.webutils.security.JWT;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
@@ -46,13 +48,13 @@ public class OAuth2Client {
 	private final HttpClient httpClient;
 
 	public OAuth2Client(URI uri, String clientId, String secret, String authorizeUrn,
-			String tokenUrn, String redirectUri, Vertx vertx, int poolSize) {
+			String tokenUrn, String redirectUri, Vertx vertx, int poolSize, boolean keepAlive) {
 		HttpClientOptions options = new HttpClientOptions()
 				.setDefaultHost(uri.getHost())
 				.setDefaultPort(uri.getPort())
 				.setSsl("https".equals(uri.getScheme()))
 				.setMaxPoolSize(poolSize)
-				.setKeepAlive(false);
+				.setKeepAlive(keepAlive);
 		this.httpClient = vertx.createHttpClient(options);
 		this.uri = uri;
 		this.clientId = clientId;
@@ -60,6 +62,11 @@ public class OAuth2Client {
 		this.authorizeUrn = authorizeUrn;
 		this.tokenUrn = tokenUrn;
 		this.redirectUri = redirectUri;
+	}
+
+	public OAuth2Client(URI uri, String clientId, String secret, String authorizeUrn,
+						String tokenUrn, String redirectUri, Vertx vertx, int poolSize) {
+		this(uri, clientId, secret, authorizeUrn, tokenUrn, redirectUri, vertx, poolSize, false);
 	}
 
 	public OAuth2Client(URI uri, String clientId, String secret, String redirectUri, Vertx vertx) {
@@ -189,6 +196,41 @@ public class OAuth2Client {
 		req.exceptionHandler(except -> log.error("Error getting client credentials token.", except));
 		req.end(body, "UTF-8");
 	}
+
+	public void client2LO(JsonObject payload, PrivateKey privateKey, final Handler<JsonObject> handler) throws Exception{
+		String jwt = JWT.encodeAndSign(payload, null, privateKey);
+
+		HttpClientRequest req = httpClient.post(tokenUrn, new Handler<HttpClientResponse>() {
+
+			@Override
+			public void handle(final HttpClientResponse response) {
+				response.bodyHandler(new Handler<Buffer>() {
+
+					@Override
+					public void handle(Buffer r) {
+						JsonObject j = new JsonObject(r.toString("UTF-8"));
+						if (response.statusCode() == 200) {
+
+							JsonObject json = new JsonObject()
+									.put("status", "ok")
+									.put("token", j);
+							handler.handle(json);
+						} else {
+							handler.handle(j.put("statusCode", response.statusCode()));
+						}
+					}
+				});
+			}
+		});
+		req.headers()
+				.add("Content-Type", "application/x-www-form-urlencoded")
+				.add("Accept", "application/json; charset=UTF-8");
+		String body = "grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer";
+		body += "&assertion=" + jwt;
+		req.exceptionHandler(except -> log.error("Error getting 2LO access token.", except));
+		req.end(body, "UTF-8");
+	}
+
 
 	public void getProtectedResource(String path, String accessToken,
 			Handler<HttpClientResponse> handler) {

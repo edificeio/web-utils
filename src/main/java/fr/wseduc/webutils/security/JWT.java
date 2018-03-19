@@ -238,6 +238,25 @@ public final class JWT {
 		return Base64.getUrlEncoder().encodeToString(bytes);
 	}
 
+	public static PrivateKey stringToPrivateKey(String key) {
+		PrivateKey privateKey = null;
+		key = key.replace("-----BEGIN PRIVATE KEY-----", "")
+				.replace("-----END PRIVATE KEY-----", "")
+				.replace("\\s+", "")
+				.replace("\n", "");
+		byte [] encodedBytes = Base64.getDecoder().decode(key);
+		PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(encodedBytes);
+		try {
+			privateKey = KeyFactory.getInstance("RSA").generatePrivate(keySpec);
+		} catch (InvalidKeySpecException | NoSuchAlgorithmException  e) {
+			e.printStackTrace();
+			log.error("Error loading private key : " + key, e);
+		}
+
+		return privateKey;
+	}
+
+
 	public void verifyAndGet(final String token, final Handler<JsonObject> handler) {
 		String[] t = token.split("\\.");
 		if (t.length != 3) {
