@@ -139,6 +139,7 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 			}
 		});
 		req.putHeader("api-key", apiKey);
+		req.exceptionHandler(except -> log.error("Error when query hardbounce to sendinblue.", except));
 		req.end(payload.encode());
 	}
 
@@ -230,21 +231,22 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 
 		int mailSize = json.getString("body").getBytes().length;
 
-		if(json.getArray("attachments") !=  null && json.getArray("attachments").size() > 0) {
+		if(json.getJsonArray("attachments") !=  null && json.getJsonArray("attachments").size() > 0) {
 			JsonObject atts = new JsonObject();
-			for(Object o : json.getArray("attachments")) {
+			for(Object o : json.getJsonArray("attachments")) {
 				JsonObject att = (JsonObject)o;
 				mailSize += att.getString("content").getBytes().length;
 				if(maxSize > 0 && mailSize > maxSize) {
 					mailSize -= att.getString("content").getBytes().length;
 					log.warn("Mail too big, can't attach " + att.getString("name"));
 				} else {
-					atts.putString(att.getString("name"), att.getString("content"));
+					atts.put(att.getString("name"), att.getString("content"));
 				}
 			}
-			payload.putObject("attachment", atts);
+			payload.put("attachment", atts);
 		}
 
+		req.exceptionHandler(except -> log.error("Error sending to sendinblue.", except));
 		req.end(payload.encode());
 	}
 
