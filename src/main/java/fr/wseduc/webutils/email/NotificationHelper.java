@@ -67,7 +67,7 @@ public abstract class NotificationHelper implements SendEmail {
 
 	public void sendEmail(HttpServerRequest request, String to, String cc, String bcc,
 				   String subject, JsonArray attachments, String templateBody, JsonObject templateParams,
-				   boolean translateSubject, final Handler<Message<JsonObject>> handler) {
+				   boolean translateSubject, final Handler<AsyncResult<Message<JsonObject>>> handler) {
 		sendEmail(request, to, senderEmail, cc, bcc, subject, attachments, templateBody,
 				templateParams, translateSubject, null, handler);
 	}
@@ -151,9 +151,9 @@ public abstract class NotificationHelper implements SendEmail {
 				if(!(o instanceof JsonObject)) continue;
 				JsonObject att = (JsonObject)o;
 				if(att.getString("name") == null || att.getString("content") == null) continue;
-				attList.addObject(att);
+				attList.add(att);
 			}
-			json.putArray("attachments", attList);
+			json.put("attachments", attList);
 		}
 
 		if (translateSubject) {

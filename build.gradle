@@ -12,10 +12,17 @@ if (!hasProperty('odePassword')) {
 }
 
 repositories {
-  jcenter()
-  maven {
-    url "https://oss.sonatype.org/content/repositories/iovertx-3720/"
-  }
+  mavenLocal()
+    maven {
+      url "https://maven.opendigitaleducation.com/nexus/content/groups/public"
+    }
+  mavenCentral()
+    maven {
+      url "https://oss.sonatype.org/content/repositories/iovertx-3720/"
+    }
+    maven {
+      url "https://oss.sonatype.org/content/repositories/snapshots"
+    }
 }
 
 configurations {
@@ -26,10 +33,25 @@ sourceSets {
   main { compileClasspath += configurations.provided }
 }
 
-sourceCompatibility = '1.8'
+configurations.all {
+  resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+compileJava {
+  sourceCompatibility = project.sourceCompatibility
+    targetCompatibility = project.targetCompatibility
+}
+
+compileTestJava {
+  sourceCompatibility = project.sourceCompatibility
+    targetCompatibility = project.targetCompatibility
+}
 
 dependencies {
-  provided "io.vertx:vertx-core:$vertxVersion"
+  compileOnly "io.vertx:vertx-core:$vertxVersion"
   compile "com.samskivert:jmustache:$mustacheVersion"
   compile "fr.wseduc:eventbus-wrapper:$eventbusWrapperVersion"
 }

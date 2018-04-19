@@ -37,7 +37,7 @@ public interface SendEmail {
 
 	void sendEmail(HttpServerRequest request, String to, String cc, String bcc,
 				   String subject, JsonArray attachments, String templateBody, JsonObject templateParams,
-				   boolean translateSubject, final Handler<Message<JsonObject>> handler);
+				   boolean translateSubject, final Handler<AsyncResult<Message<JsonObject>>> handler);
 
 	void sendEmail(HttpServerRequest request, String to, String cc, String bcc,
 						  String subject, String templateBody, JsonObject templateParams,
