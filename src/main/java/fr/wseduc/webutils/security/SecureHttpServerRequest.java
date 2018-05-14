@@ -214,7 +214,7 @@ public class SecureHttpServerRequest implements HttpServerRequest {
 
 	@Override
 	public HttpServerRequest setExpectMultipart(boolean expect) {
-		request.setExpectMultipart(expect);
+		if (!request.isExpectMultipart()) request.setExpectMultipart(expect);
 		return this;
 	}
 
