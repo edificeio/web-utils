@@ -27,9 +27,12 @@ import java.net.URLEncoder;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.shareddata.LocalMap;
+
+import static fr.wseduc.webutils.Utils.isNotEmpty;
 
 public class UserAuthFilter implements Filter, WithVertx {
 
@@ -92,8 +95,20 @@ public class UserAuthFilter implements Filter, WithVertx {
 				confServer = vertx.sharedData().getLocalMap("server");
 			}
 			String loginUri = null;
+			String callbackParam = null;
 			if (confServer != null) {
-				loginUri = (String) confServer.get("loginUri");
+				final String authLocationsString = (String) confServer.get("authLocations");
+				if (isNotEmpty(authLocationsString)) {
+					final JsonObject authLocations = new JsonObject(authLocationsString);
+					final JsonObject authLocation = authLocations.getJsonObject(host);
+					if (authLocation != null) {
+						loginUri = authLocation.getString("loginUri");
+						callbackParam = authLocation.getString("callbackParam");
+					}
+				} else {
+					loginUri = (String) confServer.get("loginUri");
+					callbackParam = (String) confServer.get("callbackParam");
+				}
 			}
 			if (loginUri != null && !loginUri.trim().isEmpty()) {
 				if (loginUri.startsWith("http")) {
@@ -101,7 +116,7 @@ public class UserAuthFilter implements Filter, WithVertx {
 				} else {
 					location += loginUri;
 				}
-				String callbackParam = (String) confServer.get("callbackParam");
+
 				if (callbackParam != null && !callbackParam.trim().isEmpty()) {
 					location += (location.contains("?") ? "&" : "?") + callbackParam + "=" + callBack;
 				}
