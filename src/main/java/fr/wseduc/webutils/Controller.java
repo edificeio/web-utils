@@ -150,8 +150,11 @@ public abstract class Controller extends Renders {
 						try {
 							mh.invokeExact(request);
 						} catch (Throwable e) {
-							log.error("Error invoking secured method : " + method, e);
-							request.response().setStatusCode(500).end();
+							if (!(e instanceof IllegalStateException) ||
+									!"Response is closed".equals(e.getMessage())) {
+								log.error("Error invoking secured method : " + method, e);
+								request.response().setStatusCode(500).end();
+							}
 						}
 					});
 				}
@@ -180,8 +183,11 @@ public abstract class Controller extends Renders {
 					try {
 						mh.invokeExact(request);
 					} catch (Throwable e) {
-						log.error("Error invoking secured method : " + method, e);
-						request.response().setStatusCode(500).end();
+						if (!(e instanceof IllegalStateException) ||
+								!"Response is closed".equals(e.getMessage())) {
+							log.error("Error invoking secured method : " + method, e);
+							request.response().setStatusCode(500).end();
+						}
 					}
 				}
 			};
