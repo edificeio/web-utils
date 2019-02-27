@@ -19,7 +19,6 @@ package fr.wseduc.webutils;
 import java.io.IOException;
 import java.util.*;
 
-import fr.wseduc.vertx.eventbus.EventBusWrapperFactory;
 import fr.wseduc.webutils.data.FileResolver;
 import fr.wseduc.webutils.http.BaseController;
 import fr.wseduc.webutils.http.Binding;
@@ -30,7 +29,6 @@ import fr.wseduc.webutils.request.filter.Filter;
 import fr.wseduc.webutils.request.filter.SecurityHandler;
 import io.vertx.core.*;
 import io.vertx.core.eventbus.EventBus;
-import io.vertx.core.file.FileProps;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -136,6 +134,10 @@ public abstract class Server extends AbstractVerticle {
 			.put("address", config.getString("app-address", ""))
 			.put("display", config.getBoolean("display", true))
 			.put("prefix", getPathPrefix(config));
+			final JsonObject customProperties = getCustomProperties();
+			if (customProperties != null) {
+				application.mergeIn(customProperties);
+			}
 			JsonArray actions = StartupUtils.loadSecuredActions(vertx);
 			securedActions = StartupUtils.securedActionsToMap(actions);
 			log.info("secureaction loaded : " + actions.encode());
@@ -151,6 +153,10 @@ public abstract class Server extends AbstractVerticle {
 			log.error("Error application not registred.", e);
 		}
 		vertx.createHttpServer().requestHandler(rm).listen(config.getInteger("port"));
+	}
+
+	protected JsonObject getCustomProperties() {
+		return null;
 	}
 
 	protected void i18nMessages(HttpServerRequest request) {
