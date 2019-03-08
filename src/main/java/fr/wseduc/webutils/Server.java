@@ -130,6 +130,7 @@ public abstract class Server extends AbstractVerticle {
 			JsonObject application = new JsonObject()
 			.put("name", appName)
 			.put("displayName", config.getString("app-displayName", appName.toLowerCase()))
+			.put("appType", config.getString("app-type", "END_USER"))
 			.put("icon", config.getString("app-icon", ""))
 			.put("address", config.getString("app-address", ""))
 			.put("display", config.getBoolean("display", true))
