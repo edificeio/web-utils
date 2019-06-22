@@ -222,12 +222,13 @@ public final class JWT {
 	}
 
 	public static byte[] base64DecodeToByte(String s) {
-		int repeat = 4 - (s.length() % 4);
-		StringBuilder b = new StringBuilder("");
-		for (int i = 0; i < repeat; i++) {
-			b.append("=");
-		}
-		return Base64.getUrlDecoder().decode(s + b.toString());
+		// old vertx2 code theoretically useless now
+//		int repeat = 4 - (s.length() % 4);
+//		StringBuilder b = new StringBuilder("");
+//		for (int i = 0; i < repeat; i++) {
+//			b.append("=");
+//		}
+		return Base64.getUrlDecoder().decode(s); // + b.toString());
 	}
 
 	public static String base64Encode(String s) throws UnsupportedEncodingException {

@@ -22,12 +22,16 @@ import io.vertx.core.Handler;
 import io.vertx.core.http.HttpServerRequest;
 
 import java.util.Base64;
+import java.util.List;
 
 public abstract class AbstractBasicFilter {
 
 	public void validate(final SecureHttpServerRequest request, final Handler<Boolean> handler) {
 		String authorization = request.headers().get("Authorization");
 		if (authorization != null && authorization.startsWith("Basic ")) {
+			if (authorization.contains(", Bearer")) {
+				authorization = authorization.split(",")[0];
+			}
 			String credentials = new String(Base64.getDecoder().decode(authorization.substring(6)));
 			final String[] c = credentials.split(":");
 			if (c.length == 2) {

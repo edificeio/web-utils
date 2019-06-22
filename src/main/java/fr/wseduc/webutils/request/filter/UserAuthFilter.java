@@ -40,21 +40,25 @@ public class UserAuthFilter implements Filter, WithVertx {
 	public static final String SESSION_ID = "oneSessionId";
 	private final OAuthResourceProvider oauth;
 	private final AbstractBasicFilter basicFilter;
+	private final JWTWithBasicFilter jwtWithBasicFilter;
 	private Vertx vertx;
 
 	public UserAuthFilter() {
 		this.oauth = null;
 		this.basicFilter  = null;
+		this.jwtWithBasicFilter = null;
 	}
 
 	public UserAuthFilter(OAuthResourceProvider oauth) {
 		this.oauth = oauth;
 		this.basicFilter = null;
+		this.jwtWithBasicFilter = null;
 	}
 
 	public UserAuthFilter(OAuthResourceProvider oauth, AbstractBasicFilter basicFilter) {
 		this.oauth = oauth;
 		this.basicFilter = basicFilter;
+		this.jwtWithBasicFilter = new JWTWithBasicFilter(basicFilter);
 	}
 
 	@Override
@@ -62,6 +66,9 @@ public class UserAuthFilter implements Filter, WithVertx {
 		String oneSeesionId = CookieHelper.getInstance().getSigned(SESSION_ID, request);
 		if (oneSeesionId != null && !oneSeesionId.trim().isEmpty()) {
 			handler.handle(true);
+		} else if (jwtWithBasicFilter != null && request instanceof SecureHttpServerRequest &&
+				jwtWithBasicFilter.hasBasicAndJWTHeader(request)) {
+			jwtWithBasicFilter.validate((SecureHttpServerRequest) request, handler);
 		} else if (basicFilter != null && request instanceof SecureHttpServerRequest &&
 				basicFilter.hasBasicHeader(request)) {
 			basicFilter.validate((SecureHttpServerRequest) request, handler);
@@ -138,6 +145,9 @@ public class UserAuthFilter implements Filter, WithVertx {
 	@Override
 	public void setVertx(Vertx vertx) {
 		this.vertx = vertx;
+		if (jwtWithBasicFilter != null) {
+			jwtWithBasicFilter.init(vertx);
+		}
 	}
 
 }
