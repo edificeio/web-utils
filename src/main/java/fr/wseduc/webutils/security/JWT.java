@@ -354,6 +354,19 @@ public final class JWT {
 		return encodeAndSign(payload, k.kid, k.privateKey);
 	}
 
+	public String encodeAndSignHmac(JsonObject payload) throws Exception {
+		if (isEmpty(secret)) return null;
+		final JsonObject header = new JsonObject().put("typ", "JWT").put("alg", "HS256");
+		final StringBuilder sb = new StringBuilder();
+		sb.append(base64Encode(header.encode())).append(".").append(base64Encode(payload.encode()));
+		SecretKeySpec signingKey = new SecretKeySpec(secret.getBytes(), "HmacSHA256");
+		Mac mac = Mac.getInstance("HmacSHA256");
+		mac.init(signingKey);
+		final String sign = base64Encode(mac.doFinal(sb.toString().getBytes("UTF-8")));
+		sb.append(".").append(sign);
+		return sb.toString();
+	}
+
 	public static String encodeAndSign(JsonObject payload, String kid, PrivateKey privateKey) throws Exception {
 		final JsonObject header = new JsonObject().put("typ", "JWT").put("alg", "RS256");
 		if (isNotEmpty(kid)) {
