@@ -71,7 +71,10 @@ public class Renders {
 			public void execute(Template.Fragment frag, Writer out) throws IOException {
 				String key = frag.execute();
 				String text = i18n.translate(key, getHost(request), I18n.acceptLanguage(request));
-				out.write(text);
+
+				// This will handle translation units with embedded mustache templates
+				Mustache.compiler().compile(text).execute(ctx, out);
+				//out.write(text);
 			}
 		});
 
