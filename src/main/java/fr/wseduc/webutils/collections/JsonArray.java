@@ -123,4 +123,34 @@ public class JsonArray extends io.vertx.core.json.JsonArray {
 		return this;
 	}
 
+	public static io.vertx.core.json.JsonArray setInJsonArray(io.vertx.core.json.JsonArray a, int pos, String value)
+	{
+		// Vertx doesn't support set in 3.5.0 JsonArrays...
+		if(pos < 0 || pos > a.size())
+			throw new ArrayIndexOutOfBoundsException();
+		else if(pos == a.size())
+			a.add(value);
+		else
+		{
+			List aList = a.getList();
+			aList.set(pos, value);
+		}
+		return a;
+	}
+
+	public static io.vertx.core.json.JsonArray setInJsonArray(io.vertx.core.json.JsonArray a, int pos, Object value)
+	{
+		// Vertx doesn't support set in 3.5.0 JsonArrays...
+		if(pos < 0 || pos > a.size())
+			throw new ArrayIndexOutOfBoundsException();
+		else if(pos == a.size())
+			a.add(value);
+		else
+		{
+			List aList = a.getList();
+			aList.set(pos, value);
+		}
+		return a;
+	}
+
 }
