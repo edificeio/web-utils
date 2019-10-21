@@ -161,8 +161,8 @@ public abstract class Server extends AbstractVerticle {
 	}
 
 	protected void i18nMessages(HttpServerRequest request) {
-		Controller.renderJson(request, i18n.load(
-				I18n.acceptLanguage(request), Renders.getHost(request)));
+
+		Controller.renderJson(request, i18n.load(request));
 	}
 
 	/**

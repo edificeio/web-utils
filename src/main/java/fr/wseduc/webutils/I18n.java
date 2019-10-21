@@ -22,6 +22,7 @@ import java.util.Locale;
 import java.util.Map;
 
 import fr.wseduc.webutils.data.FileResolver;
+import fr.wseduc.webutils.http.Renders;
 import fr.wseduc.webutils.security.SecureHttpServerRequest;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServerRequest;
@@ -39,6 +40,7 @@ public class I18n {
 	private final static Locale defaultLocale2 = Locale.FRENCH;
 	public final static String DEFAULT_DOMAIN = "default-domain";
 	private Map<String, Map<Locale, JsonObject>> messagesByDomains = new HashMap<>();
+	private Map<String, Map<Locale, JsonObject>> messagesByThemes = new HashMap<>();
 
 	private I18n(){}
 
@@ -106,7 +108,12 @@ public class I18n {
 	}
 
 	private Map<Locale, JsonObject> getMessagesMap(String domain) {
-		Map<Locale, JsonObject> messages = messagesByDomains.get(domain);
+		return getMessagesMap(domain, false);
+	}
+
+	private Map<Locale, JsonObject> getMessagesMap(String domain, Boolean byTheme) {
+		final Map<String, Map<Locale, JsonObject>> map = byTheme ? messagesByThemes : messagesByDomains;
+		Map<Locale, JsonObject> messages = map.get(domain);
 		if (messages == null) {
 			messages = messagesByDomains.get(DEFAULT_DOMAIN);
 		}
@@ -118,6 +125,7 @@ public class I18n {
 		return load(acceptLanguage, DEFAULT_DOMAIN);
 	}
 
+	@Deprecated
 	public JsonObject load(String acceptLanguage, String domain) {
 		Map<Locale, JsonObject> messages = getMessagesMap(domain);
 		if (messages == null) {
@@ -127,6 +135,37 @@ public class I18n {
 		JsonObject bundle = messages.get(l) != null ? messages.get(l) : messages.get(defaultLocale);
 		if (bundle == null) {
 			bundle = messages.get(defaultLocale2);
+		}
+		return bundle;
+	}
+
+	public JsonObject load(HttpServerRequest request) {
+		final String domain = Renders.getHost(request);
+		final String acceptLanguage = I18n.acceptLanguage(request);
+		String themeName = null;
+
+		if (request instanceof SecureHttpServerRequest) {
+			JsonObject session = ((SecureHttpServerRequest) request).getSession();
+			if (session != null && session.getJsonObject("cache") != null &&
+					session.getJsonObject("cache").getJsonObject("preferences") != null &&
+					Utils.isNotEmpty(session.getJsonObject("cache").getJsonObject("preferences").getString("theme"))) {
+				try {
+					themeName = session.getJsonObject("cache").getJsonObject("preferences")
+							.getString("theme");
+				} catch (DecodeException e) {
+					log.error("Error getting language in cache.", e);
+				}
+			}
+		}
+
+		Map<Locale, JsonObject> messages = themeName != null ? getMessagesMap(themeName, true) : getMessagesMap(domain);
+		if (messages == null) {
+			return new JsonObject();
+		}
+		Locale l = getLocale(acceptLanguage);
+		JsonObject bundle = messages.get(l) != null ? messages.get(l) : messages.get(defaultLocale);
+		if (bundle == null) {
+			bundle = messages.get(defaultLocale);
 		}
 		return bundle;
 	}
@@ -168,6 +207,10 @@ public class I18n {
 	}
 
 	public void add(String domain, Locale locale, JsonObject keys) {
+		add(domain, locale, keys, false);
+	}
+
+	public void add(String domain, Locale locale, JsonObject keys, Boolean byTheme) {
 		Map<Locale, JsonObject> messages = messagesByDomains.get(domain);
 		if (messages == null) {
 			HashMap<Locale, JsonObject> defaultMessages = (HashMap<Locale, JsonObject>)
@@ -177,7 +220,8 @@ public class I18n {
 			for(Locale l : defaultMessages.keySet()){
 				messages.put(l, defaultMessages.get(l).copy());
 			}
-			messagesByDomains.put(domain, messages);
+			final Map<String, Map<Locale, JsonObject>> map = byTheme ? messagesByThemes : messagesByDomains;
+			map.put(domain, messages);
 		}
 		JsonObject m = messages.get(locale);
 		if (m == null) {
