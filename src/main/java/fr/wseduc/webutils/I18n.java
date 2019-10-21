@@ -35,7 +35,8 @@ public class I18n {
 
 	private static final Logger log = LoggerFactory.getLogger(I18n.class);
 	private final static String messagesDir = FileResolver.absolutePath("i18n");
-	private final static Locale defaultLocale = Locale.FRENCH;
+	private final static Locale defaultLocale = Locale.ENGLISH;
+	private final static Locale defaultLocale2 = Locale.FRENCH;
 	public final static String DEFAULT_DOMAIN = "default-domain";
 	private Map<String, Map<Locale, JsonObject>> messagesByDomains = new HashMap<>();
 
@@ -125,7 +126,7 @@ public class I18n {
 		Locale l = getLocale(acceptLanguage);
 		JsonObject bundle = messages.get(l) != null ? messages.get(l) : messages.get(defaultLocale);
 		if (bundle == null) {
-			bundle = messages.get(defaultLocale);
+			bundle = messages.get(defaultLocale2);
 		}
 		return bundle;
 	}
