@@ -54,6 +54,8 @@ dependencies {
   compileOnly "io.vertx:vertx-core:$vertxVersion"
   compile "com.samskivert:jmustache:$mustacheVersion"
   compile "fr.wseduc:eventbus-wrapper:$eventbusWrapperVersion"
+  testCompile "io.vertx:vertx-unit:$vertxVersion"
+  testCompile "junit:junit:$junitVersion"
 }
 
 install {

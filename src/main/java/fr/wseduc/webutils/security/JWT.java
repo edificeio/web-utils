@@ -228,7 +228,7 @@ public final class JWT {
 //		for (int i = 0; i < repeat; i++) {
 //			b.append("=");
 //		}
-		return Base64.getUrlDecoder().decode(s); // + b.toString());
+		return Base64.getUrlDecoder().decode(s.replaceAll("\n", "")); // + b.toString());
 	}
 
 	public static String base64Encode(String s) throws UnsupportedEncodingException {
