@@ -16,12 +16,17 @@
 
 package fr.wseduc.webutils.collections;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import fr.wseduc.webutils.security.Md5;
+import fr.wseduc.webutils.security.Sha256;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+
+import java.security.NoSuchAlgorithmException;
+import java.util.*;
 
 public class JsonUtils {
+
+	public enum HashAlgorithm { SHA256, MD5 }
 
 	public static Map<String, Object> convertMap(io.vertx.core.json.JsonObject json) {
 		final Map<String, Object> converted = new LinkedHashMap<>(json.size());
@@ -52,6 +57,57 @@ public class JsonUtils {
 			}
 		}
 		return arr;
+	}
+
+	public static String checksum(JsonObject object) throws NoSuchAlgorithmException {
+		return checksum(object, HashAlgorithm.SHA256);
+	}
+
+	public static String checksum(JsonObject object, HashAlgorithm hashAlgorithm) throws NoSuchAlgorithmException {
+		if (object == null) {
+			return null;
+		}
+		final JsonObject j = sortJsonObject(object);
+		switch (hashAlgorithm) {
+			case MD5:
+				return Md5.hash(j.encode());
+			default:
+				return Sha256.hash(j.encode());
+		}
+	}
+
+	private static JsonObject sortJsonObject(JsonObject object) {
+		final TreeSet<String> sorted = new TreeSet<>(object.fieldNames());
+		final JsonObject j = new JsonObject();
+		for (String attr : sorted) {
+			j.put(attr, object.getValue(attr));
+		}
+		return j;
+	}
+
+	public static String checksum(JsonArray object) throws NoSuchAlgorithmException {
+		return checksum(object, HashAlgorithm.SHA256);
+	}
+
+	public static String checksum(JsonArray object, HashAlgorithm hashAlgorithm) throws NoSuchAlgorithmException {
+		if (object == null) {
+			return null;
+		}
+		final TreeSet<String> sorted = new TreeSet<>();
+		for (Object o: object) {
+			if (o instanceof JsonObject) {
+				sorted.add(sortJsonObject((JsonObject) o).encode());
+			} else if (o != null) {
+				sorted.add(o.toString());
+			}
+		}
+		final String value = Joiner.on(",").join(sorted);
+		switch (hashAlgorithm) {
+			case MD5:
+				return Md5.hash(value);
+			default:
+				return Sha256.hash(value);
+		}
 	}
 
 }
