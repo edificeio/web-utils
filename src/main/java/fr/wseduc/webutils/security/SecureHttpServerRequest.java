@@ -18,11 +18,15 @@ package fr.wseduc.webutils.security;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSession;
 import javax.security.cert.X509Certificate;
 
+import fr.wseduc.webutils.http.response.BufferHttpResponse;
+import fr.wseduc.webutils.request.HttpServerRequestWithBuffering;
+import fr.wseduc.webutils.request.ProxyHttpRequest;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.buffer.Buffer;
@@ -31,9 +35,9 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.NetSocket;
 import io.vertx.core.net.SocketAddress;
 
-public class SecureHttpServerRequest implements HttpServerRequest {
+public class SecureHttpServerRequest implements HttpServerRequest, HttpServerRequestWithBuffering {
 
-	private final HttpServerRequest request;
+	private HttpServerRequest request;
 	private JsonObject session;
 	private final Map<String, String> attributes;
 	private Buffer body;
@@ -42,6 +46,33 @@ public class SecureHttpServerRequest implements HttpServerRequest {
 	public SecureHttpServerRequest(HttpServerRequest request) {
 		this.request = request;
 		this.attributes = new HashMap<>();
+	}
+
+	public Optional<Buffer> getBodyResponseBuffered(){
+		if(request.response() instanceof  BufferHttpResponse){
+			final BufferHttpResponse buffered = (BufferHttpResponse)request.response();
+			return Optional.of(buffered.getBuffer());
+		} else{
+			return Optional.empty();
+		}
+	}
+
+	public SecureHttpServerRequest enableResponseBuffering(){
+		if(request instanceof ProxyHttpRequest){
+			return this;
+		}else{
+			request = new ProxyHttpRequest(request, new BufferHttpResponse(request.response()));
+			return this;
+		}
+	}
+
+	public SecureHttpServerRequest disableResponseBuffering(){
+		if(request instanceof ProxyHttpRequest){
+			request = ((ProxyHttpRequest) request).getOriginal();
+			return this;
+		}else{
+			return this;
+		}
 	}
 
 	@Override
