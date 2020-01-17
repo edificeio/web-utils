@@ -16,6 +16,9 @@
 
 package fr.wseduc.webutils.security;
 
+import fr.wseduc.webutils.http.response.BufferHttpResponse;
+import fr.wseduc.webutils.request.HttpServerRequestWithBuffering;
+import fr.wseduc.webutils.request.ProxyHttpRequest;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.buffer.Buffer;
@@ -26,10 +29,11 @@ import io.vertx.core.net.SocketAddress;
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSession;
 import javax.security.cert.X509Certificate;
+import java.util.Optional;
 
-public class WrappedHttpServerRequest implements HttpServerRequest {
+public class WrappedHttpServerRequest implements HttpServerRequest, HttpServerRequestWithBuffering {
 
-	private final HttpServerRequest request;
+	private HttpServerRequest request;
 	private Buffer body;
 	private boolean end;
 
@@ -37,7 +41,32 @@ public class WrappedHttpServerRequest implements HttpServerRequest {
 		this.request = request;
 	}
 
+	public Optional<Buffer> getBodyResponseBuffered(){
+		if(request.response() instanceof  BufferHttpResponse){
+			final BufferHttpResponse buffered = (BufferHttpResponse)request.response();
+			return Optional.of(buffered.getBuffer());
+		} else{
+			return Optional.empty();
+		}
+	}
 
+	public WrappedHttpServerRequest enableResponseBuffering(){
+		if(request instanceof ProxyHttpRequest){
+			return this;
+		}else{
+			request = new ProxyHttpRequest(request, new BufferHttpResponse(request.response()));
+			return this;
+		}
+	}
+
+	public WrappedHttpServerRequest disableResponseBuffering(){
+		if(request instanceof ProxyHttpRequest){
+			request = ((ProxyHttpRequest) request).getOriginal();
+			return this;
+		}else{
+			return this;
+		}
+	}
 
 	@Override
 	public HttpServerRequest pause() {
