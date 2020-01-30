@@ -70,6 +70,20 @@ public abstract class Controller extends Renders {
 		this.accessLogger = new AccessLogger();
 	}
 
+	protected void init(Vertx vertx, JsonObject config, RouteMatcher rm,
+	Map<String, SecuredAction> securedActions)
+	{
+		super.init(vertx, config);
+		this.rm = rm;
+		this.securedActions = securedActions;
+		this.eb = Server.getEventBus(vertx);
+		if (rm != null) {
+			loadRoutes();
+		} else {
+			log.error("RouteMatcher is null.");
+		}
+	}
+
 	protected void loadRoutes() {
 		InputStream is = this.getClass().getClassLoader().getResourceAsStream("routes" + File.separator +
 				this.getClass().getName() + ".json");
