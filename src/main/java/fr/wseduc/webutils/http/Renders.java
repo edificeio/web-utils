@@ -171,7 +171,7 @@ public class Renders {
 
 	@SuppressWarnings("unchecked")
 	private void executeHandlersHookRender(final HttpServerRequest request, Handler<Void> endHandler) {
-		final Handler[] handlers = new Handler[hookRenderProcess.size() + 1];
+		final Handler<Void>[] handlers = new Handler[hookRenderProcess.size() + 1];
 		handlers[handlers.length - 1] = endHandler;
 		for (int i = hookRenderProcess.size() - 1; i >= 0; i--) {
 			final int j = i;
