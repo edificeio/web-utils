@@ -38,19 +38,7 @@ public class BaseController extends Controller {
 
 	public void init(Vertx vertx, JsonObject config, RouteMatcher rm,
 					 Map<String, SecuredAction> securedActions) {
-		super.vertx = vertx;
-		super.config = config;
-		super.rm = rm;
-		super.securedActions = securedActions;
-		super.eb = Server.getEventBus(vertx);
-		if (pathPrefix == null) {
-			super.pathPrefix = Server.getPathPrefix(config);
-		}
-		if (rm != null) {
-			loadRoutes();
-		} else {
-			log.error("RouteMatcher is null.");
-		}
+    super.init(vertx, config, rm, securedActions);
 	}
 
 }

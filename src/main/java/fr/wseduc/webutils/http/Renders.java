@@ -21,17 +21,14 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
-import com.samskivert.mustache.Mustache;
-import com.samskivert.mustache.Template;
-import fr.wseduc.webutils.collections.JsonUtils;
-import io.vertx.core.AsyncResult;
+import fr.wseduc.webutils.template.TemplateProcessor;
+import fr.wseduc.webutils.template.lambdas.FormatBirthDateLambda;
+import fr.wseduc.webutils.template.lambdas.I18nLambda;
+import fr.wseduc.webutils.template.lambdas.InfraLambda;
+import fr.wseduc.webutils.template.lambdas.StaticLambda;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -42,89 +39,43 @@ import fr.wseduc.webutils.I18n;
 import fr.wseduc.webutils.Server;
 
 import static fr.wseduc.webutils.Utils.isNotEmpty;
-import static fr.wseduc.webutils.data.FileResolver.absolutePath;
 
 public class Renders {
 
 	protected static final Logger log = LoggerFactory.getLogger(Renders.class);
 	protected String pathPrefix;
-	private final I18n i18n;
 	protected Vertx vertx;
-	private static final ConcurrentMap<String, Template> templates = new ConcurrentHashMap<>();
 	private List<HookProcess> hookRenderProcess;
 	protected JsonObject config;
+	protected TemplateProcessor templateProcessor;
 
 	public Renders(Vertx vertx, JsonObject config) {
 		this.config = config;
 		if (config != null) {
 			this.pathPrefix = Server.getPathPrefix(config);
 		}
-		this.i18n = I18n.getInstance();
 		this.vertx = vertx;
 	}
 
-	protected void setLambdaTemplateRequest(final HttpServerRequest request,
-			Map<String, Object> ctx) {
-		ctx.put("i18n", new Mustache.Lambda() {
-
-			@Override
-			public void execute(Template.Fragment frag, Writer out) throws IOException {
-				String key = frag.execute();
-				String text = i18n.translate(key, getHost(request), I18n.acceptLanguage(request));
-
-				// This will handle translation units with embedded mustache templates
-				Mustache.compiler().compile(text).execute(ctx, out);
-				//out.write(text);
-			}
-		});
-
-		ctx.put("static", new Mustache.Lambda() {
-
-			@Override
-			public void execute(Template.Fragment frag, Writer out) throws IOException {
-				String path = frag.execute();
-				out.write(staticResource(request, config.getBoolean("ssl", false),
-						null, pathPrefix + "/public", path));
-			}
-		});
-
-		ctx.put("infra", new Mustache.Lambda() {
-
-			@Override
-			public void execute(Template.Fragment frag, Writer out) throws IOException {
-				String path = frag.execute();
-				out.write(staticResource(request, config.getBoolean("ssl", false),
-						"8001", "/infra/public", path));
-			}
-		});
-
-		ctx.put("formatBirthDate", new Mustache.Lambda() {
-			@Override
-			public void execute(Template.Fragment frag, Writer out) throws IOException {
-				String date = frag.execute();
-				if(date != null && date.trim().length() > 0){
-					String[] splitted = date.split("-");
-					if(splitted.length == 3){
-						out.write(splitted[2] + "/" + splitted[1] + "/" + splitted[0]);
-						return;
-					}
-				}
-				out.write(date);
-			}
-		});
+	protected void init(Vertx vertx, JsonObject config)
+	{
+		this.vertx = vertx;
+		this.config = config;
+		if (pathPrefix == null) {
+			this.pathPrefix = Server.getPathPrefix(config);
+		}
+		this.templateProcessor = new TemplateProcessor(vertx, "view/", false);
+		this.templateProcessor.setLambda("formatBirthDate", new FormatBirthDateLambda());
 	}
 
-	private String staticResource(HttpServerRequest request,
-			boolean https, String infraPort, String publicDir, String path) {
-		String host = Renders.getHost(request);
-		String protocol = https ? "https://" : "http://";
-		if (infraPort != null && request.headers().get("X-Forwarded-For") == null) {
-			host = host.split(":")[0] + ":" + infraPort;
-		}
-		return protocol
-				+ host
-				+ ((publicDir != null && publicDir.startsWith("/")) ? publicDir : "/" + publicDir)
-				+ "/" + path;
+	protected void setLambdaTemplateRequest(final HttpServerRequest request)
+	{
+		this.templateProcessor.setLambda("i18n",
+			new I18nLambda(I18n.acceptLanguage(request), getHost(request)));
+		this.templateProcessor.setLambda("static",
+			new StaticLambda(config.getBoolean("ssl"), Renders.getHost(request), this.pathPrefix + "/public"));
+		this.templateProcessor.setLambda("infra",
+			new InfraLambda(config.getBoolean("ssl"), Renders.getHost(request), "/infra/public", request.headers().get("X-Forwarded-For") == null));
 	}
 
 	public void renderView(HttpServerRequest request) {
@@ -133,7 +84,6 @@ public class Renders {
 
 	/*
 	 * Render a Mustache template : see http://mustache.github.com/mustache.5.html
-	 * TODO : modularize
 	 * TODO : isolate scope management
 	 */
 	public void renderView(HttpServerRequest request, JsonObject params) {
@@ -185,111 +135,35 @@ public class Renders {
 		handlers[0].handle(null);
 	}
 
-	public void processTemplate(HttpServerRequest request, String template, JsonObject params,
-			final Handler<String> handler) {
-		processTemplate(request, params, template, null, new Handler<Writer>() {
-			@Override
-			public void handle(Writer w) {
-				if (w != null) {
-					handler.handle(w.toString());
-				} else {
-					handler.handle(null);
-				}
-			}
-		});
+	public void processTemplate(HttpServerRequest request, String template, JsonObject params, final Handler<String> handler)
+	{
+		this.setLambdaTemplateRequest(request);
+		this.templateProcessor.escapeHTML(true).processTemplate(this.genTemplateName(template, request), params, handler);
 	}
 
-	public void processTemplate(final HttpServerRequest request,
-			JsonObject p, String resourceName, Reader r, final Handler<Writer> handler) {
-		final JsonObject params = (p == null) ? new JsonObject() : p.copy();
-		getTemplate(request, resourceName, r, true, new Handler<Template>() {
-
-			@Override
-			public void handle(Template t) {
-				if (t != null) {
-					try {
-						Writer writer = new StringWriter();
-						Map<String, Object> ctx = JsonUtils.convertMap(params);
-						setLambdaTemplateRequest(request, ctx);
-						t.execute(ctx, writer);
-						handler.handle(writer);
-					} catch (Exception e) {
-						log.error(e.getMessage(), e);
-						handler.handle(null);
-					}
-				} else {
-					handler.handle(null);
-				}
-			}
-		});
+	public void processTemplate(final HttpServerRequest request, JsonObject p, String resourceName, Reader r, final Handler<Writer> handler)
+	{
+		this.setLambdaTemplateRequest(request);
+		this.templateProcessor.escapeHTML(true).processTemplate(this.genTemplateName(resourceName, request), p, r, handler);
 	}
 
-	public void processTemplate(final HttpServerRequest request,
-			JsonObject p, String resourceName, boolean escapeHTML, final Handler<String> handler) {
-		final JsonObject params = (p == null) ? new JsonObject() : p.copy();
-		getTemplate(request, resourceName, null, escapeHTML, new Handler<Template>() {
-
-			@Override
-			public void handle(Template t) {
-				if (t != null) {
-					try {
-						Writer writer = new StringWriter();
-						Map<String, Object> ctx = JsonUtils.convertMap(params);
-						setLambdaTemplateRequest(request, ctx);
-						t.execute(ctx, writer);
-						handler.handle(writer.toString());
-					} catch (Exception e) {
-						log.error(e.getMessage(), e);
-						handler.handle(null);
-					}
-				} else {
-					handler.handle(null);
-				}
-			}
-		});
+	public void processTemplate(final HttpServerRequest request, JsonObject p, String resourceName, boolean escapeHTML, final Handler<String> handler)
+	{
+		this.setLambdaTemplateRequest(request);
+		this.templateProcessor.escapeHTML(escapeHTML).processTemplate(this.genTemplateName(resourceName, request), p, handler);
 	}
 
-	private void getTemplate(HttpServerRequest request, String resourceName,
-			Reader r, boolean escapeHTML, final Handler<Template> handler) {
-		String path;
-		if (resourceName != null && r != null && !resourceName.trim().isEmpty()) {
-			Mustache.Compiler compiler = Mustache.compiler().defaultValue("");
-			if(!escapeHTML)
-				compiler = compiler.escapeHTML(escapeHTML);
-			handler.handle(compiler.compile(r));
-			return;
-		} else if (resourceName != null && !resourceName.trim().isEmpty()) {
-			path = "view/" + resourceName;
-		} else {
+	private String genTemplateName(final String resourceName, final HttpServerRequest request)
+	{
+		if (resourceName != null && !resourceName.trim().isEmpty())
+			return resourceName;
+		else
+		{
 			String template = request.path().substring(pathPrefix.length());
 			if (template.trim().isEmpty()) {
 				template = pathPrefix.substring(1);
 			}
-			path = "view/" + template + ".html";
-		}
-		if (!"dev".equals(config.getString("mode")) && templates.containsKey(path)) {
-			handler.handle(templates.get(path));
-		} else {
-			final String p = absolutePath(path);
-			vertx.fileSystem().readFile(p, new Handler<AsyncResult<Buffer>>() {
-				@Override
-				public void handle(AsyncResult<Buffer> ar) {
-					if (ar.succeeded()) {
-						Mustache.Compiler compiler = Mustache.compiler().defaultValue("");
-						if(!escapeHTML)
-							compiler = compiler.escapeHTML(escapeHTML);
-						Template template = compiler.compile(ar.result().toString("UTF-8"));
-						if("dev".equals(config.getString("mode"))) {
-							templates.put(p, template);
-						} else {
-							templates.putIfAbsent(p, template);
-						}
-						handler.handle(template);
-					} else {
-						handler.handle(null);
-					}
-				}
-			});
+			return template + ".html";
 		}
 	}
 
