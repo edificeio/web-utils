@@ -16,10 +16,22 @@
 
 package fr.wseduc.webutils.security;
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.SequenceInputStream;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
 
 public class Md5 {
 
@@ -39,6 +51,49 @@ public class Md5 {
 		MessageDigest digest = MessageDigest.getInstance("MD5");
 		digest.update(input, 0, input.length);
 		return digest.digest();
+	}
+
+	public static String hashFile(String path) throws IOException, NoSuchAlgorithmException
+	{
+			File file = new File(path);
+			List<InputStream> fileStreams = new LinkedList<InputStream>();
+
+			MessageDigest digest = MessageDigest.getInstance("MD5");
+
+			if (!file.isDirectory())
+				fileStreams.add(new FileInputStream(file));
+			else
+				collectFiles(file, fileStreams);
+
+			DigestInputStream dis = new DigestInputStream(new SequenceInputStream(Collections.enumeration(fileStreams)), digest);
+
+			while(dis.read() != -1);
+			dis.close();
+			String hash = new BigInteger(1, digest.digest()).toString(16);
+			while (hash.length() < 32) {
+				hash = "0" + hash;
+			}
+			return hash;
+	}
+
+	private static void collectFiles(File directory, List<InputStream> fileInputStreams) throws IOException
+	{
+		File[] files = directory.listFiles();
+
+		fileInputStreams.add(new ByteArrayInputStream(directory.getName().getBytes(StandardCharsets.UTF_8)));
+
+		if (files != null)
+		{
+			Arrays.sort(files, Comparator.comparing(File::getName));
+
+			for (File file : files)
+			{
+				if (file.isDirectory())
+						collectFiles(file, fileInputStreams);
+				else
+						fileInputStreams.add(new FileInputStream(file));
+			}
+		}
 	}
 
 	public static boolean equality(byte [] input, byte [] sum) throws NoSuchAlgorithmException {
