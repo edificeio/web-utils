@@ -57,6 +57,10 @@ public class Renders {
 			this.pathPrefix = Server.getPathPrefix(config);
 		}
 		this.vertx = vertx;
+		if (vertx != null) {
+			this.templateProcessor = new TemplateProcessor(vertx, "view/", false);
+			this.templateProcessor.setLambda("formatBirthDate", new FormatBirthDateLambda());
+		}
 	}
 
 	protected void init(Vertx vertx, JsonObject config)
@@ -68,10 +72,12 @@ public class Renders {
 		}
 
 		LocalMap<Object, Object> server = vertx.sharedData().getLocalMap("server");
-    this.staticHost = (String) server.get("static-host");
+		this.staticHost = (String) server.get("static-host");
 
-		this.templateProcessor = new TemplateProcessor(vertx, "view/", false);
-		this.templateProcessor.setLambda("formatBirthDate", new FormatBirthDateLambda());
+		if (templateProcessor == null && vertx != null) {
+			this.templateProcessor = new TemplateProcessor(vertx, "view/", false);
+			this.templateProcessor.setLambda("formatBirthDate", new FormatBirthDateLambda());
+		}
 	}
 
 	protected void setLambdaTemplateRequest(final HttpServerRequest request)
