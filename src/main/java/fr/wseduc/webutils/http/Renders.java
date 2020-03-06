@@ -76,12 +76,13 @@ public class Renders {
 
 	protected void setLambdaTemplateRequest(final HttpServerRequest request)
 	{
+		String host = Renders.getIp(request);
 		this.templateProcessor.setLambda("i18n",
-			new I18nLambda(I18n.acceptLanguage(request), getHost(request)));
+			new I18nLambda(I18n.acceptLanguage(request), host));
 		this.templateProcessor.setLambda("static",
-			new StaticLambda(config.getBoolean("ssl"), Renders.getHost(request), this.pathPrefix + "/public"));
+			new StaticLambda(config.getBoolean("ssl", host.startsWith("https")), host, this.pathPrefix + "/public"));
 		this.templateProcessor.setLambda("infra",
-			new InfraLambda(config.getBoolean("ssl"), Renders.getHost(request), "/infra/public", request.headers().get("X-Forwarded-For") == null));
+			new InfraLambda(config.getBoolean("ssl", host.startsWith("https")), host, "/infra/public", request.headers().get("X-Forwarded-For") == null));
 	}
 
 	public void renderView(HttpServerRequest request) {
