@@ -34,6 +34,7 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.core.shareddata.LocalMap;
 
 import fr.wseduc.webutils.I18n;
 import fr.wseduc.webutils.Server;
@@ -47,6 +48,7 @@ public class Renders {
 	protected Vertx vertx;
 	private List<HookProcess> hookRenderProcess;
 	protected JsonObject config;
+	protected String staticHost;
 	protected TemplateProcessor templateProcessor;
 
 	public Renders(Vertx vertx, JsonObject config) {
@@ -64,18 +66,23 @@ public class Renders {
 		if (pathPrefix == null) {
 			this.pathPrefix = Server.getPathPrefix(config);
 		}
+
+		LocalMap<Object, Object> server = vertx.sharedData().getLocalMap("server");
+    this.staticHost = (String) server.get("static-host");
+
 		this.templateProcessor = new TemplateProcessor(vertx, "view/", false);
 		this.templateProcessor.setLambda("formatBirthDate", new FormatBirthDateLambda());
 	}
 
 	protected void setLambdaTemplateRequest(final HttpServerRequest request)
 	{
+		String sttcHost = this.staticHost != null ? this.staticHost : Renders.getHost(request);
 		this.templateProcessor.setLambda("i18n",
 			new I18nLambda(I18n.acceptLanguage(request), getHost(request)));
 		this.templateProcessor.setLambda("static",
-			new StaticLambda(config.getBoolean("ssl"), Renders.getHost(request), this.pathPrefix + "/public"));
+			new StaticLambda(config.getBoolean("ssl"), sttcHost, this.pathPrefix + "/public"));
 		this.templateProcessor.setLambda("infra",
-			new InfraLambda(config.getBoolean("ssl"), Renders.getHost(request), "/infra/public", request.headers().get("X-Forwarded-For") == null));
+			new InfraLambda(config.getBoolean("ssl"), sttcHost, "/infra/public", request.headers().get("X-Forwarded-For") == null));
 	}
 
 	public void renderView(HttpServerRequest request) {
