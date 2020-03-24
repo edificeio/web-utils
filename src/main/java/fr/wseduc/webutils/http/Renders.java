@@ -83,6 +83,8 @@ public class Renders {
 	protected void setLambdaTemplateRequest(final HttpServerRequest request)
 	{
 		String host = Renders.getHost(request);
+		if(host == null) // This can happen for forged requests
+			host = "";
 		String sttcHost = this.staticHost != null ? this.staticHost : host;
 		this.templateProcessor.setLambda("i18n",
 			new I18nLambda(I18n.acceptLanguage(request), host));
