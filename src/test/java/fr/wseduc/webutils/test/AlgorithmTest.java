@@ -20,6 +20,7 @@ import fr.wseduc.webutils.data.ZLib;
 import fr.wseduc.webutils.security.Blowfish;
 import fr.wseduc.webutils.security.JWT;
 import fr.wseduc.webutils.security.Md5;
+import fr.wseduc.webutils.security.NTLM;
 import fr.wseduc.webutils.security.Sha256;
 import org.junit.Test;
 import io.vertx.core.json.JsonObject;
@@ -88,6 +89,11 @@ public class AlgorithmTest {
 	public void deflateAndEncodeTest() throws IOException {
 		final String content = "<test>bla</test>";
 		assertEquals("sylJLS6xS8pJtNEHswA=", ZLib.deflateAndEncode(content));
+	}
+
+	@Test
+	public void ntHashTest() throws NoSuchAlgorithmException {
+		assertEquals("6bbb885acc9fe37317e6c2c7725efa93", NTLM.ntHash("ArtifLo23"));
 	}
 
 }
