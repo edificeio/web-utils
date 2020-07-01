@@ -19,10 +19,8 @@ package fr.wseduc.webutils.request;
 import fr.wseduc.webutils.http.Renders;
 import fr.wseduc.webutils.security.XSSUtils;
 import fr.wseduc.webutils.validation.JsonSchemaValidator;
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.eventbus.Message;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -38,6 +36,13 @@ public class RequestUtils {
 	private static final JsonSchemaValidator validator = JsonSchemaValidator.getInstance();
 	private static final Pattern versionPatter = Pattern.compile("version=([0-9]+\\.[0-9]+)");
 
+	private static void resumeQuietly(final HttpServerRequest request){
+		try{
+			//resume if body has been paused elsewhere
+			request.resume();
+		}catch(Exception e){}
+	}
+
 	public static void bodyToJson(final HttpServerRequest request, final Handler<JsonObject> handler) {
 		request.bodyHandler(new Handler<Buffer>() {
 			@Override
@@ -51,6 +56,7 @@ public class RequestUtils {
 				}
 			}
 		});
+		resumeQuietly(request);
 	}
 
 	public static void bodyToJsonArray(final HttpServerRequest request, final Handler<JsonArray> handler) {
@@ -67,6 +73,7 @@ public class RequestUtils {
 				}
 			}
 		});
+		resumeQuietly(request);
 	}
 
 	public static void bodyToJson(final HttpServerRequest request, final String schema,
@@ -97,6 +104,7 @@ public class RequestUtils {
 				}
 			}
 		});
+		resumeQuietly(request);
 	}
 
 	public static String acceptVersion(HttpServerRequest request) {

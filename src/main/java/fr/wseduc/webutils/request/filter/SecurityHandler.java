@@ -24,13 +24,14 @@ import fr.wseduc.webutils.security.XssSecuredHttpServerRequest;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServerRequest;
-
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import fr.wseduc.webutils.security.SecureHttpServerRequest;
 /*
  * Implement a Security Handler with a pre-configurate filters chain 
  */
 public abstract class SecurityHandler implements Handler<HttpServerRequest> {
-
+	private static Logger logger = LoggerFactory.getLogger(SecurityHandler.class);
 	static protected List<Filter> chain = new ArrayList<>();
 	static {
 		chain.add(new AccessLoggerFilter(new AccessLogger()));
@@ -80,11 +81,19 @@ public abstract class SecurityHandler implements Handler<HttpServerRequest> {
 		}
 	}
 
-	public static void addFilter(Filter filter) {
+	public static synchronized void addFilter(Filter filter) {
+		//add only once in case of multiple verticle instance
+		for(final Filter f : chain){
+			if(f.getClass().equals(filter.getClass())){
+				logger.warn("The filter has already bean added: "+filter.getClass());
+				return;
+			}
+		}
 		chain.add(filter);
 	}
 
-	public static void clearFilters() {
+	public static synchronized void clearFilters() {
+		//synchronized in case of different event loop per verticle
 		chain.clear();
 	}
 
