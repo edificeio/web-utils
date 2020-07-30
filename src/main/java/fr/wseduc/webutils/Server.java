@@ -29,6 +29,7 @@ import fr.wseduc.webutils.request.filter.Filter;
 import fr.wseduc.webutils.request.filter.SecurityHandler;
 import io.vertx.core.*;
 import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -54,6 +55,7 @@ public abstract class Server extends AbstractVerticle {
 	protected Set<Binding> securedUriBinding = new HashSet<>();
 	private LocalMap<String, String> staticRessources;
 	private boolean dev;
+	private HttpServer server;
 
 	@Override
 	public void start() throws Exception {
@@ -153,7 +155,7 @@ public abstract class Server extends AbstractVerticle {
 		} catch (IOException e) {
 			log.error("Error application not registred.", e);
 		}
-		vertx.createHttpServer().requestHandler(rm).listen(config.getInteger("port"));
+		server = vertx.createHttpServer().requestHandler(rm).listen(config.getInteger("port"));
 	}
 
 	protected JsonObject getCustomProperties() {
@@ -220,4 +222,17 @@ public abstract class Server extends AbstractVerticle {
 		return this;
 	}
 
+	@Override
+	public void stop(Future<Void> stopFuture) throws Exception {
+		log.info("Closing http server with port : "+config.getInteger("port"));
+		final List<Future> futures = new ArrayList<>();
+		if(server!=null){
+			final Future<Void> f = Future.future();
+			futures.add(f);
+			server.close(f);
+		} 
+		final Future<Void> f = Future.future();
+		super.stop(f);
+		CompositeFuture.all(futures).map(e->(Void) null).setHandler(stopFuture);
+	}
 }
