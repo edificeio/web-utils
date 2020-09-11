@@ -41,11 +41,13 @@ public abstract class SecurityHandler implements Handler<HttpServerRequest> {
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private Handler<Boolean> chainToHandler(final HttpServerRequest request) {
 		final Handler [] handlers = new Handler[chain.size()];
+		request.pause();
 		handlers[chain.size() - 1] = new Handler<Boolean>() {
 
 			@Override
 			public void handle(Boolean access) {
 				if (Boolean.TRUE.equals(access)) {
+					request.resume();
 					filter(request);
 				} else {
 					chain.get(chain.size() - 1).deny(request);
