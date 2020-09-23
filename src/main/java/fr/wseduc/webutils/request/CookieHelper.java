@@ -55,7 +55,7 @@ public class CookieHelper {
 
 	public static String get(String name, HttpServerRequest request) {
 		if (request.headers().get("Cookie") != null) {
-			Set<Cookie> cookies = CookieDecoder.decode(request.headers().get("Cookie"));
+			Set<Cookie> cookies = CookieDecoder.decode(request.headers().get("Cookie"), false);
 			for (Cookie c : cookies) {
 				if (c.getName().equals(name)) {
 					return c.getValue();
@@ -122,7 +122,7 @@ public class CookieHelper {
 
 	public String getSigned(String name, String path, HttpServerRequest request) {
 		if (request.headers().get("Cookie") != null) {
-			Set<Cookie> cookies = CookieDecoder.decode(request.headers().get("Cookie"));
+			Set<Cookie> cookies = CookieDecoder.decode(request.headers().get("Cookie"), false);
 			return getSignedCookie(name, path, cookies);
 		}
 		return null;
@@ -134,7 +134,7 @@ public class CookieHelper {
 
 	public String getSigned(String name, String path, ServerWebSocket ws) {
 		if (ws.headers().get("Cookie") != null) {
-			Set<Cookie> cookies = CookieDecoder.decode(ws.headers().get("Cookie"));
+			Set<Cookie> cookies = CookieDecoder.decode(ws.headers().get("Cookie"), false);
 			return getSignedCookie(name, path, cookies);
 		}
 		return null;
