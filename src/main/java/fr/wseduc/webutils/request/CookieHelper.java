@@ -107,6 +107,30 @@ public class CookieHelper {
 		}
 	}
 
+	public void setSigned(String name, String value, long timeout, HttpServerRequest request, boolean httpOnly) {
+		setSigned(name, value, timeout, "/", request, httpOnly);
+	}
+
+	public void setSigned(String name, String value, long timeout, String path, HttpServerRequest request, boolean httpOnly) {
+		Cookie cookie = new DefaultCookie(name, value);
+		cookie.setMaxAge(timeout);
+		cookie.setSecure("https".equals(Renders.getScheme(request)));
+		cookie.setHttpOnly(httpOnly);
+		if (path != null && !path.trim().isEmpty()) {
+			cookie.setPath(path);
+		}
+		if (signKey != null) {
+			try {
+				signCookie(cookie);
+			} catch (InvalidKeyException | NoSuchAlgorithmException
+					| IllegalStateException | UnsupportedEncodingException e) {
+				log.error(e);
+				return;
+			}
+			request.response().headers().add("Set-Cookie", ServerCookieEncoder.encode(cookie));
+		}
+	}
+
 	private void signCookie(Cookie cookie)
 			throws InvalidKeyException, NoSuchAlgorithmException,
 			IllegalStateException, UnsupportedEncodingException {
