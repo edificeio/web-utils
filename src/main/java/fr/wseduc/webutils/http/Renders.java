@@ -288,7 +288,10 @@ public class Renders {
 		request.response().putHeader("Cache-Control", "no-cache, must-revalidate");
 		request.response().putHeader("Expires", "-1");
 		request.response().setStatusCode(status);
-		request.response().end(jo.encode());
+		if(jo != null)
+			request.response().end(jo.encode());
+		else
+			request.response().end();
 	}
 
 	public static void renderJson(HttpServerRequest request, JsonObject jo) {
