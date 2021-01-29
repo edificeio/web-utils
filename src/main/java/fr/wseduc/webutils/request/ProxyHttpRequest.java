@@ -1,5 +1,7 @@
 package fr.wseduc.webutils.request;
 
+import java.util.Map;
+
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.buffer.Buffer;
@@ -224,4 +226,40 @@ public class ProxyHttpRequest implements HttpServerRequest {
     public HttpConnection connection() {
         return original.connection();
     }
+
+	@Override
+	public HttpServerRequest streamPriorityHandler(Handler<StreamPriority> handler)
+	{
+		return original.streamPriorityHandler(handler);
+	}
+
+	@Override
+	public long bytesRead()
+	{
+		return original.bytesRead();
+	}
+
+	@Override
+	public HttpServerRequest fetch(long bytes)
+	{
+		return original.fetch(bytes);
+	}
+
+	@Override
+	public Map<String, Cookie> cookieMap()
+	{
+		return original.cookieMap();
+	}
+
+	@Override
+	public int cookieCount()
+	{
+		return original.cookieCount();
+	}
+
+	@Override
+	public Cookie getCookie(String str)
+	{
+		return original.getCookie(str);
+	}
 }

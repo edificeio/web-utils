@@ -16,6 +16,8 @@
 
 package fr.wseduc.webutils.security;
 
+import java.util.Map;
+
 import fr.wseduc.webutils.http.response.BufferHttpResponse;
 import fr.wseduc.webutils.request.HttpServerRequestWithBuffering;
 import fr.wseduc.webutils.request.ProxyHttpRequest;
@@ -281,6 +283,42 @@ public class WrappedHttpServerRequest implements HttpServerRequest, HttpServerRe
 	@Override
 	public HttpConnection connection() {
 		return request.connection();
+	}
+
+	@Override
+	public HttpServerRequest streamPriorityHandler(Handler<StreamPriority> handler)
+	{
+		return request.streamPriorityHandler(handler);
+	}
+
+	@Override
+	public long bytesRead()
+	{
+		return request.bytesRead();
+	}
+
+	@Override
+	public HttpServerRequest fetch(long bytes)
+	{
+		return request.fetch(bytes);
+	}
+
+	@Override
+	public Map<String, Cookie> cookieMap()
+	{
+		return request.cookieMap();
+	}
+
+	@Override
+	public int cookieCount()
+	{
+		return request.cookieCount();
+	}
+
+	@Override
+	public Cookie getCookie(String str)
+	{
+		return request.getCookie(str);
 	}
 
 }
