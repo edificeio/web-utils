@@ -7,6 +7,7 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpFrame;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.http.Cookie;
 
 public class BufferHttpResponse implements HttpServerResponse {
     final private Buffer buffer = Buffer.buffer();
@@ -299,4 +300,58 @@ public class BufferHttpResponse implements HttpServerResponse {
     public boolean writeQueueFull() {
         return original.writeQueueFull();
     }
+
+	@Override
+	public void end(Handler<AsyncResult<Void>> handler)
+	{
+		original.end(handler);
+	}
+
+	@Override
+	public void end(Buffer buff, Handler<AsyncResult<Void>> handler)
+	{
+		original.end(buff, handler);
+	}
+
+	@Override
+	public void end(String str, Handler<AsyncResult<Void>> handler)
+	{
+		original.end(str, handler);
+	}
+
+	@Override
+	public void end(String str, String str2, Handler<AsyncResult<Void>> handler)
+	{
+		original.end(str, str2, handler);
+	}
+
+	@Override
+	public HttpServerResponse write(Buffer buff, Handler<AsyncResult<Void>> handler)
+	{
+		return original.write(buff, handler);
+	}
+
+	@Override
+	public HttpServerResponse write(String str, Handler<AsyncResult<Void>> handler)
+	{
+		return original.write(str, handler);
+	}
+
+	@Override
+	public HttpServerResponse write(String str, String str2, Handler<AsyncResult<Void>> handler)
+	{
+		return original.write(str, str2, handler);
+	}
+
+	@Override
+	public HttpServerResponse addCookie(Cookie cookie)
+	{
+		return original.addCookie(cookie);
+	}
+
+	@Override
+	public Cookie removeCookie(String str, boolean bool)
+	{
+		return original.removeCookie(str, bool);
+	}
 }
