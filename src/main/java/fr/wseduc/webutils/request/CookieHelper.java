@@ -21,6 +21,7 @@ import io.netty.handler.codec.http.Cookie;
 import io.netty.handler.codec.http.CookieDecoder;
 import io.netty.handler.codec.http.DefaultCookie;
 import io.netty.handler.codec.http.ServerCookieEncoder;
+import io.netty.handler.codec.http.cookie.CookieHeaderNames;
 
 import java.io.UnsupportedEncodingException;
 import java.security.InvalidKeyException;
@@ -74,12 +75,13 @@ public class CookieHelper {
 	}
 
 	public static void set(String name, String value, long timeout, String path, HttpServerRequest request) {
-		Cookie cookie = new DefaultCookie(name, value);
+		DefaultCookie cookie = new DefaultCookie(name, value);
 		cookie.setMaxAge(timeout);
 		cookie.setSecure("https".equals(Renders.getScheme(request)));
 		if (path != null && !path.trim().isEmpty()) {
 			cookie.setPath(path);
 		}
+		cookie.setSameSite(CookieHeaderNames.SameSite.Strict);
 		request.response().headers().add("Set-Cookie", ServerCookieEncoder.encode(cookie));
 	}
 
@@ -88,7 +90,7 @@ public class CookieHelper {
 	}
 
 	public void setSigned(String name, String value, long timeout, String path, HttpServerRequest request) {
-		Cookie cookie = new DefaultCookie(name, value);
+		DefaultCookie cookie = new DefaultCookie(name, value);
 		cookie.setMaxAge(timeout);
 		cookie.setSecure("https".equals(Renders.getScheme(request)));
 		cookie.setHttpOnly(true);
@@ -103,6 +105,7 @@ public class CookieHelper {
 				log.error(e);
 				return;
 			}
+			cookie.setSameSite(CookieHeaderNames.SameSite.Strict);
 			request.response().headers().add("Set-Cookie", ServerCookieEncoder.encode(cookie));
 		}
 	}
@@ -112,7 +115,7 @@ public class CookieHelper {
 	}
 
 	public void setSigned(String name, String value, long timeout, String path, HttpServerRequest request, boolean httpOnly) {
-		Cookie cookie = new DefaultCookie(name, value);
+		DefaultCookie cookie = new DefaultCookie(name, value);
 		cookie.setMaxAge(timeout);
 		cookie.setSecure("https".equals(Renders.getScheme(request)));
 		cookie.setHttpOnly(httpOnly);
@@ -127,6 +130,7 @@ public class CookieHelper {
 				log.error(e);
 				return;
 			}
+			cookie.setSameSite(CookieHeaderNames.SameSite.Strict);
 			request.response().headers().add("Set-Cookie", ServerCookieEncoder.encode(cookie));
 		}
 	}
