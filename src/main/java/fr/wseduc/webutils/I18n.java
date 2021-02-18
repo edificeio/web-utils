@@ -85,25 +85,35 @@ public class I18n {
 	}
 
 	public String translate(String key, String domain, Locale locale, String... args) {
+		return translate(key, domain, null, locale, args);
+	}
+		
+	public String translate(String key, String domain, String theme, Locale locale, String... args) {
 		if (key == null) return "";
-		Map<Locale, JsonObject> messages = getMessagesMap(domain);
+		Map<Locale, JsonObject> messages = getMessagesMap(theme != null ? theme : domain, theme != null); // Theme gets precedence over domain, domain is a fallback
+
 		if (messages == null) {
-			return key;
+			return theme != null ? translate(key, domain, null, locale, args) : key;
 		}
 		JsonObject bundle = messages.get(locale) != null ? messages.get(locale) : messages.get(defaultLocale);
 		if (bundle == null) {
-			return key;
+			return theme != null ? translate(key, domain, null, locale, args) : key;
 		}
-		String text =  bundle.getString(key) != null ? bundle.getString(key) : key;
-		if (args.length > 0) {
-			try {
-				for (int i = 0; i < args.length; i++) {
-					text = text.replaceAll("\\{" + i + "\\}", args[i]);
+		String text = bundle.getString(key);
+		if(text != null)
+		{
+			if (args.length > 0) {
+				try {
+					for (int i = 0; i < args.length; i++) {
+						text = text.replaceAll("\\{" + i + "\\}", args[i]);
+					}
+				} catch (RuntimeException e) {
+					log.error("Error replacing i18n variable", e);
 				}
-			} catch (RuntimeException e) {
-				log.error("Error replacing i18n variable", e);
 			}
 		}
+		else
+			text = theme != null ? translate(key, domain, null, locale, args) : key;
 		return text;
 	}
 
@@ -142,21 +152,7 @@ public class I18n {
 	public JsonObject load(HttpServerRequest request) {
 		final String domain = Renders.getHost(request);
 		final String acceptLanguage = I18n.acceptLanguage(request);
-		String themeName = null;
-
-		if (request instanceof SecureHttpServerRequest) {
-			JsonObject session = ((SecureHttpServerRequest) request).getSession();
-			if (session != null && session.getJsonObject("cache") != null &&
-					session.getJsonObject("cache").getJsonObject("preferences") != null &&
-					Utils.isNotEmpty(session.getJsonObject("cache").getJsonObject("preferences").getString("theme"))) {
-				try {
-					themeName = session.getJsonObject("cache").getJsonObject("preferences")
-							.getString("theme");
-				} catch (DecodeException e) {
-					log.error("Error getting language in cache.", e);
-				}
-			}
-		}
+		String themeName = I18n.getTheme(request);
 
 		Map<Locale, JsonObject> messages = themeName != null ? getMessagesMap(themeName, true) : getMessagesMap(domain);
 		if (messages == null) {
@@ -173,7 +169,7 @@ public class I18n {
 	/* Dummy implementation. Just use the first langage option ...
 	 * Header example : "Accept-Language:fr,en-us;q=0.8,fr-fr;q=0.5,en;q=0.3"
 	 */
-	private Locale getLocale(String acceptLanguage) {
+	public static Locale getLocale(String acceptLanguage) {
 		if (acceptLanguage == null) {
 			acceptLanguage = "fr";
 		}
@@ -199,6 +195,23 @@ public class I18n {
 			}
 		}
 		return acceptLanguage;
+	}
+
+	public static String getTheme(HttpServerRequest request)
+	{
+		if (request instanceof SecureHttpServerRequest) {
+			JsonObject session = ((SecureHttpServerRequest) request).getSession();
+			if (session != null && session.getJsonObject("cache") != null &&
+					session.getJsonObject("cache").getJsonObject("preferences") != null &&
+					Utils.isNotEmpty(session.getJsonObject("cache").getJsonObject("preferences").getString("theme"))) {
+				try {
+					return session.getJsonObject("cache").getJsonObject("preferences").getString("theme");
+				} catch (DecodeException e) {
+					log.error("Error getting language in cache.", e);
+				}
+			}
+		}
+		return null;
 	}
 
 	@Deprecated
