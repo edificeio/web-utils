@@ -20,6 +20,7 @@
 package fr.wseduc.webutils.template.lambdas;
 
 import java.io.Writer;
+import java.util.Locale;
 import java.io.IOException;
 
 import com.samskivert.mustache.Mustache;
@@ -32,7 +33,8 @@ public class I18nLambda implements Mustache.Lambda
   private final I18n i18n;
 
   private final String host;
-  private final String locale;
+  private final Locale locale;
+  private final String theme;
 
   public I18nLambda(String locale)
   {
@@ -41,9 +43,15 @@ public class I18nLambda implements Mustache.Lambda
 
   public I18nLambda(String locale, String host)
   {
+    this(locale, host, null);
+  }
+
+  public I18nLambda(String locale, String host, String theme)
+  {
     this.i18n = I18n.getInstance();
     this.host = host;
-    this.locale = locale != null ? locale : "fr";
+    this.locale = I18n.getLocale(locale != null ? locale : "fr");
+    this.theme = theme;
   }
 
   @Override
@@ -52,9 +60,9 @@ public class I18nLambda implements Mustache.Lambda
     String text;
 
     if(this.host == null)
-      text = i18n.translate(key, I18n.DEFAULT_DOMAIN, locale);
+      text = i18n.translate(key, I18n.DEFAULT_DOMAIN, theme, locale);
     else
-      text = i18n.translate(key, host, locale);
+      text = i18n.translate(key, host, theme, locale);
 
     // This will handle translation units with embedded mustache templates
     Mustache.compiler().compile(text).execute(frag.context(), out);
