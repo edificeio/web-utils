@@ -39,6 +39,8 @@ public class CookieHelper {
 	private String signKey;
 	private Logger log;
 
+	private static CookieHeaderNames.SameSite sameSiteValue = CookieHeaderNames.SameSite.Strict;
+
 	private CookieHelper(){}
 
 	private static class CookieHolder {
@@ -52,6 +54,19 @@ public class CookieHelper {
 	public void init(String signkey, Logger log) {
 		this.signKey = signkey;
 		this.log = log;
+	}
+
+	public void init(String signKey, String sameSiteValue, Logger log) {
+		this.signKey = signKey;
+		this.log = log;
+			if (sameSiteValue != null) {
+				this.log.info(String.format("SameSiteValue is not null. Configured as %s", sameSiteValue));
+				try {
+					CookieHolder.instance.sameSiteValue = CookieHeaderNames.SameSite.valueOf(sameSiteValue);
+				} catch (IllegalArgumentException e) {
+					this.log.error(String.format("Unable to find SameSite %s value", sameSiteValue), e);
+				}
+			}
 	}
 
 	public static String get(String name, HttpServerRequest request) {
@@ -81,7 +96,7 @@ public class CookieHelper {
 		if (path != null && !path.trim().isEmpty()) {
 			cookie.setPath(path);
 		}
-		cookie.setSameSite(CookieHeaderNames.SameSite.Strict);
+		cookie.setSameSite(sameSiteValue);
 		request.response().headers().add("Set-Cookie", ServerCookieEncoder.encode(cookie));
 	}
 
@@ -105,7 +120,7 @@ public class CookieHelper {
 				log.error(e);
 				return;
 			}
-			cookie.setSameSite(CookieHeaderNames.SameSite.Strict);
+			cookie.setSameSite(sameSiteValue);
 			request.response().headers().add("Set-Cookie", ServerCookieEncoder.encode(cookie));
 		}
 	}
@@ -130,7 +145,7 @@ public class CookieHelper {
 				log.error(e);
 				return;
 			}
-			cookie.setSameSite(CookieHeaderNames.SameSite.Strict);
+			cookie.setSameSite(sameSiteValue);
 			request.response().headers().add("Set-Cookie", ServerCookieEncoder.encode(cookie));
 		}
 	}
