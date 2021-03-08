@@ -67,7 +67,8 @@ public abstract class Server extends AbstractVerticle {
 		i18n = I18n.getInstance();
 		i18n.init(vertx);
 		CookieHelper.getInstance().init((String) vertx
-				.sharedData().getLocalMap("server").get("signKey"), log);
+				.sharedData().getLocalMap("server").get("signKey"),
+				(String) vertx.sharedData().getLocalMap("server").get("sameSiteValue"), log);
 		staticRessources = vertx.sharedData().getLocalMap("staticRessources");
 		dev = "dev".equals(config.getString("mode"));
 
