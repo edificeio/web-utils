@@ -62,7 +62,7 @@ public class CookieHelper {
 			if (sameSiteValue != null) {
 				this.log.info(String.format("SameSiteValue is not null. Configured as %s", sameSiteValue));
 				try {
-					CookieHolder.instance.sameSiteValue = CookieHeaderNames.SameSite.valueOf(sameSiteValue);
+					CookieHelper.sameSiteValue = CookieHeaderNames.SameSite.valueOf(sameSiteValue);
 				} catch (IllegalArgumentException e) {
 					this.log.error(String.format("Unable to find SameSite %s value", sameSiteValue), e);
 				}
