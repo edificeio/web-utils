@@ -52,6 +52,7 @@ compileTestJava {
 
 dependencies {
   compileOnly "io.vertx:vertx-core:$vertxVersion"
+  compile "io.vertx:vertx-mail-client:$vertxVersion"
   compile "com.samskivert:jmustache:$mustacheVersion"
   compile "joda-time:joda-time:$jodaTimeVersion"
   compile "fr.wseduc:eventbus-wrapper:$eventbusWrapperVersion"
