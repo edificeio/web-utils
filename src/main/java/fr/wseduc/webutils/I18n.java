@@ -197,20 +197,33 @@ public class I18n {
 		return acceptLanguage;
 	}
 
+	/**
+	 * Lookup the theme cached in session.
+	 * @param request
+	 * @return The name of the theme, or null if no theme was found in cache.
+	 */
+	//FIXME Why is this method here ? It does not belong to "i18n" 
 	public static String getTheme(HttpServerRequest request)
 	{
 		if (request instanceof SecureHttpServerRequest) {
-			JsonObject session = ((SecureHttpServerRequest) request).getSession();
-			if (session != null && session.getJsonObject("cache") != null &&
-					session.getJsonObject("cache").getJsonObject("preferences") != null &&
-					Utils.isNotEmpty(session.getJsonObject("cache").getJsonObject("preferences").getString("theme"))) {
-				try {
-					return session.getJsonObject("cache").getJsonObject("preferences").getString("theme");
-				} catch (DecodeException e) {
-					log.error("Error getting language in cache.", e);
-				}
-			}
+			do {// Check if session cache was initialized.
+				final JsonObject session = ((SecureHttpServerRequest) request).getSession();
+				if (session == null)
+					break;
+				final JsonObject cache = session.getJsonObject("cache");
+				if (cache == null)
+					break;
+				final JsonObject preferences = cache.getJsonObject("preferences");
+				if (preferences == null)
+					break;
+				final String theme = preferences.getString("theme");
+
+				// Return the theme, if found.
+				if (Utils.isNotEmpty(theme))
+					return theme;
+			} while(false);
 		}
+		// return null if theme was not found or request was not secured.
 		return null;
 	}
 
