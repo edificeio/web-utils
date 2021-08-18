@@ -85,8 +85,8 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 			splitRecipients = config.getBoolean("split-recipients", false);
 			maxSize = config.getInteger("max-size", 0);
 			mapper = new ObjectMapper();
-			mapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
-
+			final String datePattern = config.getString("date-pattern", "yyyy-MM-dd'T'HH:mm:ss.SSS");
+			mapper.setDateFormat(new SimpleDateFormat(datePattern));
 		} else {
 			throw new InvalidConfigurationException("missing.parameters");
 		}
@@ -250,4 +250,7 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 		req.end(payload.encode());
 	}
 
+	public ObjectMapper getMapper() {
+		return mapper;
+	}
 }
