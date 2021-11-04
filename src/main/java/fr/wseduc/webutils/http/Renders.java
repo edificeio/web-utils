@@ -26,6 +26,7 @@ import fr.wseduc.webutils.template.TemplateProcessor;
 import fr.wseduc.webutils.template.lambdas.FormatBirthDateLambda;
 import fr.wseduc.webutils.template.lambdas.I18nLambda;
 import fr.wseduc.webutils.template.lambdas.InfraLambda;
+import fr.wseduc.webutils.template.lambdas.ModsLambda;
 import fr.wseduc.webutils.template.lambdas.StaticLambda;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -61,6 +62,7 @@ public class Renders {
 		if (vertx != null) {
 			this.templateProcessor = new TemplateProcessor(vertx, "view/", false);
 			this.templateProcessor.setLambda("formatBirthDate", new FormatBirthDateLambda());
+			this.templateProcessor.setLambda("modVersion", new ModsLambda(vertx));
 		}
 	}
 
@@ -78,6 +80,7 @@ public class Renders {
 		if (templateProcessor == null && vertx != null) {
 			this.templateProcessor = new TemplateProcessor(vertx, "view/", false);
 			this.templateProcessor.setLambda("formatBirthDate", new FormatBirthDateLambda());
+			this.templateProcessor.setLambda("modVersion", new ModsLambda(vertx));
 		}
 	}
 
