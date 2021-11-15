@@ -29,6 +29,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.json.DecodeException;
 
 import fr.wseduc.webutils.http.Renders;
 import io.vertx.core.logging.Logger;
@@ -124,7 +125,7 @@ public class OAuth2Client {
 
 	public void getAccessToken(String code, boolean basic,
 			final Handler<JsonObject> handler) throws UnsupportedEncodingException {
-		HttpClientRequest req = httpClient.post(tokenUrn, new Handler<HttpClientResponse>() {
+		HttpClientRequest req = httpClient.post(this.uri.getPath() + tokenUrn, new Handler<HttpClientResponse>() {
 
 			@Override
 			public void handle(final HttpClientResponse response) {
@@ -132,14 +133,21 @@ public class OAuth2Client {
 
 					@Override
 					public void handle(Buffer r) {
-						JsonObject j = new JsonObject(r.toString("UTF-8"));
-						if (response.statusCode() == 200) {
-							JsonObject json = new JsonObject()
-							.put("status", "ok")
-							.put("token", j);
-							handler.handle(json);
-						} else {
-							handler.handle(j.put("statusCode", response.statusCode()));
+						try
+						{
+							JsonObject j = new JsonObject(r.toString("UTF-8"));
+							if (response.statusCode() == 200) {
+								JsonObject json = new JsonObject()
+								.put("status", "ok")
+								.put("token", j);
+								handler.handle(json);
+							} else {
+								handler.handle(j.put("statusCode", response.statusCode()));
+							}
+						}
+						catch(DecodeException e)
+						{
+							handler.handle(new JsonObject().put("statusCode", response.statusCode()));
 						}
 					}
 				});
@@ -149,8 +157,7 @@ public class OAuth2Client {
 				"&redirect_uri=" + redirectUri;
 		if (basic) {
 		req.headers()
-			.add("Authorization", "Basic " + Base64.getEncoder().encode(
-					(clientId + ":" + secret).getBytes("UTF-8")));
+			.add("Authorization", "Basic " + Base64.getEncoder().encodeToString((clientId + ":" + secret).getBytes()));
 		} else {
 			body += "&client_id=" + clientId + "&client_secret=" + secret;
 		}
@@ -158,12 +165,12 @@ public class OAuth2Client {
 			.add("Content-Type", "application/x-www-form-urlencoded")
 			.add("Accept", "application/json; charset=UTF-8");
 		req.exceptionHandler(except -> log.error("Error getting access token.", except));
-		req.end(body, "UTF-8");
+		req.end(body);
 	}
 
 	public void clientCredentialsToken(String scope,
 			final Handler<JsonObject> handler) throws UnsupportedEncodingException {
-		HttpClientRequest req = httpClient.post(tokenUrn, new Handler<HttpClientResponse>() {
+		HttpClientRequest req = httpClient.post(this.uri.getPath() + tokenUrn, new Handler<HttpClientResponse>() {
 
 			@Override
 			public void handle(final HttpClientResponse response) {
@@ -200,7 +207,7 @@ public class OAuth2Client {
 	public void client2LO(JsonObject payload, PrivateKey privateKey, final Handler<JsonObject> handler) throws Exception{
 		String jwt = JWT.encodeAndSign(payload, null, privateKey);
 
-		HttpClientRequest req = httpClient.post(tokenUrn, new Handler<HttpClientResponse>() {
+		HttpClientRequest req = httpClient.post(this.uri.getPath() + tokenUrn, new Handler<HttpClientResponse>() {
 
 			@Override
 			public void handle(final HttpClientResponse response) {
@@ -239,12 +246,12 @@ public class OAuth2Client {
 
 	public void getProtectedResource(String path, String accessToken, Map<String, String> headers,
 			Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, headers, null, httpClient.get(path, handler));
+		sendProtectedResource(accessToken, headers, null, httpClient.get(this.uri.getPath() + path, handler));
 	}
 
 	public void getProtectedResource(String path, String accessToken, String acceptMimeType,
 			Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, acceptMimeType, httpClient.get(path, handler));
+		sendProtectedResource(accessToken, acceptMimeType, httpClient.get(this.uri.getPath() + path, handler));
 	}
 
 	public void postProtectedResource(String path, String accessToken, String body,
@@ -254,12 +261,12 @@ public class OAuth2Client {
 
 	public void postProtectedResource(String path, String accessToken, Map<String, String> headers,
 									  String body, Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, headers, body, httpClient.post(path, handler));
+		sendProtectedResource(accessToken, headers, body, httpClient.post(this.uri.getPath() + path, handler));
 	}
 
 	public void postProtectedResource(String path, String accessToken, String acceptMimeType,
 			String body, Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, acceptMimeType, httpClient.post(path, handler), body, null);
+		sendProtectedResource(accessToken, acceptMimeType, httpClient.post(this.uri.getPath() + path, handler), body, null);
 	}
 
 	public void putProtectedResource(String path, String accessToken, String body,
@@ -269,12 +276,12 @@ public class OAuth2Client {
 
 	public void putProtectedResource(String path, String accessToken, Map<String, String> headers,
 									 String body, Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, headers, body, httpClient.put(path, handler));
+		sendProtectedResource(accessToken, headers, body, httpClient.put(this.uri.getPath() + path, handler));
 	}
 
 	public void putProtectedResource(String path, String accessToken, String acceptMimeType,
 			String body, Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, acceptMimeType, httpClient.put(path, handler), body, null);
+		sendProtectedResource(accessToken, acceptMimeType, httpClient.put(this.uri.getPath() + path, handler), body, null);
 	}
 
 	public void deleteProtectedResource(String path, String accessToken,
@@ -284,12 +291,12 @@ public class OAuth2Client {
 
 	public void deleteProtectedResource(String path, String accessToken, Map<String, String> headers,
 										Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, headers, null, httpClient.delete(path, handler));
+		sendProtectedResource(accessToken, headers, null, httpClient.delete(this.uri.getPath() + path, handler));
 	}
 
 	public void deleteProtectedResource(String path, String accessToken, String acceptMimeType,
 									  Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, acceptMimeType, httpClient.delete(path, handler));
+		sendProtectedResource(accessToken, acceptMimeType, httpClient.delete(this.uri.getPath() + path, handler));
 	}
 
 	private void sendProtectedResource(String accessToken, Map<String, String> headers, String body,

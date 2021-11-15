@@ -25,6 +25,7 @@ import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
@@ -33,6 +34,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
 import java.net.URI;
 import java.security.*;
 import java.security.cert.Certificate;
@@ -41,6 +43,7 @@ import java.security.cert.CertificateFactory;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.RSAPublicKeySpec;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -185,28 +188,22 @@ public final class JWT {
 					response.bodyHandler(new Handler<Buffer>() {
 						@Override
 						public void handle(Buffer buffer) {
-							JsonObject c =  new JsonObject(buffer.toString("UTF-8"));
-							try {
-								CertificateFactory f = CertificateFactory.getInstance("X.509");
-								for (String a : c.fieldNames()) {
-									String cert = c.getString(a);
-									if (cert != null) {
-										try {
-											Certificate certificate = f.generateCertificate(
-													new ByteArrayInputStream(cert.getBytes("UTF-8")));
-											PublicKey p = certificate.getPublicKey();
-											certificates.putIfAbsent(a, p);
-										} catch (CertificateException | UnsupportedEncodingException e) {
-											log.error(e.getMessage(), e);
-										}
-									}
+							JsonObject cert =  new JsonObject(buffer.toString("UTF-8"));
+							JsonArray certificateKeys = cert.getJsonArray("keys");
+							if(certificateKeys != null)
+							{
+								for(int i = 0; i < certificateKeys.size(); ++i)
+								{
+									JsonObject JWT = certificateKeys.getJsonObject(i);
+									if(JWT != null && readJWT(JWT, false) == true)
+										break;
 								}
-							} catch (CertificateException e) {
-								log.error(e.getMessage(), e);
-							} finally {
-								if (handler != null) {
-									handler.handle(null);
-								}
+							}
+							else
+								readJWT(cert, true);
+
+							if (handler != null) {
+								handler.handle(null);
 							}
 						}
 					});
@@ -215,6 +212,84 @@ public final class JWT {
 				}
 			}
 		});
+	}
+
+	private boolean readJWT(JsonObject JWT, boolean fallbackPlain)
+	{
+		String keyType = JWT.getString("kty");
+		String keyId = JWT.getString("kid");
+		if(keyType != null)
+		{
+			if("RSA".equals(keyType))
+				return readJWT_RSA(JWT, keyId);
+		}
+		else if(fallbackPlain == true)
+		{
+			readPlainCertificate(JWT);
+		}
+		return false;
+	}
+
+	private boolean readJWT_RSA(JsonObject JWT, String keyId)
+	{
+		JsonArray x5cArray = JWT.getJsonArray("x5c");
+		String x5c = null;
+		if(x5cArray != null && x5cArray.size() > 0)
+			x5c = x5cArray.getString(0);
+
+		if(x5c != null)
+		{
+			try
+			{
+				CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
+				Certificate certificate = certFactory.generateCertificate(new ByteArrayInputStream(base64DecodeToByte(x5c)));
+				PublicKey pKey = certificate.getPublicKey();
+				certificates.putIfAbsent(keyId, pKey);
+				return true;
+			} catch (Exception e) {
+				log.error(e.getMessage(), e);
+			}
+		}
+		else
+		{
+			String exponent = JWT.getString("e");
+			String modulus = JWT.getString("n");
+
+			if(exponent != null && modulus != null)
+			{
+				try {
+					KeySpec kSpec = new RSAPublicKeySpec(new BigInteger(base64DecodeToByte(modulus)),new BigInteger(base64DecodeToByte(exponent)));
+					PublicKey pKey = KeyFactory.getInstance("RSA").generatePublic(kSpec);
+					certificates.putIfAbsent(keyId, pKey);
+				} catch (Exception e) {
+					log.error(e.getMessage(), e);
+				}
+			}
+		}
+
+		return false;
+	}
+
+	private void readPlainCertificate(JsonObject plainCertificate)
+	{
+		try {
+			CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
+			for (String field : plainCertificate.fieldNames()) {
+				String cert = plainCertificate.getString(field);
+				if (cert != null) {
+					try {
+						Certificate certificate = certFactory.generateCertificate(
+								new ByteArrayInputStream(cert.getBytes("UTF-8")));
+						PublicKey pKey = certificate.getPublicKey();
+						certificates.putIfAbsent(field, pKey);
+					} catch (CertificateException | UnsupportedEncodingException e) {
+						log.error(e.getMessage(), e);
+					}
+				}
+			}
+		} catch (CertificateException e) {
+			log.error(e.getMessage(), e);
+		}
 	}
 
 	public static String base64Decode(String s) throws UnsupportedEncodingException {
@@ -228,7 +303,7 @@ public final class JWT {
 //		for (int i = 0; i < repeat; i++) {
 //			b.append("=");
 //		}
-		return Base64.getUrlDecoder().decode(s.replaceAll("\n", "")); // + b.toString());
+		return Base64.getUrlDecoder().decode(s.replaceAll("\n", "").replaceAll("\\+", "-").replaceAll("\\/", "_")); // + b.toString());
 	}
 
 	public static String base64Encode(String s) throws UnsupportedEncodingException {
