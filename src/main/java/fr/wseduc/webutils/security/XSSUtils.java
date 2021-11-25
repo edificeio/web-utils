@@ -22,7 +22,21 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import org.apache.commons.text.translate.AggregateTranslator;
+import org.apache.commons.text.translate.CharSequenceTranslator;
+import org.apache.commons.text.translate.EntityArrays;
+import org.apache.commons.text.translate.LookupTranslator;
+import org.apache.commons.text.translate.NumericEntityUnescaper;
+
 public final class XSSUtils {
+
+	private static final CharSequenceTranslator UNESCAPE_HTMLENTITIES =
+            new AggregateTranslator(
+                    new LookupTranslator(EntityArrays.BASIC_UNESCAPE),
+                    new LookupTranslator(EntityArrays.ISO8859_1_UNESCAPE),
+                    new LookupTranslator(EntityArrays.HTML40_EXTENDED_UNESCAPE),
+                    new NumericEntityUnescaper(NumericEntityUnescaper.OPTION.semiColonOptional)
+            );
 
 	private XSSUtils() {}
 
@@ -61,8 +75,13 @@ public final class XSSUtils {
 		if (value != null) {
 			//value = ESAPI.encoder().canonicalize(value);
 			value = value.replaceAll("\0", "");
+			String tmp = UNESCAPE_HTMLENTITIES.translate(value);
+			final int originalDecodedLength = tmp.length();
 			for (Pattern scriptPattern : patterns){
-				value = scriptPattern.matcher(value).replaceAll("");
+				tmp = scriptPattern.matcher(tmp).replaceAll("");
+			}
+			if (originalDecodedLength != tmp.length()) {
+				value = tmp;
 			}
 		}
 		return value;
