@@ -30,7 +30,7 @@ public class HmacSha256 {
 	public static String sign(String content, String key)
 			throws NoSuchAlgorithmException, InvalidKeyException,
 			IllegalStateException, UnsupportedEncodingException {
-		SecretKeySpec signingKey = new SecretKeySpec(key.getBytes(), "HmacSHA256");
+		SecretKeySpec signingKey = new SecretKeySpec(key.getBytes("UTF-8"), "HmacSHA256");
 		Mac mac = Mac.getInstance("HmacSHA256");
 		mac.init(signingKey);
 		byte[] signed = mac.doFinal(content.getBytes("UTF-8"));

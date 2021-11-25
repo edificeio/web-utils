@@ -20,6 +20,7 @@ import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.Base64;
 
 public class Sha256 {
 
@@ -33,6 +34,14 @@ public class Sha256 {
 		}
 		return hash;
 	}
+
+	public static String hashBase64(String input) throws NoSuchAlgorithmException
+	{
+		if(input == null) return null;
+		MessageDigest digest = MessageDigest.getInstance("SHA-256");
+		digest.update(input.getBytes(), 0, input.length());
+		return Base64.getEncoder().encodeToString(digest.digest());
+	}	
 
 	public static byte[] hash(byte [] input) throws NoSuchAlgorithmException {
 		if(input == null) return null;
