@@ -26,6 +26,7 @@ import fr.wseduc.webutils.template.TemplateProcessor;
 import fr.wseduc.webutils.template.lambdas.FormatBirthDateLambda;
 import fr.wseduc.webutils.template.lambdas.I18nLambda;
 import fr.wseduc.webutils.template.lambdas.InfraLambda;
+import fr.wseduc.webutils.template.lambdas.LocaleDateLambda;
 import fr.wseduc.webutils.template.lambdas.ModsLambda;
 import fr.wseduc.webutils.template.lambdas.StaticLambda;
 import io.vertx.core.Handler;
@@ -96,6 +97,7 @@ public class Renders {
 			new StaticLambda(config.getBoolean("ssl", sttcHost.startsWith("https")), sttcHost, this.pathPrefix + "/public"));
 		this.templateProcessor.setLambda("infra",
 			new InfraLambda(config.getBoolean("ssl", sttcHost.startsWith("https")), sttcHost, "/infra/public", request.headers().get("X-Forwarded-For") == null));
+		this.templateProcessor.setLambda("datetime", new LocaleDateLambda(I18n.acceptLanguage(request)));
 	}
 
 	public void renderView(HttpServerRequest request) {
