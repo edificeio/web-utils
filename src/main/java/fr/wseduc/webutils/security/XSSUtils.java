@@ -81,7 +81,7 @@ public final class XSSUtils {
 				tmp = scriptPattern.matcher(tmp).replaceAll("");
 			}
 			if (originalDecodedLength != tmp.length()) {
-				value = tmp;
+				value = stripXSS(tmp);
 			}
 		}
 		return value;
