@@ -53,7 +53,7 @@ public final class XSSUtils {
 			Pattern.compile("vbscript:", Pattern.CASE_INSENSITIVE),
 			Pattern.compile("on(click|context|mouse|dblclick|key|abort|error|before|hash|load|page|" +
 					"resize|scroll|unload|blur|change|focus|input|invalid|reset|search|select|submit|drag|drop|copy|cut|paste|" +
-					"after| before|can|end|duration|emptied|play|progress|seek|stall|suspend|time|volume|waiting|message|open|touch|" +
+					"after|before|can|end|duration|emptied|play|progress|seek|stall|suspend|time|volume|waiting|message|open|touch|" +
 					"online|offline|popstate|show|storage|toggle|wheel)(\\s*\\w*\\s*)=",
 					Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.DOTALL),
 	};
