@@ -19,40 +19,18 @@ package fr.wseduc.webutils.security;
 import io.vertx.core.MultiMap;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import org.apache.commons.text.translate.AggregateTranslator;
-import org.apache.commons.text.translate.CharSequenceTranslator;
-import org.apache.commons.text.translate.EntityArrays;
-import org.apache.commons.text.translate.LookupTranslator;
-import org.apache.commons.text.translate.NumericEntityUnescaper;
+import static org.unbescape.html.HtmlEscape.unescapeHtml;
 
 public final class XSSUtils {
 
 	private static final Logger log = LoggerFactory.getLogger(XSSUtils.class);
-
-	private static final Map<CharSequence, CharSequence> UNESCAPE_ADDITIONAL_ENTITIES = new HashMap<>();
-	static {
-		UNESCAPE_ADDITIONAL_ENTITIES.put("&equals;", "\u003D");
-		UNESCAPE_ADDITIONAL_ENTITIES.put("&colon;", "\u003A");
-		UNESCAPE_ADDITIONAL_ENTITIES.put("&semi;", "\u003B");
-		UNESCAPE_ADDITIONAL_ENTITIES.put("&comma;", "\u002C");
-	}
-	private static final CharSequenceTranslator UNESCAPE_HTMLENTITIES =
-            new AggregateTranslator(
-                    new LookupTranslator(EntityArrays.BASIC_UNESCAPE),
-                    new LookupTranslator(EntityArrays.ISO8859_1_UNESCAPE),
-                    new LookupTranslator(EntityArrays.HTML40_EXTENDED_UNESCAPE),
-                    new LookupTranslator(UNESCAPE_ADDITIONAL_ENTITIES),
-                    new NumericEntityUnescaper(NumericEntityUnescaper.OPTION.semiColonOptional)
-            );
 
 	private XSSUtils() {}
 
@@ -128,7 +106,7 @@ public final class XSSUtils {
 			//value = ESAPI.encoder().canonicalize(value);
 			value = value.replaceAll("\0", "");
 			String tmp = unescapeUnicode(value);
-			tmp = UNESCAPE_HTMLENTITIES.translate(tmp);
+			tmp = unescapeHtml(tmp);
 			final int lengthBeforeBase64 = tmp.length();
 			tmp = unescapeBase64(tmp);
 			final int lengthAfterBase64 = tmp.length();
