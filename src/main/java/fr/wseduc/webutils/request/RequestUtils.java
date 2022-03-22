@@ -88,10 +88,11 @@ public class RequestUtils {
 							if ("ok".equals(event1.result().body().getString("status"))) {
 								handler.handle(json);
 							} else {
-								log.debug(event1.result().body().getString("message"));
+								final String message = event1.result().body().getString("message");
+								log.debug(message);
 								log.debug(event1.result().body()
 										.getJsonArray("report", new JsonArray()).encodePrettily());
-								Renders.badRequest(request, event1.result().body().getString("error"));
+								Renders.badRequest(request, event1.result().body().getString("error", message));
 							}
 						} else {
 							log.error("Validate async error.", event1.cause());
