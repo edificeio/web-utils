@@ -40,10 +40,23 @@ public final class XSSUtils {
 
 	private static final Map<CharSequence, CharSequence> UNESCAPE_ADDITIONAL_ENTITIES = new HashMap<>();
 	static {
-		UNESCAPE_ADDITIONAL_ENTITIES.put("&equals;", "\u003D");
+		UNESCAPE_ADDITIONAL_ENTITIES.put("&Tab;", "\u0009");
+		UNESCAPE_ADDITIONAL_ENTITIES.put("&lpar;", "\u0028");
+		UNESCAPE_ADDITIONAL_ENTITIES.put("&rpar;", "\u0029");
+		UNESCAPE_ADDITIONAL_ENTITIES.put("&plus;", "\u002B");
+		UNESCAPE_ADDITIONAL_ENTITIES.put("&comma;", "\u002C");
+		UNESCAPE_ADDITIONAL_ENTITIES.put("&sol;", "\u002F");
 		UNESCAPE_ADDITIONAL_ENTITIES.put("&colon;", "\u003A");
 		UNESCAPE_ADDITIONAL_ENTITIES.put("&semi;", "\u003B");
-		UNESCAPE_ADDITIONAL_ENTITIES.put("&comma;", "\u002C");
+		UNESCAPE_ADDITIONAL_ENTITIES.put("&lt", "\u003C");
+		UNESCAPE_ADDITIONAL_ENTITIES.put("&LT;", "\u003C");
+		UNESCAPE_ADDITIONAL_ENTITIES.put("&LT", "\u003C");
+		UNESCAPE_ADDITIONAL_ENTITIES.put("&equals;", "\u003D");
+		UNESCAPE_ADDITIONAL_ENTITIES.put("&gt", "\u003E");
+		UNESCAPE_ADDITIONAL_ENTITIES.put("&GT;", "\u003E");
+		UNESCAPE_ADDITIONAL_ENTITIES.put("&GT", "\u003E");
+		UNESCAPE_ADDITIONAL_ENTITIES.put("&bsol;", "\u005C\u005C");
+		UNESCAPE_ADDITIONAL_ENTITIES.put("&NewLine;", "\u005C\u006E");
 	}
 	private static final CharSequenceTranslator UNESCAPE_HTMLENTITIES =
             new AggregateTranslator(
@@ -102,7 +115,7 @@ public final class XSSUtils {
 		return value;
 	}
 
-	private static Pattern base64Pattern = Pattern.compile("base64\\s*,\\s*((?:(?:(?:(?:\\\\[frnt])| )*[A-Z0-9+/]){4})*(?:(?:(?:(?:\\\\[frnt]| ))*[A-Z0-9+/]){2}==|(?:(?:(?:\\\\[frnt]| ))*[A-Z0-9+/]){3}=)?)",
+	private static Pattern base64Pattern = Pattern.compile("base64\\s*,\\s*((?:(?:(?:(?:\\\\[frnt])| |\u0009)*[A-Z0-9+/]){4})*(?:(?:(?:(?:\\\\[frnt]| |\u0009))*[A-Z0-9+/]){2}==|(?:(?:(?:\\\\[frnt]| |\u0009))*[A-Z0-9+/]){3}=)?)",
 			Pattern.CASE_INSENSITIVE);
 
 	private static String unescapeBase64(String value) {
@@ -110,7 +123,7 @@ public final class XSSUtils {
 		while (base64Matcher.find()) {
 			try {
 				String group = base64Matcher.group(1);
-				group = group.replaceAll("(?:\\\\[frnt])| ", ""); // Removing whitespace characters before decoding
+				group = group.replaceAll("(?:\\\\[frnt])| |\u0009", ""); // Removing whitespace characters before decoding
 				String base64Token = new String(Base64.getDecoder().decode(group));
 				String tmp = stripXSS(base64Token);
 				if (base64Token.length() != tmp.length()) {
