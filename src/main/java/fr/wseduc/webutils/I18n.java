@@ -223,6 +223,11 @@ public class I18n {
 					return theme;
 			} while(false);
 		}
+		else
+		{
+			if(request.headers() != null && request.headers().get("X-ENT-Theme") != null)
+				return request.headers().get("X-ENT-Theme");
+		}
 		// return null if theme was not found or request was not secured.
 		return null;
 	}
