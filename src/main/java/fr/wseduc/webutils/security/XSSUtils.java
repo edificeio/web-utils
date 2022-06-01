@@ -115,9 +115,11 @@ public final class XSSUtils {
 		return value;
 	}
 
+	@Deprecated
 	private static Pattern base64Pattern = Pattern.compile("base64\\s*,\\s*((?:(?:(?:(?:\\\\[frnt])| |\u0009)*[A-Z0-9+/]){4})*(?:(?:(?:(?:\\\\[frnt]| |\u0009))*[A-Z0-9+/]){2}==|(?:(?:(?:\\\\[frnt]| |\u0009))*[A-Z0-9+/]){3}=)?)",
 			Pattern.CASE_INSENSITIVE);
 
+	@Deprecated
 	private static String unescapeBase64(String value) {
 		Matcher base64Matcher = base64Pattern.matcher(value);
 		while (base64Matcher.find()) {
@@ -136,20 +138,80 @@ public final class XSSUtils {
 		return value;
 	}
 
+	private static Pattern base64PatternV2 = Pattern.compile("base64\\s*,\\s*", Pattern.CASE_INSENSITIVE);
+
+	private static boolean isBase64Character(char character) {
+		return character >= '0' && character <= '9'
+				|| character >= 'A' && character <= 'Z'
+				|| character >= 'a' && character <= 'z'
+				|| character == '+' || character == '/';
+	}
+
+	private static String unescapeBase64V2(String value) {
+		Matcher base64MatcherV2 = base64PatternV2.matcher(value);
+		while (base64MatcherV2.find()) {
+			try {
+				int start = base64MatcherV2.start(), end = base64MatcherV2.end();
+				StringBuilder sb = new StringBuilder();
+				for (; end < value.length(); end++) {
+					char character = value.charAt(end);
+					if (isBase64Character(character)) {
+						sb.append(character);
+						continue;
+					}
+					if (character == ' ' || character == '\t') {
+						continue;
+					}
+					if (character == '\\' && value.length() > (end+1)) {
+						char nextCharacter = value.charAt(end+1);
+						if (nextCharacter == 'f' || nextCharacter == 'r' ||
+								nextCharacter == 'n' || nextCharacter == 't') {
+							end++;
+							continue;
+						}
+					}
+					if (character == '=') {
+						end++;
+						sb.append('=');
+						if (value.length() > end && value.charAt(end) == '=') {
+							end++;
+							sb.append('=');
+						}
+					}
+					break;
+				}
+				String base64Token = new String(Base64.getDecoder().decode(sb.toString()));
+				String tmp = stripXSS(base64Token, false);
+				if (base64Token.length() != tmp.length()) {
+					value = value.replace(value.substring(start, end), "");
+				}
+			} catch (Exception e) {
+				log.error("[XSSUtils] Error in escaping Base64 value", e);
+			}
+		}
+		return value;
+	}
+
 	public static String stripXSS(String value) {
+		return stripXSS(value, true);
+	}
+
+	private static String stripXSS(String value, boolean stripNUL) {
 		if (value != null) {
 			//value = ESAPI.encoder().canonicalize(value);
-			value = value.replaceAll("\0", "");
+			if (stripNUL) {
+				value = value.replaceAll("\0", "");
+			}
 			String tmp = unescapeUnicode(value);
 			tmp = UNESCAPE_HTMLENTITIES.translate(tmp);
 			final int lengthBeforeBase64 = tmp.length();
-			tmp = unescapeBase64(tmp);
+			tmp = unescapeBase64V2(tmp);
 			final int lengthAfterBase64 = tmp.length();
 			for (Pattern scriptPattern : patterns){
 				tmp = scriptPattern.matcher(tmp).replaceAll("");
 			}
 			if (lengthBeforeBase64 != lengthAfterBase64 || lengthAfterBase64 != tmp.length()) {
-				value = stripXSS(tmp);
+				value = stripXSS(tmp, stripNUL);
 			}
 		}
 		return value;
