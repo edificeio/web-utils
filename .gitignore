@@ -24,3 +24,4 @@ mods
 developer.id
 *.mod.json
 gradle*
+.vscode/
