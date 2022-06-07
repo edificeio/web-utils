@@ -41,30 +41,74 @@ public class UserAuthFilter implements Filter, WithVertx {
 	private final OAuthResourceProvider oauth;
 	private final AbstractBasicFilter basicFilter;
 	private final JWTWithBasicFilter jwtWithBasicFilter;
-	private Vertx vertx;
+	private final AbstractQueryParamTokenFilter queryParamFilter;
+	protected Vertx vertx;
 
 	public UserAuthFilter() {
 		this.oauth = null;
-		this.basicFilter  = null;
+		this.basicFilter = null;
 		this.jwtWithBasicFilter = null;
+		this.queryParamFilter = null;
 	}
 
 	public UserAuthFilter(OAuthResourceProvider oauth) {
 		this.oauth = oauth;
 		this.basicFilter = null;
 		this.jwtWithBasicFilter = null;
+		this.queryParamFilter = null;
 	}
 
 	public UserAuthFilter(OAuthResourceProvider oauth, AbstractBasicFilter basicFilter) {
 		this.oauth = oauth;
 		this.basicFilter = basicFilter;
 		this.jwtWithBasicFilter = new JWTWithBasicFilter(basicFilter);
+		this.queryParamFilter = null;
+	}
+
+	public UserAuthFilter(
+			OAuthResourceProvider oauth, AbstractBasicFilter basicFilter, AbstractQueryParamTokenFilter paramFilter ) {
+		this.oauth = oauth;
+		this.basicFilter = basicFilter;
+		this.jwtWithBasicFilter = new JWTWithBasicFilter(basicFilter);
+		this.queryParamFilter = paramFilter;
 	}
 
 	@Override
-	public void canAccess(HttpServerRequest request, Handler<Boolean> handler) {
-		String oneSeesionId = CookieHelper.getInstance().getSigned(SESSION_ID, request);
-		if (oneSeesionId != null && !oneSeesionId.trim().isEmpty()) {
+	public void canAccess(final HttpServerRequest request, final Handler<Boolean> handler) {
+		final String oneSessionId = CookieHelper.getInstance().getSigned(SESSION_ID, request);
+
+		if (queryParamFilter != null 
+				&& request instanceof SecureHttpServerRequest 
+				&& queryParamFilter.getToken( (SecureHttpServerRequest)request ) != null ) {
+			final SecureHttpServerRequest securedRequest = (SecureHttpServerRequest)request;
+			// If a JWT query param exists, check its validity.
+			queryParamFilter.validate(securedRequest, proceed -> {
+				if( proceed!=null && proceed.booleanValue() ) {
+					// If valid, adapt current session to the user from the token.
+					checkRecreateSession(securedRequest, oneSessionId, securedRequest.getAttribute("remote_user"), handler);
+				} else {
+					// If invalid, filter the request as usual.
+					checkStandardFilters( request, oneSessionId, handler );
+				}
+			});
+		} else {
+			// If no query param available, filter the request as usual.
+			checkStandardFilters( request, oneSessionId, handler );
+		}
+	}
+
+	protected void checkRecreateSession(
+			final SecureHttpServerRequest request,
+			String oneSessionId,
+			String userId,
+			final Handler<Boolean> handler) {
+		// Default implementation does nothing but applies standard filters. Can be overriden.
+		checkStandardFilters(request, oneSessionId, handler);
+	}
+
+	private void checkStandardFilters(final HttpServerRequest request, final String oneSessionId,
+			final Handler<Boolean> handler) {
+		if (oneSessionId != null && !oneSessionId.trim().isEmpty()) {
 			handler.handle(true);
 		} else if (jwtWithBasicFilter != null && request instanceof SecureHttpServerRequest &&
 				jwtWithBasicFilter.hasBasicAndJWTHeader(request)) {
@@ -147,6 +191,9 @@ public class UserAuthFilter implements Filter, WithVertx {
 		this.vertx = vertx;
 		if (jwtWithBasicFilter != null) {
 			jwtWithBasicFilter.init(vertx);
+		}
+		if( queryParamFilter != null ) {
+			queryParamFilter.init(vertx);
 		}
 	}
 
