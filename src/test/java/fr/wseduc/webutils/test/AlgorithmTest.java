@@ -17,12 +17,16 @@
 package fr.wseduc.webutils.test;
 
 import fr.wseduc.webutils.data.ZLib;
+import fr.wseduc.webutils.security.AWS4Signature;
 import fr.wseduc.webutils.security.Blowfish;
+import fr.wseduc.webutils.security.HmacSha256;
 import fr.wseduc.webutils.security.JWT;
 import fr.wseduc.webutils.security.Md5;
 import fr.wseduc.webutils.security.NTLM;
 import fr.wseduc.webutils.security.Sha256;
 import org.junit.Test;
+
+import io.vertx.core.MultiMap;
 import io.vertx.core.json.JsonObject;
 
 import java.io.FileInputStream;
@@ -35,6 +39,9 @@ import java.security.PublicKey;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 import static org.junit.Assert.assertEquals;
 
@@ -94,6 +101,21 @@ public class AlgorithmTest {
 	@Test
 	public void ntHashTest() throws NoSuchAlgorithmException {
 		assertEquals("6bbb885acc9fe37317e6c2c7725efa93", NTLM.ntHash("ArtifLo23"));
+	}
+
+	@Test
+	public void aws4Test() throws Exception {
+		DateTimeFormatter datetimeFormat = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'").withZone(ZoneId.systemDefault());;
+		MultiMap canonicalHeaders = MultiMap.caseInsensitiveMultiMap();
+		final String now = datetimeFormat.format(Instant.now());
+		canonicalHeaders.add("host", "");
+		canonicalHeaders.add("x-amz-content-sha256", AWS4Signature.EMPTY_PAYLOAD_SHA256);
+		canonicalHeaders.add("x-amz-date", now);
+		String signature = AWS4Signature.sign("GET", "/storage/00/00/1cd26124-5c22-4777-ae63-7a8ff4e30000",
+				"", canonicalHeaders, "fr-par", "", "", null);
+		System.out.println(now);
+		System.out.println(signature);
+		assertEquals("6bbb885acc9fe37317e6c2c7725efa93", signature);
 	}
 
 }

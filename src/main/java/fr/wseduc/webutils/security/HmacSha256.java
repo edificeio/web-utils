@@ -28,13 +28,18 @@ import javax.crypto.spec.SecretKeySpec;
 public class HmacSha256 {
 
 	public static String sign(String content, String key)
-			throws NoSuchAlgorithmException, InvalidKeyException,
-			IllegalStateException, UnsupportedEncodingException {
-		SecretKeySpec signingKey = new SecretKeySpec(key.getBytes("UTF-8"), "HmacSHA256");
+			throws NoSuchAlgorithmException, IllegalStateException, UnsupportedEncodingException, InvalidKeyException {
+		byte[] signed = sign(content, key.getBytes("UTF-8"));
+		return Base64.getEncoder().encodeToString(signed);
+	}
+
+	public static byte[] sign(String content, byte[] key)
+			throws NoSuchAlgorithmException,
+			IllegalStateException, UnsupportedEncodingException, InvalidKeyException {
+		SecretKeySpec signingKey = new SecretKeySpec(key, "HmacSHA256");
 		Mac mac = Mac.getInstance("HmacSHA256");
 		mac.init(signingKey);
-		byte[] signed = mac.doFinal(content.getBytes("UTF-8"));
-		return Base64.getEncoder().encodeToString(signed);
+		return mac.doFinal(content.getBytes("UTF-8"));
 	}
 
 }
