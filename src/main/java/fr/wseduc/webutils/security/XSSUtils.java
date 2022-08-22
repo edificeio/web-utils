@@ -88,6 +88,35 @@ public final class XSSUtils {
 					Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.DOTALL),
 	};
 
+	private static final String replaceIgnoreWhitespace(final Pattern[] patterns, final String str, final String replace) {
+		final StringBuilder strWithoutWhitespace = new StringBuilder();
+		final ArrayList<Integer> positions = new ArrayList<>();
+		for (int i = 0; i < str.length(); i++) {
+			char character = str.charAt(i);
+			if (character == '\\' && str.length() > (i+1)) {
+				char nextCharacter = str.charAt(i+1);
+				if (nextCharacter == 'f' || nextCharacter == 'r' ||
+						nextCharacter == 'n' || nextCharacter == 't') {
+					i++;
+				}
+			} else if (String.valueOf(character).matches("\\S")) {
+				strWithoutWhitespace.append(character);
+				positions.add(i);
+			}
+		}
+		final StringBuilder res = new StringBuilder(str);
+		for (int i = 0; i < patterns.length; i++) {
+			Pattern pattern = patterns[i];
+			final Matcher matcher = pattern.matcher(strWithoutWhitespace.toString());
+			if (matcher.find()) {
+				res.replace(positions.get(matcher.start()), positions.get(matcher.end()), replace);
+				return replaceIgnoreWhitespace(patterns, res.toString(), replace);
+				// We must call te method again because positions have changed following replace
+			}
+		}
+		return res.toString();
+	}
+
 	public static MultiMap safeMultiMap(MultiMap m) {
 		for (String name : m.names()) {
 			List<String> values = m.getAll(name);
@@ -207,9 +236,7 @@ public final class XSSUtils {
 			final int lengthBeforeBase64 = tmp.length();
 			tmp = unescapeBase64V2(tmp);
 			final int lengthAfterBase64 = tmp.length();
-			for (Pattern scriptPattern : patterns){
-				tmp = scriptPattern.matcher(tmp).replaceAll("");
-			}
+			tmp = replaceIgnoreWhitespace(patterns, tmp, "");
 			if (lengthBeforeBase64 != lengthAfterBase64 || lengthAfterBase64 != tmp.length()) {
 				value = stripXSS(tmp, stripNUL);
 			}
