@@ -14,6 +14,10 @@ install() {
   docker-compose run --rm -u "$USER_UID:$GROUP_GID" gradle gradle install publishToMavenLocal
 }
 
+testGradle () {
+  ./gradlew "$GRADLE_OPTION"test
+}
+
 publish() {
   if [ -e "?/.gradle" ] && [ ! -e "?/.gradle/gradle.properties" ]
   then
@@ -33,6 +37,9 @@ do
       ;;
     install)
       install
+      ;;
+    test)
+      testGradle
       ;;
     publish)
       publish

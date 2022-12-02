@@ -59,6 +59,8 @@ dependencies {
   compile "fr.wseduc:eventbus-wrapper:$eventbusWrapperVersion"
   testCompile "io.vertx:vertx-unit:$vertxVersion"
   testCompile "junit:junit:$junitVersion"
+  testCompile "commons-codec:commons-codec:$commonsCodecVersion"
+  testCompile "com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer:$javaHtmlSanitizerVersion"
 }
 
 install {
