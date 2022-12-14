@@ -31,6 +31,10 @@ public class SMTPSender extends NotificationHelper implements EmailSender {
                 .setHostname(config.getString("hostname"))
                 .setPort(config.getInteger("port", 25));
 
+        if (config.containsKey("ssl") && Boolean.TRUE.equals(config.getBoolean("ssl"))) {
+            smtpConfig.setSsl(config.getBoolean("ssl"));
+        }
+
         if (config.containsKey("username") && config.containsKey("password")) {
             smtpConfig.setUsername(config.getString("username"))
                     .setPassword(config.getString("password"));
