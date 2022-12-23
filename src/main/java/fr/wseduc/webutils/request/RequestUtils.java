@@ -19,9 +19,12 @@ package fr.wseduc.webutils.request;
 import fr.wseduc.webutils.http.Renders;
 import fr.wseduc.webutils.security.XSSUtils;
 import fr.wseduc.webutils.validation.JsonSchemaValidator;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -74,6 +77,26 @@ public class RequestUtils {
 			}
 		});
 		resumeQuietly(request);
+	}
+
+	public static <T> Future<T> bodyToClass(final HttpServerRequest request, final Class<T> clazz) {
+		final Promise<T> promise = Promise.promise();
+		request.bodyHandler(new Handler<Buffer>() {
+			@Override
+			public void handle(Buffer event) {
+				try {
+
+					String obj = XSSUtils.stripXSS(event.toString("UTF-8"));
+					final T body = Json.decodeValue(obj, clazz);
+					promise.complete(body);
+				} catch (RuntimeException e) {
+					log.warn(e.getMessage(), e);
+					promise.fail(e);
+					Renders.badRequest(request, e.getMessage());
+				}
+			}
+		});
+		return promise.future();
 	}
 
 	public static void bodyToJson(final HttpServerRequest request, final String schema,

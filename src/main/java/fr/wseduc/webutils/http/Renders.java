@@ -29,9 +29,12 @@ import fr.wseduc.webutils.template.lambdas.InfraLambda;
 import fr.wseduc.webutils.template.lambdas.LocaleDateLambda;
 import fr.wseduc.webutils.template.lambdas.ModsLambda;
 import fr.wseduc.webutils.template.lambdas.StaticLambda;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -297,6 +300,21 @@ public class Renders {
 			request.response().end(jo.encode());
 		else
 			request.response().end();
+	}
+	public static void render(HttpServerRequest request, Object data, int status) {
+		final HttpServerResponse response = request.response();
+		response.putHeader("content-type", "application/json");
+		response.putHeader("Cache-Control", "no-cache, must-revalidate");
+		response.putHeader("Expires", "-1");
+		response.setStatusCode(status);
+		if(data == null) {
+			response.end();
+		} else {
+			response.end(Json.encode(data));
+		}
+	}
+	public static void render(HttpServerRequest request, Object data) {
+		render(request, data, HttpResponseStatus.OK.code());
 	}
 
 	public static void renderJson(HttpServerRequest request, JsonObject jo) {
