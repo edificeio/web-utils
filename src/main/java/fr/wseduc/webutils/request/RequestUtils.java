@@ -16,17 +16,25 @@
 
 package fr.wseduc.webutils.request;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import fr.wseduc.webutils.http.Renders;
 import fr.wseduc.webutils.security.XSSUtils;
 import fr.wseduc.webutils.validation.JsonSchemaValidator;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -76,6 +84,46 @@ public class RequestUtils {
 		resumeQuietly(request);
 	}
 
+	public static <T> Future<T> bodyToClass(final HttpServerRequest request, final Class<T> clazz) {
+		final Promise<T> promise = Promise.promise();
+		request.bodyHandler(new Handler<Buffer>() {
+			@Override
+			public void handle(Buffer event) {
+				try {
+
+					String obj = XSSUtils.stripXSS(event.toString("UTF-8"));
+					final T body = Json.decodeValue(obj, clazz);
+					promise.complete(body);
+				} catch (RuntimeException e) {
+					log.warn(e.getMessage(), e);
+					promise.fail(e);
+					Renders.badRequest(request, e.getMessage());
+				}
+			}
+		});
+		return promise.future();
+	}
+
+	public static <T> Future<T> bodyToClass(final HttpServerRequest request, final TypeReference<T> typeReference) {
+		final Promise<T> promise = Promise.promise();
+		request.bodyHandler(new Handler<Buffer>() {
+			@Override
+			public void handle(Buffer event) {
+				try {
+
+					String obj = XSSUtils.stripXSS(event.toString("UTF-8"));
+					final T body = Json.decodeValue(obj, typeReference);
+					promise.complete(body);
+				} catch (RuntimeException e) {
+					log.warn(e.getMessage(), e);
+					promise.fail(e);
+					Renders.badRequest(request, e.getMessage());
+				}
+			}
+		});
+		return promise.future();
+	}
+
 	public static void bodyToJson(final HttpServerRequest request, final String schema,
 			final Handler<JsonObject> handler) {
 		request.bodyHandler(new Handler<Buffer>() {
@@ -118,6 +166,22 @@ public class RequestUtils {
 			return m.group(1);
 		}
 		return "";
+	}
+
+	public static Integer getIntParam(final String name, final HttpServerRequest request) {
+		final String paramValue = request.getParam(name);
+		if(paramValue == null) {
+			return null;
+		}
+		return Integer.parseInt(paramValue);
+	}
+
+	public static List<String> getListOfStringsParam(final String name, final HttpServerRequest request) {
+		final String paramValue = request.getParam(name);
+		if(paramValue == null) {
+			return null;
+		}
+		return Arrays.asList(paramValue.split(","));
 	}
 
 }
