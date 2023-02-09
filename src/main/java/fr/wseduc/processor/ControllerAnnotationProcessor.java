@@ -19,6 +19,7 @@ package fr.wseduc.processor;
 import fr.wseduc.bus.BusAddress;
 import fr.wseduc.rs.*;
 import fr.wseduc.security.ActionType;
+import fr.wseduc.security.MfaProtected;
 import fr.wseduc.security.SecuredAction;
 
 import javax.annotation.processing.*;
@@ -152,7 +153,7 @@ public class ControllerAnnotationProcessor extends AbstractProcessor {
 			Set<String> controllerRoutes = getController(routes, clazz);
 			controllerRoutes.add("{ \"httpMethod\" : \"POST\", \"path\" : \"" +
 					annotation.value() + "\", \"method\" : \"" + element.getSimpleName().toString() +
-					"\", \"regex\" : " + annotation.regex() + "}");
+					"\", \"regex\" : " + annotation.regex() + ", \"mfaProtected\" : "+ isMfaProtected(element) +"}");
 		}
 
 		for (Element element : roundEnv.getElementsAnnotatedWith(Get.class)) {
@@ -164,7 +165,7 @@ public class ControllerAnnotationProcessor extends AbstractProcessor {
 			Set<String> controllerRoutes = getController(routes, clazz);
 			controllerRoutes.add("{ \"httpMethod\" : \"GET\", \"path\" : \"" +
 					annotation.value() + "\", \"method\" : \"" + element.getSimpleName().toString() +
-					"\", \"regex\" : " + annotation.regex() + "}");
+					"\", \"regex\" : " + annotation.regex() + ", \"mfaProtected\" : "+ isMfaProtected(element) + "}");
 		}
 
 		for (Element element : roundEnv.getElementsAnnotatedWith(Put.class)) {
@@ -176,7 +177,7 @@ public class ControllerAnnotationProcessor extends AbstractProcessor {
 			Set<String> controllerRoutes = getController(routes, clazz);
 			controllerRoutes.add("{ \"httpMethod\" : \"PUT\", \"path\" : \"" +
 					annotation.value() + "\", \"method\" : \"" + element.getSimpleName().toString() +
-					"\", \"regex\" : " + annotation.regex() + "}");
+					"\", \"regex\" : " + annotation.regex() + ", \"mfaProtected\" : "+ isMfaProtected(element) + "}");
 		}
 
 		for (Element element : roundEnv.getElementsAnnotatedWith(Delete.class)) {
@@ -188,7 +189,7 @@ public class ControllerAnnotationProcessor extends AbstractProcessor {
 			Set<String> controllerRoutes = getController(routes, clazz);
 			controllerRoutes.add("{ \"httpMethod\" : \"DELETE\", \"path\" : \"" +
 					annotation.value() + "\", \"method\" : \"" + element.getSimpleName().toString() +
-					"\", \"regex\" : " + annotation.regex() + "}");
+					"\", \"regex\" : " + annotation.regex() + ", \"mfaProtected\" : "+ isMfaProtected(element) + "}");
 		}
 
 		for (Element element : roundEnv.getElementsAnnotatedWith(BusAddress.class)) {
@@ -200,7 +201,7 @@ public class ControllerAnnotationProcessor extends AbstractProcessor {
 			Set<String> controllerRoutes = getController(routes, clazz);
 			controllerRoutes.add("{ \"httpMethod\" : \"BUS\", \"path\" : \"" +
 					annotation.value() + "\", \"method\" : \"" + element.getSimpleName().toString() +
-					"\", \"local\" : " + annotation.local() + "}");
+					"\", \"local\" : " + annotation.local() + ", \"mfaProtected\" : false}");
 		}
 
 		writeFile("", routes);
@@ -234,6 +235,13 @@ public class ControllerAnnotationProcessor extends AbstractProcessor {
 		}
 
 		writeFile("SecuredAction-", actions);
+	}
+
+	private boolean isMfaProtected(Element element) {
+		// Look for a @MfaProtected annotation on this method element
+		MfaProtected annotation = element.getAnnotation(MfaProtected.class);
+		TypeElement clazz = (TypeElement) element.getEnclosingElement();
+		return (annotation != null && isMethod(element) && clazz != null);
 	}
 
 	protected void checkRights(SecuredAction annotation, TypeElement clazz) {
