@@ -53,6 +53,7 @@ public abstract class Server extends AbstractVerticle {
 	private I18n i18n;
 	protected Map<String, SecuredAction> securedActions;
 	protected Set<Binding> securedUriBinding = new HashSet<>();
+	protected Set<Binding> mfaProtectedBinding = new HashSet<>();
 	private LocalMap<String, String> staticRessources;
 	private boolean dev;
 	private HttpServer server;
@@ -210,6 +211,7 @@ public abstract class Server extends AbstractVerticle {
 		log.info("add controller");
 		controller.init(vertx, config, rm, securedActions);
 		securedUriBinding.addAll(controller.securedUriBinding());
+		mfaProtectedBinding.addAll(controller.getMfaProtectedBindings());
 		return this;
 	}
 
