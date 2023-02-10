@@ -51,6 +51,8 @@ public abstract class Controller extends Renders {
 	protected RouteMatcher rm;
 	private final Map<String, Set<Binding>> uriBinding;
 	protected Map<String, SecuredAction> securedActions;
+	/** Fully qualified method names, annotated by @MfaProtected, which require MFA before use. */
+	protected Set<String> mfaProtectedMethods = new HashSet<String>();
 	protected EventBus eb;
 	protected String busPrefix = "";
 	private AccessLogger accessLogger;
@@ -134,6 +136,10 @@ public abstract class Controller extends Renders {
 						case "BUS":
 							registerMethod(path, method, route.getBoolean("local", true));
 							break;
+					}
+					if( route.getBoolean("mfaProtected", false) ) {
+						String serviceMethod = this.getClass().getName() + "|" + method;
+						mfaProtectedMethods.add(serviceMethod);
 					}
 				}
 			} catch (IOException | NoSuchMethodException | IllegalAccessException e) {
@@ -251,6 +257,17 @@ public abstract class Controller extends Renders {
 			return executeSecure(method);
 		}
 		return execute(method);
+	}
+
+	public Set<Binding> getMfaProtectedBindings() {
+		Set<Binding> ret = new HashSet<Binding>( mfaProtectedMethods.size() );
+		for( String method : mfaProtectedMethods ) {
+			Set<Binding> bindings = uriBinding.get(method);
+			if( bindings!=null ) {
+				ret.addAll(bindings);
+			}
+		}
+		return ret;
 	}
 
 	public Map<String, Set<Binding>> getUriBinding() {
