@@ -16,33 +16,41 @@
 
 package fr.wseduc.webutils;
 
-import java.io.IOException;
-import java.util.*;
-
 import fr.wseduc.webutils.data.FileResolver;
+import static fr.wseduc.webutils.data.FileResolver.absolutePath;
 import fr.wseduc.webutils.http.BaseController;
 import fr.wseduc.webutils.http.Binding;
 import fr.wseduc.webutils.http.Renders;
+import fr.wseduc.webutils.http.StaticResource;
 import fr.wseduc.webutils.logging.Tracer;
 import fr.wseduc.webutils.logging.TracerFactory;
+import fr.wseduc.webutils.request.CookieHelper;
 import fr.wseduc.webutils.request.filter.Filter;
 import fr.wseduc.webutils.request.filter.SecurityHandler;
-import io.vertx.core.*;
+import fr.wseduc.webutils.security.SecuredAction;
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.MultiMap;
+import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.http.HttpServer;
+import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
-
-import fr.wseduc.webutils.http.StaticResource;
-import fr.wseduc.webutils.request.CookieHelper;
-import fr.wseduc.webutils.security.SecuredAction;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.shareddata.LocalMap;
 import org.vertx.java.core.http.RouteMatcher;
 
-import static fr.wseduc.webutils.data.FileResolver.absolutePath;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public abstract class Server extends AbstractVerticle {
 
@@ -157,7 +165,22 @@ public abstract class Server extends AbstractVerticle {
 		} catch (IOException e) {
 			log.error("Error application not registred.", e);
 		}
-		server = vertx.createHttpServer().requestHandler(rm).listen(config.getInteger("port"));
+		final HttpServerOptions httpOptions = createHttpServerOptions();
+		server = vertx.createHttpServer(httpOptions)
+				.requestHandler(rm)
+				.listen(config.getInteger("port"));
+	}
+
+	private HttpServerOptions createHttpServerOptions() {
+		JsonObject rawHttpServerOptions = config().getJsonObject("httpServerOptions");
+		if(rawHttpServerOptions == null) {
+			final LocalMap<Object, Object> server = vertx.sharedData().getLocalMap("server");
+			rawHttpServerOptions = (JsonObject) server.get("httpServerOptions");
+		}
+		if(rawHttpServerOptions == null) {
+			rawHttpServerOptions = new JsonObject();
+		}
+		return new HttpServerOptions(rawHttpServerOptions);
 	}
 
 	protected JsonObject getCustomProperties() {
