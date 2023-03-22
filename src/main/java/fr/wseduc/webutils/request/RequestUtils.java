@@ -22,6 +22,7 @@ import fr.wseduc.webutils.security.XSSUtils;
 import fr.wseduc.webutils.validation.JsonSchemaValidator;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.MultiMap;
 import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpServerRequest;
@@ -32,9 +33,8 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -43,6 +43,7 @@ public class RequestUtils {
 	private static final Logger log = LoggerFactory.getLogger(RequestUtils.class);
 	private static final JsonSchemaValidator validator = JsonSchemaValidator.getInstance();
 	private static final Pattern versionPatter = Pattern.compile("version=([0-9]+\\.[0-9]+)");
+	public static final Pattern REGEXP_AUTHORIZATION = Pattern.compile("^\\s*(OAuth|Bearer)\\s+([^\\s\\,]*)");
 
 	private static void resumeQuietly(final HttpServerRequest request){
 		try{
@@ -183,6 +184,42 @@ public class RequestUtils {
 			return null;
 		}
 		return Arrays.asList(paramValue.split(","));
+	}
+
+	/**
+	 * @param request Incoming user request
+	 * @return The content of user-agent header of the request or {@code null} if
+	 * there are no headers or if the header is not set
+	 */
+	public static String getUserAgent(final HttpServerRequest request) {
+		final String ua;
+		if(request == null || request.headers() == null) {
+			ua = null;
+		} else {
+			final MultiMap headers = request.headers();
+			ua = headers.get("User-Agent");
+		}
+		return ua;
+	}
+
+	/**
+	 * @param request Incoming user request
+	 * @return The value of the token in the authorization header
+	 */
+	public static Optional<String> getTokenHeader(final HttpServerRequest request) {
+		//get from header
+		final String header = request.getHeader("Authorization");
+		if (header != null && Pattern.matches("^\\s*(OAuth|Bearer)(.*)$", header)) {
+			final Matcher matcher = REGEXP_AUTHORIZATION.matcher(header);
+			if (!matcher.find()) {
+				return Optional.empty();
+			} else {
+				final String token = matcher.group(2);
+				return Optional.ofNullable(token);
+			}
+		} else {
+			return Optional.empty();
+		}
 	}
 
 }
