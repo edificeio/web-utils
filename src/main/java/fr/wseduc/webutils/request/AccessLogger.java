@@ -17,21 +17,62 @@
 package fr.wseduc.webutils.request;
 
 import fr.wseduc.webutils.http.Renders;
+import static fr.wseduc.webutils.request.RequestUtils.getTokenHeader;
+import static fr.wseduc.webutils.request.RequestUtils.getUserAgent;
+import fr.wseduc.webutils.security.SecureHttpServerRequest;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.LoggerFactory;
+import static org.apache.commons.lang3.StringUtils.isBlank;
 
 public class AccessLogger {
 
 	protected static final io.vertx.core.logging.Logger log = LoggerFactory.getLogger(AccessLogger.class);
+	public static final String UNAUTHENTICATED_USER_ID = "unauthenticated";
+	public static final String NO_SESSION_COOKIE = "nocookie";
+	public static final String NO_TOKEN_ID = "notoken";
 
+	/**
+	 * Log the following line if the user is <strong>not</strong> authenticated :
+	 * <pre>“ip” “verb uri” “user-agent”</pre>
+	 *
+	 * Log the following line if the user is authenticated :
+	 * <pre>“ip” “verb uri” “user-agent” - userId sessionId tokenId</pre>
+	 *
+	 * @param request Incoming user request
+	 * @param handler Downstream process ({@code null} will always be supplied
+	 */
 	public void log(HttpServerRequest request, Handler<Void> handler) {
 		log.trace(formatLog(request));
 		handler.handle(null);
 	}
 
-	protected String formatLog(HttpServerRequest request) {
-		return Renders.getIp(request) + " " + request.method() + " " + request.path() + getQuery(request);
+	protected String formatLog(final HttpServerRequest request) {
+		return String.format("%s %s %s%s %s%s",
+				Renders.getIp(request), request.method(),
+				request.path(), getQuery(request),
+				getUserAgent(request), getAuthenticatedUserInfo(request));
+	}
+
+	private String getAuthenticatedUserInfo(final HttpServerRequest request) {
+		if(request instanceof SecureHttpServerRequest) {
+			final String userId;
+			final String tokenId;
+			final String cookieId;
+			final JsonObject session = ((SecureHttpServerRequest) request).getSession();
+			if(session == null || isBlank(session.getString("externalId"))) {
+				userId = UNAUTHENTICATED_USER_ID;
+			} else {
+				userId = session.getString("externalId");
+			}
+			tokenId = getTokenHeader(request).orElse(NO_TOKEN_ID);
+			final String sessionId = CookieHelper.getInstance().getSigned("oneSessionId", request);
+			cookieId = isBlank(sessionId) ? NO_SESSION_COOKIE : sessionId;
+			return String.format(" - %s %s %s", userId, cookieId, tokenId);
+		} else {
+			return "";
+		}
 	}
 
 	private String getQuery(HttpServerRequest request) {
