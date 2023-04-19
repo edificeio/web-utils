@@ -43,21 +43,27 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import org.apache.commons.lang3.StringUtils;
 
-public class RSA
-{
-  private static PKCS8EncodedKeySpec getKey(Vertx vertx, String path)
-  {
-    String key = vertx.fileSystem().readFileBlocking(path).toString();
+public class RSA {
+    private static PKCS8EncodedKeySpec getKey(Vertx vertx, String path) {
+        String key = vertx.fileSystem().readFileBlocking(path).toString();
+        return getKeyFromValue(key);
+    }
 
-    key = key
-      .replaceAll("-+\\s*BEGIN\\s+PRIVATE\\s+KEY\\s*-+", "")
-      .replaceAll("-+\\s*END\\s+PRIVATE\\s+KEY\\s*-+", "")
-      .replaceAll("\\s+", "")
-      .replaceAll("\n", "");
+    /**
+     * @param keyValue Content of the key to parse
+     * @return The private key to be used for decryption.
+     */
+    private static PKCS8EncodedKeySpec getKeyFromValue(String keyValue) {
+        final String key = keyValue
+                .replaceAll("-+\\s*BEGIN\\s+PRIVATE\\s+KEY\\s*-+", "")
+                .replaceAll("-+\\s*END\\s+PRIVATE\\s+KEY\\s*-+", "")
+                .replaceAll("\\s+", "")
+                .replaceAll("\n", "");
 
-    return new PKCS8EncodedKeySpec(Base64.getDecoder().decode(key));
-  }
+        return new PKCS8EncodedKeySpec(Base64.getDecoder().decode(key));
+    }
 
   public static PrivateKey loadPrivateKey(Vertx vertx, String privateKeyPath) throws NoSuchAlgorithmException, InvalidKeySpecException
   {
@@ -69,6 +75,23 @@ public class RSA
     else
       return null;
   }
+
+    /**
+     * @param privateKey Content of the key to parse
+     * @return The private key to be used for decryption
+     * @throws NoSuchAlgorithmException RSA algorithm cannot be found
+     * @throws InvalidKeySpecException The key specification are not correct
+     */
+    public static PrivateKey loadPrivateKeyFromValue(final String privateKey) throws NoSuchAlgorithmException, InvalidKeySpecException {
+        final PrivateKey key;
+        if (StringUtils.isEmpty(privateKey)) {
+            key = null;
+        } else {
+            PKCS8EncodedKeySpec privateKeySpec = getKeyFromValue(privateKey);
+            key = KeyFactory.getInstance("RSA").generatePrivate(privateKeySpec);
+        }
+        return key;
+    }
 
   public static PublicKey loadPublicKey(Vertx vertx, String privateKeyPath) throws NoSuchAlgorithmException, InvalidKeySpecException
   {
@@ -82,6 +105,24 @@ public class RSA
     else
       return null;
   }
+
+    /**
+     * @param privateKey Content of the key to parse
+     * @return The public key to be used for encryption
+     * @throws NoSuchAlgorithmException RSA algorithm cannot be found
+     * @throws InvalidKeySpecException The key specification are not correct
+     */
+    public static PublicKey loadPublicKeyFromValue(final String privateKey) throws NoSuchAlgorithmException, InvalidKeySpecException {
+        final PublicKey publicKey;
+        final RSAPrivateCrtKey pkey = (RSAPrivateCrtKey) loadPrivateKeyFromValue(privateKey);
+        if(pkey != null) {
+            RSAPublicKeySpec kSpec = new RSAPublicKeySpec(pkey.getModulus(), pkey.getPublicExponent());
+            publicKey = KeyFactory.getInstance("RSA").generatePublic(kSpec);
+        } else {
+            publicKey = null;
+        }
+        return publicKey;
+    }
 
   public static String sign(String plainText, PrivateKey privateKey)
     throws NoSuchAlgorithmException, InvalidKeyException, SignatureException
