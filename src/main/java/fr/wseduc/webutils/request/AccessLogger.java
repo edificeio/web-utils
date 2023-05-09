@@ -35,10 +35,10 @@ public class AccessLogger {
 
 	/**
 	 * Log the following line if the user is <strong>not</strong> authenticated :
-	 * <pre>“ip” “verb uri” “user-agent”</pre>
+	 * <pre>“ip” “verb uri” “path” “user-agent”</pre>
 	 *
 	 * Log the following line if the user is authenticated :
-	 * <pre>“ip” “verb uri” “user-agent” - userId sessionId tokenId</pre>
+	 * <pre>“ip” “verb uri” “path” “user-agent” - userId sessionId tokenId</pre>
 	 *
 	 * @param request Incoming user request
 	 * @param handler Downstream process ({@code null} will always be supplied
@@ -49,7 +49,7 @@ public class AccessLogger {
 	}
 
 	protected String formatLog(final HttpServerRequest request) {
-		return String.format("%s %s %s%s %s%s",
+		return String.format("\"%s\" \"%s\" \"%s%s\" \"%s\"%s",
 				Renders.getIp(request), request.method(),
 				request.path(), getQuery(request),
 				getUserAgent(request), getAuthenticatedUserInfo(request));
