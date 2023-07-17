@@ -1,10 +1,6 @@
 #!/bin/bash
 
 
-if [[ "$*" == *"--no-user"* ]]
-then
-  USER_OPTION=""
-else
 if [ -z ${USER_UID:+x} ]
 then
   export USER_UID=1000
