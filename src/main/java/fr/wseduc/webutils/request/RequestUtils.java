@@ -101,9 +101,18 @@ public class RequestUtils {
 			@Override
 			public void handle(Buffer event) {
 				try {
-
-					String obj = XSSUtils.stripXSS(event.toString("UTF-8"));
-					final T body = Json.decodeValue(obj, clazz);
+					final T body;
+					if(event == null) {
+						body = null;
+					} else {
+						final String content = event.toString("UTF-8");
+						if(content == null) {
+							body = null;
+						} else {
+							String obj = XSSUtils.stripXSS(content);
+							body = Json.decodeValue(obj, clazz);
+						}
+					}
 					promise.complete(body);
 				} catch (RuntimeException e) {
 					log.warn(e.getMessage(), e);
