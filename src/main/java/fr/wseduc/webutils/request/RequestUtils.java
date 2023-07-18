@@ -42,6 +42,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -96,6 +97,19 @@ public class RequestUtils {
 	}
 
 	public static <T> Future<T> bodyToClass(final HttpServerRequest request, final Class<T> clazz) {
+		return bodyToClass(request, clazz, null);
+	}
+
+	/**
+	 *
+	 * @param request Http request
+	 * @param clazz Desired class of the body
+	 * @param onEmptyBody Supplier of a default value when the content of the body is empty
+	 * @return {@code null} if the body is null, value supplied by {@code onEmptyBody} if the body is empty, otherwise
+	 * the deserialized value of the body
+	 * @param <T> Desired class
+	 */
+	public static <T> Future<T> bodyToClass(final HttpServerRequest request, final Class<T> clazz, final Supplier<T> onEmptyBody) {
 		final Promise<T> promise = Promise.promise();
 		request.bodyHandler(new Handler<Buffer>() {
 			@Override
@@ -108,6 +122,8 @@ public class RequestUtils {
 						final String content = event.toString("UTF-8");
 						if(content == null) {
 							body = null;
+						} else if(isEmpty(content) && onEmptyBody != null) {
+							body = onEmptyBody.get();
 						} else {
 							String obj = XSSUtils.stripXSS(content);
 							body = Json.decodeValue(obj, clazz);
