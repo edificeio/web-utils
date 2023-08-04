@@ -31,12 +31,21 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import static java.util.Collections.emptySet;
+import org.apache.commons.lang3.StringUtils;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class RequestUtils {
 
@@ -44,6 +53,8 @@ public class RequestUtils {
 	private static final JsonSchemaValidator validator = JsonSchemaValidator.getInstance();
 	private static final Pattern versionPatter = Pattern.compile("version=([0-9]+\\.[0-9]+)");
 	public static final Pattern REGEXP_AUTHORIZATION = Pattern.compile("^\\s*(OAuth|Bearer)\\s+([^\\s\\,]*)");
+	/** Default date and time format for incoming requests.*/
+	private static final SimpleDateFormat DEFAULT_DATE_FORMAT = new SimpleDateFormat("HHmm-ddMMyyyy");
 
 	private static void resumeQuietly(final HttpServerRequest request){
 		try{
@@ -86,14 +97,38 @@ public class RequestUtils {
 	}
 
 	public static <T> Future<T> bodyToClass(final HttpServerRequest request, final Class<T> clazz) {
+		return bodyToClass(request, clazz, null);
+	}
+
+	/**
+	 *
+	 * @param request Http request
+	 * @param clazz Desired class of the body
+	 * @param onEmptyBody Supplier of a default value when the content of the body is empty
+	 * @return {@code null} if the body is null, value supplied by {@code onEmptyBody} if the body is empty, otherwise
+	 * the deserialized value of the body
+	 * @param <T> Desired class
+	 */
+	public static <T> Future<T> bodyToClass(final HttpServerRequest request, final Class<T> clazz, final Supplier<T> onEmptyBody) {
 		final Promise<T> promise = Promise.promise();
 		request.bodyHandler(new Handler<Buffer>() {
 			@Override
 			public void handle(Buffer event) {
 				try {
-
-					String obj = XSSUtils.stripXSS(event.toString("UTF-8"));
-					final T body = Json.decodeValue(obj, clazz);
+					final T body;
+					if(event == null) {
+						body = null;
+					} else {
+						final String content = event.toString("UTF-8");
+						if(content == null) {
+							body = null;
+						} else if(isEmpty(content) && onEmptyBody != null) {
+							body = onEmptyBody.get();
+						} else {
+							String obj = XSSUtils.stripXSS(content);
+							body = Json.decodeValue(obj, clazz);
+						}
+					}
 					promise.complete(body);
 				} catch (RuntimeException e) {
 					log.warn(e.getMessage(), e);
@@ -220,6 +255,85 @@ public class RequestUtils {
 		} else {
 			return Optional.empty();
 		}
+	}
+
+	/**
+	 * Split the value of {@code paramName} GET param by {@code ,} and returns the unique values
+	 * @param paramName Name of the GET parameter
+	 * @param request Http request whose GET parameters we want to extract
+	 * @return The set of comma-separated values specified in {@code paramName} GET param
+	 */
+	public static Set<String> getParamAsSet(final String paramName, final HttpServerRequest request) {
+		return getParamAsSet(paramName, ",", request);
+	}
+
+	/**
+	 * Split the value of {@code paramName} GET param by {@code separator} and returns the unique values
+	 * @param paramName Name of the GET parameter
+	 * @param separator Separator to use between the values
+	 * @param request Http request whose GET parameters we want to extract
+	 * @return The set of values specified in {@code paramName} GET param
+	 */
+	public static Set<String> getParamAsSet(final String paramName, final String separator, final HttpServerRequest request) {
+		final Set<String> values;
+		final String paramValue = request.getParam(paramName);
+		if(isEmpty(paramValue)) {
+			values = emptySet();
+		} else {
+			values = Arrays.stream(paramValue.split(","))
+					.filter(StringUtils::isNotEmpty)
+					.collect(Collectors.toSet());
+		}
+		return values;
+	}
+
+
+	/**
+	 * Parses the date contained in a GET param with {@link RequestUtils#DEFAULT_DATE_FORMAT}.
+	 * @param paramName Name of the GET param containing the date
+	 * @param format Expected format of the date
+	 * @param request Http request
+	 * @return the parsed date or {@code empty} if the request parameter was not present in the request or if its value
+	 * was empty
+	 * @throws IllegalArgumentException if the {@code paramName} contained a value that did not respect {@code format}
+	 */
+	public static Optional<Date> getDateParam(final String paramName, final HttpServerRequest request) {
+		return getDateParam(paramName, DEFAULT_DATE_FORMAT, request);
+	}
+
+	/**
+	 * @param paramName Name of the GET param containing the date
+	 * @param format Expected format of the date
+	 * @param request Http request
+	 * @return the parsed date or {@code empty} if the request parameter was not present in the request or if its value
+	 * was empty
+	 * @throws IllegalArgumentException if the {@code paramName} contained a value that did not respect {@code format}
+	 */
+	public static Optional<Date> getDateParam(final String paramName, final String format, final HttpServerRequest request) {
+		return getDateParam(paramName, isEmpty(format) ? DEFAULT_DATE_FORMAT : new SimpleDateFormat(format), request);
+	}
+
+	/**
+	 * @param paramName Name of the GET param containing the date
+	 * @param format Expected format of the date
+	 * @param request Http request
+	 * @return the parsed date or {@code empty} if the request parameter was not present in the request or if its value
+	 * was empty
+	 * @throws IllegalArgumentException if the {@code paramName} contained a value that did not respect {@code format}
+	 */
+	public static Optional<Date> getDateParam(final String paramName, final SimpleDateFormat format, final HttpServerRequest request) {
+		final Optional<Date> resultDate;
+		final String paramValue = request.getParam(paramName);
+		if(isEmpty(paramValue)) {
+			resultDate = Optional.empty();
+		} else {
+			try {
+				resultDate = Optional.ofNullable(format.parse(paramValue));
+			} catch (ParseException e) {
+				throw new IllegalArgumentException(paramName + " could not be parsed with format " + format.toPattern(), e);
+			}
+		}
+		return resultDate;
 	}
 
 }
