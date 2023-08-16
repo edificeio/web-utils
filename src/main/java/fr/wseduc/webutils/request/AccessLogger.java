@@ -49,7 +49,7 @@ public class AccessLogger {
 	}
 
 	protected String formatLog(final HttpServerRequest request) {
-		return String.format("%s %s %s%s %s%s",
+		return String.format("\"%s\" \"%s %s%s\" \"%s\"%s",
 				Renders.getIp(request), request.method(),
 				request.path(), getQuery(request),
 				getUserAgent(request), getAuthenticatedUserInfo(request));
