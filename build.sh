@@ -1,18 +1,25 @@
 #!/bin/bash
 
 
-if [ -z ${USER_UID:+x} ]
+if [[ "$*" == *"--no-user"* ]]
 then
-  export USER_UID=1000
-  export GROUP_GID=1000
+  USER_OPTION=""
+else
+  if [ -z ${USER_UID:+x} ]
+  then
+    export USER_UID=1000
+    export GROUP_GID=1000
+  fi
+  USER_OPTION="-u $USER_UID:$GROUP_GID"
 fi
 
+
 clean () {
-  docker-compose run --rm -u "$USER_UID:$GROUP_GID" gradle gradle clean
+  docker-compose run --rm -u "$USER_OPTION" gradle gradle clean
 }
 
 install() {
-  docker-compose run --rm -u "$USER_UID:$GROUP_GID" gradle gradle install publishToMavenLocal
+  docker-compose run --rm -u "$USER_OPTION" gradle gradle install publishToMavenLocal
 }
 
 testGradle () {
@@ -27,12 +34,14 @@ publish() {
     echo "sonatypeUsername=$NEXUS_SONATYPE_USERNAME" >> "?/.gradle/gradle.properties"
     echo "sonatypePassword=$NEXUS_SONATYPE_PASSWORD" >> "?/.gradle/gradle.properties"
   fi
-  docker-compose run --rm -u "$USER_UID:$GROUP_GID" gradle gradle publish
+  docker-compose run --rm -u "$USER_OPTION" gradle gradle publish
 }
 
 for param in "$@"
 do
   case $param in
+    '--no-user')
+      ;;
     clean)
       clean
       ;;
