@@ -1,11 +1,15 @@
 #!/bin/bash
 
 
-if [ -z ${USER_UID:+x} ]
+if [[ "$*" == *"--no-user"* ]]
 then
-  export USER_UID=1000
-  export GROUP_GID=1000
-fi
+  USER_OPTION=""
+else
+  if [ -z ${USER_UID:+x} ]
+  then
+    export USER_UID=1000
+    export GROUP_GID=1000
+  fi
   USER_OPTION="-u $USER_UID:$GROUP_GID"
 fi
 
