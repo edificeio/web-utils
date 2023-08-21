@@ -1,5 +1,6 @@
 package fr.wseduc.transformer;
 
+import fr.wseduc.transformer.to.ContentTransformerResponse;
 import io.vertx.core.json.JsonObject;
 import org.junit.Assert;
 import org.junit.Test;
