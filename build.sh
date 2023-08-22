@@ -34,7 +34,7 @@ publish() {
     echo "sonatypeUsername=$NEXUS_SONATYPE_USERNAME" >> "?/.gradle/gradle.properties"
     echo "sonatypePassword=$NEXUS_SONATYPE_PASSWORD" >> "?/.gradle/gradle.properties"
   fi
-  docker-compose run --rm -u $USER_OPTION gradle gradle publish
+  docker-compose run --rm $USER_OPTION gradle gradle publish
 }
 
 for param in "$@"
