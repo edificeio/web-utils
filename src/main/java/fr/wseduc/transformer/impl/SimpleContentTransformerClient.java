@@ -7,6 +7,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -37,9 +38,9 @@ public class SimpleContentTransformerClient implements IContentTransformerClient
         final Promise<ContentTransformerResponse> promise = Promise.promise();
         final HttpClientRequest request = this.httpClient.post("/transform", response -> {
             if (response.statusCode() == 200) {
-                response.bodyHandler(body -> promise.complete(new JsonObject(body.toString()).mapTo(ContentTransformerResponse.class)));
+                response.bodyHandler(body -> promise.complete(Json.decodeValue(body, ContentTransformerResponse.class)));
             } else {
-                promise.fail("transform.error." + response.statusCode());
+                response.bodyHandler( body -> promise.fail("transform.error." + response.statusCode() + " with response body: " + body.toString()));
             }
         });
         request.exceptionHandler(promise::fail);

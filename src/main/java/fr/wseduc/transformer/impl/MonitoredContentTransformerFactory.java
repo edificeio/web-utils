@@ -17,6 +17,6 @@ public class MonitoredContentTransformerFactory implements IContentTransformerFa
     @Override
     public IContentTransformerClient create() {
         // TODO mest : implement a monitored content transformer client in WB-2009
-        return IContentTransformerClient.noop;
+        return new ContentTransformerClientWithMetrics();
     }
 }
