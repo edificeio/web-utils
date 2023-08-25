@@ -61,6 +61,8 @@ dependencies {
   testCompile "junit:junit:$junitVersion"
   testCompile "commons-codec:commons-codec:$commonsCodecVersion"
   testCompile "com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer:$javaHtmlSanitizerVersion"
+  provided "io.vertx:vertx-micrometer-metrics:$vertxVersion"
+  provided "io.micrometer:micrometer-registry-prometheus:$micrometerPrometheusVersion"
 }
 
 install {
