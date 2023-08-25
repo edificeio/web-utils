@@ -1,6 +1,7 @@
 package fr.wseduc.transformer.impl;
 
 import fr.wseduc.transformer.IContentTransformerClient;
+import fr.wseduc.transformer.IContentTransformerClientMetricsRecorder;
 import fr.wseduc.transformer.IContentTransformerFactory;
 
 /**
@@ -8,15 +9,17 @@ import fr.wseduc.transformer.IContentTransformerFactory;
  */
 public class MonitoredContentTransformerFactory implements IContentTransformerFactory {
 
-    IContentTransformerFactory contentTransformerFactory;
+    private final IContentTransformerFactory contentTransformerFactory;
+    private final IContentTransformerClientMetricsRecorder metricsRecorder;
 
-    public MonitoredContentTransformerFactory(IContentTransformerFactory contentTransformerFactory) {
+    public MonitoredContentTransformerFactory(final IContentTransformerFactory contentTransformerFactory,
+                                              final ContentTransformerClientMetricsRecorder.Configuration configuration) {
         this.contentTransformerFactory = contentTransformerFactory;
+        this.metricsRecorder = new ContentTransformerClientMetricsRecorder(configuration);
     }
 
     @Override
     public IContentTransformerClient create() {
-        // TODO mest : implement a monitored content transformer client in WB-2009
-        return new ContentTransformerClientWithMetrics();
+        return new ContentTransformerClientWithMetrics(contentTransformerFactory.create(), metricsRecorder);
     }
 }
