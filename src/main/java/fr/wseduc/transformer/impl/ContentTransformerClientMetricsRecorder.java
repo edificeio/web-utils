@@ -1,11 +1,19 @@
 package fr.wseduc.transformer.impl;
 
 import fr.wseduc.transformer.IContentTransformerClientMetricsRecorder;
+import fr.wseduc.transformer.to.ContentTransformerAction;
+import static fr.wseduc.webutils.metrics.MetricsUtils.getSla;
+import static fr.wseduc.webutils.metrics.MetricsUtils.setTimerSla;
+import io.vertx.core.json.JsonArray;
 import fr.wseduc.transformer.to.ContentTransformerFormat;
 import fr.wseduc.transformer.to.ContentTransformerRequest;
 import io.micrometer.core.instrument.*;
 import io.vertx.core.json.JsonObject;
 import io.vertx.micrometer.backends.BackendRegistries;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import static java.util.Collections.emptyList;
+import io.micrometer.core.instrument.Counter;
 
 import java.time.Duration;
 import java.util.List;
