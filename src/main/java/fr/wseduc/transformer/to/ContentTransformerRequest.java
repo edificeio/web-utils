@@ -14,7 +14,7 @@ public class ContentTransformerRequest {
     /**
      * Transformation action to perform
      */
-    private final String action;
+    private final ContentTransformerAction action;
     /**
      * Version of content to transform
      */
@@ -36,7 +36,7 @@ public class ContentTransformerRequest {
      * @param jsonContent json content to transform into html
      */
     @JsonCreator
-    public ContentTransformerRequest(@JsonProperty("action") String action,
+    public ContentTransformerRequest(@JsonProperty("action") ContentTransformerAction action,
                                      @JsonProperty("contentVersion") int contentVersion,
                                      @JsonProperty("htmlContent") String htmlContent,
                                      @JsonProperty("jsonContent") JsonObject jsonContent) {
@@ -45,8 +45,14 @@ public class ContentTransformerRequest {
         this.htmlContent = htmlContent;
         this.jsonContent =jsonContent;
     }
+    public ContentTransformerRequest(int contentVersion, String htmlContent) {
+        this(ContentTransformerAction.HTML2JSON, contentVersion, htmlContent, null);
+    }
+    public ContentTransformerRequest(int contentVersion, JsonObject jsonContent) {
+        this(ContentTransformerAction.JSON2HTML, contentVersion, null, jsonContent);
+    }
 
-    public String getAction() {
+    public ContentTransformerAction getAction() {
         return action;
     }
 
