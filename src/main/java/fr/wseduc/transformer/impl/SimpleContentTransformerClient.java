@@ -11,6 +11,7 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 
 /**
  * Client to call rich content transformer service
@@ -19,14 +20,16 @@ public class SimpleContentTransformerClient implements IContentTransformerClient
 
     private static final Logger log = LoggerFactory.getLogger(SimpleContentTransformerClient.class);
     private final HttpClient httpClient;
+    private final String authHeader;
 
     /**
-     * Constructor
-     * @param vertx vertx instance
-     * @param config content transformer config
+     * @param httpClient HTTP client
+     * @param authHeader Authorization header to authorize calls to content transformer. May be null if we
+     *                   don't use any form of authentication
      */
-    public SimpleContentTransformerClient(HttpClient httpClient) {
+    public SimpleContentTransformerClient(final HttpClient httpClient, final String authHeader) {
         this.httpClient = httpClient;
+        this.authHeader = authHeader;
     }
 
     /**
@@ -45,6 +48,9 @@ public class SimpleContentTransformerClient implements IContentTransformerClient
         });
         request.exceptionHandler(promise::fail);
         request.putHeader("Content-Type", "application/json");
+        if(isNotEmpty(authHeader)) {
+            request.putHeader("Authorization", authHeader);
+        }
         request.end(JsonObject.mapFrom(contentTransformerRequest).encode());
         return promise.future();
     }
