@@ -24,9 +24,9 @@ public class ContentTransformerClientWithMetrics implements IContentTransformerC
     public Future<ContentTransformerResponse> transform(ContentTransformerRequest request) {
         final long start = System.currentTimeMillis();
         return client.transform(request).onSuccess(sent ->
-                metricsRecorder.onTransformSuccess(request.getAction(), System.currentTimeMillis() - start)
+                metricsRecorder.onTransformSuccess(request, System.currentTimeMillis() - start)
         ).onFailure(th ->
-                metricsRecorder.onTransformFailure(request.getAction(), System.currentTimeMillis() - start)
+                metricsRecorder.onTransformFailure(request, System.currentTimeMillis() - start)
         );
     }
 }
