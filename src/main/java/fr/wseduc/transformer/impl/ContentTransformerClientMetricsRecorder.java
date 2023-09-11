@@ -2,19 +2,18 @@ package fr.wseduc.transformer.impl;
 
 import fr.wseduc.transformer.IContentTransformerClientMetricsRecorder;
 import fr.wseduc.transformer.to.ContentTransformerAction;
-import static fr.wseduc.webutils.metrics.MetricsUtils.getSla;
-import static fr.wseduc.webutils.metrics.MetricsUtils.setTimerSla;
-import io.vertx.core.json.JsonArray;
+import fr.wseduc.transformer.to.ContentTransformerRequest;
+import io.micrometer.core.instrument.*;
 import io.vertx.core.json.JsonObject;
 import io.vertx.micrometer.backends.BackendRegistries;
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Timer;
-import static java.util.Collections.emptyList;
-import io.micrometer.core.instrument.Counter;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
+import static fr.wseduc.webutils.metrics.MetricsUtils.getSla;
+import static fr.wseduc.webutils.metrics.MetricsUtils.setTimerSla;
+import static java.util.Collections.emptyList;
 
 
 public class ContentTransformerClientMetricsRecorder implements IContentTransformerClientMetricsRecorder {
@@ -22,6 +21,7 @@ public class ContentTransformerClientMetricsRecorder implements IContentTransfor
     private final Timer sendingTimes;
     private final Counter successCounter;
     private final Counter failureCounter;
+    private final DistributionSummary durationPerByte;
 
     public ContentTransformerClientMetricsRecorder(final Configuration configuration) {
         final MeterRegistry registry = BackendRegistries.getDefaultNow();
@@ -43,21 +43,29 @@ public class ContentTransformerClientMetricsRecorder implements IContentTransfor
                 .description("number of times an error occurred while trying to transform a content")
                 .tags(tags)
                 .register(registry);
-
+        durationPerByte = DistributionSummary.builder("content.transform.rate")
+                .description("time to transform content per content size")
+                .baseUnit("ms/byte")
+                .tags(tags)
+                .publishPercentileHistogram()
+                .register(registry);
     }
 
     @Override
-    public void onTransformSuccess(final ContentTransformerAction action, final long durationInMs) {
-        onTransform(true, action, durationInMs);
+    public void onTransformSuccess(final ContentTransformerRequest request, final long durationInMs) {
+        onTransform(true, request, durationInMs);
     }
 
     @Override
-    public void onTransformFailure(final ContentTransformerAction action, final long durationInMs) {
-        onTransform(false, action, durationInMs);
+    public void onTransformFailure(final ContentTransformerRequest request, final long durationInMs) {
+        onTransform(false, request, durationInMs);
     }
 
-    public void onTransform(final boolean success, final ContentTransformerAction action, final long durationInMs) {
+    public void onTransform(final boolean success, final ContentTransformerRequest request, final long durationInMs) {
         sendingTimes.record(durationInMs, TimeUnit.MILLISECONDS);
+        if (request.getAction() == ContentTransformerAction.HTML2JSON && request.getHtmlContent() != null) {
+            durationPerByte.record((double) durationInMs /request.getHtmlContent().length());
+        }
         if(success) {
             successCounter.increment();
         } else {
