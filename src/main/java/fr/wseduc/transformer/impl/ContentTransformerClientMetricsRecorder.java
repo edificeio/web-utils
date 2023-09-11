@@ -64,7 +64,7 @@ public class ContentTransformerClientMetricsRecorder implements IContentTransfor
     public void onTransform(final boolean success, final ContentTransformerRequest request, final long durationInMs) {
         sendingTimes.record(durationInMs, TimeUnit.MILLISECONDS);
         if (request.getAction() == ContentTransformerAction.HTML2JSON && request.getHtmlContent() != null) {
-            durationPerByte.record((double) durationInMs /request.getHtmlContent().length());
+            durationPerByte.record((double) durationInMs/request.getHtmlContent().length());
         }
         if(success) {
             successCounter.increment();
