@@ -1,7 +1,7 @@
 package fr.wseduc.transformer.impl;
 
 import fr.wseduc.transformer.IContentTransformerClientMetricsRecorder;
-import fr.wseduc.transformer.to.ContentTransformerAction;
+import fr.wseduc.transformer.to.ContentTransformerFormat;
 import fr.wseduc.transformer.to.ContentTransformerRequest;
 import io.micrometer.core.instrument.*;
 import io.vertx.core.json.JsonObject;
@@ -63,7 +63,7 @@ public class ContentTransformerClientMetricsRecorder implements IContentTransfor
 
     public void onTransform(final boolean success, final ContentTransformerRequest request, final long durationInMs) {
         sendingTimes.record(durationInMs, TimeUnit.MILLISECONDS);
-        if (request.getAction() == ContentTransformerAction.HTML2JSON && request.getHtmlContent() != null) {
+        if (request.getHtmlContent() != null) {
             durationPerByte.record((double) durationInMs/request.getHtmlContent().length());
         }
         if(success) {

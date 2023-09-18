@@ -26,6 +26,10 @@ public class ContentTransformerResponse {
      * Json content transformed from html content
      */
     private final JsonObject jsonContent;
+    /**
+     * Plain text content from transformed content
+     */
+    private final String plainTextContent;
 
     /**
      * Constructor
@@ -36,10 +40,12 @@ public class ContentTransformerResponse {
     @JsonCreator
     public ContentTransformerResponse(@JsonProperty("contentVersion") int contentVersion,
                                       @JsonProperty("htmlContent") String htmlContent,
-                                      @JsonProperty("jsonContent") Map<String, Object> jsonContent) {
+                                      @JsonProperty("jsonContent") Map<String, Object> jsonContent,
+                                      @JsonProperty("plainTextContent") String plainTextContent) {
         this.contentVersion = contentVersion;
         this.htmlContent = htmlContent;
         this.jsonContent = new JsonObject(jsonContent);
+        this.plainTextContent = plainTextContent;
     }
 
     public int getContentVersion() {
@@ -54,16 +60,20 @@ public class ContentTransformerResponse {
         return jsonContent;
     }
 
+    public String getPlainTextContent() {
+        return plainTextContent;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ContentTransformerResponse that = (ContentTransformerResponse) o;
-        return contentVersion == that.contentVersion && Objects.equals(htmlContent, that.htmlContent) && Objects.equals(jsonContent, that.jsonContent);
+        return contentVersion == that.contentVersion && Objects.equals(htmlContent, that.htmlContent) && Objects.equals(jsonContent, that.jsonContent) && Objects.equals(plainTextContent, that.plainTextContent);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(contentVersion, htmlContent, jsonContent);
+        return Objects.hash(contentVersion, htmlContent, jsonContent, plainTextContent);
     }
 }

@@ -3,14 +3,15 @@ package fr.wseduc.transformer.to;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 
-public enum ContentTransformerAction {
+public enum ContentTransformerFormat {
 
-    HTML2JSON("html2json"),
-    JSON2HTML("json2html");
+    HTML("html"),
+    JSON("json"),
+    PLAINTEXT("plainText");
 
     private final String value;
 
-    ContentTransformerAction(final String value) {
+    ContentTransformerFormat(final String value) {
         this.value = value;
     }
 
