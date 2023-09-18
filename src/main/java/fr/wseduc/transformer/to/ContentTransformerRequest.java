@@ -5,6 +5,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.vertx.core.json.JsonObject;
 
+import java.util.Set;
+
 /**
  * Content transformer service request
  */
@@ -12,9 +14,9 @@ import io.vertx.core.json.JsonObject;
 public class ContentTransformerRequest {
 
     /**
-     * Transformation action to perform
+     * Transformation formats requested
      */
-    private final ContentTransformerAction action;
+    private final Set<ContentTransformerFormat> requestedFormats;
     /**
      * Version of content to transform
      */
@@ -30,30 +32,24 @@ public class ContentTransformerRequest {
 
     /**
      * Constructor
-     * @param action transformation action to perform
+     * @param requestedFormats requested transformation formats
      * @param contentVersion version of content to transform
      * @param htmlContent html content to transform into json
      * @param jsonContent json content to transform into html
      */
     @JsonCreator
-    public ContentTransformerRequest(@JsonProperty("action") ContentTransformerAction action,
+    public ContentTransformerRequest(@JsonProperty("action") Set<ContentTransformerFormat> requestedFormats,
                                      @JsonProperty("contentVersion") int contentVersion,
                                      @JsonProperty("htmlContent") String htmlContent,
                                      @JsonProperty("jsonContent") JsonObject jsonContent) {
-        this.action = action;
+        this.requestedFormats = requestedFormats;
         this.contentVersion = contentVersion;
         this.htmlContent = htmlContent;
         this.jsonContent =jsonContent;
     }
-    public ContentTransformerRequest(int contentVersion, String htmlContent) {
-        this(ContentTransformerAction.HTML2JSON, contentVersion, htmlContent, null);
-    }
-    public ContentTransformerRequest(int contentVersion, JsonObject jsonContent) {
-        this(ContentTransformerAction.JSON2HTML, contentVersion, null, jsonContent);
-    }
 
-    public ContentTransformerAction getAction() {
-        return action;
+    public Set<ContentTransformerFormat> getRequestedFormats() {
+        return requestedFormats;
     }
 
     public int getContentVersion() {
