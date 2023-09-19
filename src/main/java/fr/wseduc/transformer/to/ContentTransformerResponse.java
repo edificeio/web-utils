@@ -30,22 +30,36 @@ public class ContentTransformerResponse {
      * Plain text content from transformed content
      */
     private final String plainTextContent;
+    /**
+     * Cleaned Html content
+     */
+    private final String cleanHtml;
+    /**
+     * Cleaned Json content
+     */
+    private final JsonObject cleanJson;
 
     /**
      * Constructor
      * @param contentVersion version of transformed content
      * @param htmlContent html content transformed from json
      * @param jsonContent json content transformed from html
+     * @param cleanHtml cleaned html content
+     * @param cleanJson cleaned json content
      */
     @JsonCreator
     public ContentTransformerResponse(@JsonProperty("contentVersion") int contentVersion,
                                       @JsonProperty("htmlContent") String htmlContent,
                                       @JsonProperty("jsonContent") Map<String, Object> jsonContent,
-                                      @JsonProperty("plainTextContent") String plainTextContent) {
+                                      @JsonProperty("plainTextContent") String plainTextContent,
+                                      @JsonProperty("cleanHtml") String cleanHtml,
+                                      @JsonProperty("cleanJson") Map<String, Object> cleanJson) {
         this.contentVersion = contentVersion;
         this.htmlContent = htmlContent;
-        this.jsonContent = new JsonObject(jsonContent);
+        this.jsonContent = jsonContent == null ? new JsonObject() : new JsonObject(jsonContent);
         this.plainTextContent = plainTextContent;
+        this.cleanHtml = cleanHtml;
+        this.cleanJson = cleanJson == null ? new JsonObject() : new JsonObject(cleanJson);
     }
 
     public int getContentVersion() {
@@ -64,16 +78,25 @@ public class ContentTransformerResponse {
         return plainTextContent;
     }
 
+    public String getCleanHtml() {
+        return cleanHtml;
+    }
+
+    public JsonObject getCleanJson() {
+        return cleanJson;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ContentTransformerResponse that = (ContentTransformerResponse) o;
-        return contentVersion == that.contentVersion && Objects.equals(htmlContent, that.htmlContent) && Objects.equals(jsonContent, that.jsonContent) && Objects.equals(plainTextContent, that.plainTextContent);
+        return contentVersion == that.contentVersion && Objects.equals(htmlContent, that.htmlContent) && Objects.equals(jsonContent, that.jsonContent) && Objects.equals(plainTextContent, that.plainTextContent) && Objects.equals(cleanHtml, that.cleanHtml) && Objects.equals(cleanJson, that.cleanJson);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(contentVersion, htmlContent, jsonContent, plainTextContent);
+        return Objects.hash(contentVersion, htmlContent, jsonContent, plainTextContent, cleanHtml, cleanJson);
     }
+
 }
