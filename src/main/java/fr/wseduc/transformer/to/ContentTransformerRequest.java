@@ -38,7 +38,7 @@ public class ContentTransformerRequest {
      * @param jsonContent json content to transform into html
      */
     @JsonCreator
-    public ContentTransformerRequest(@JsonProperty("action") Set<ContentTransformerFormat> requestedFormats,
+    public ContentTransformerRequest(@JsonProperty("requestedFormats") Set<ContentTransformerFormat> requestedFormats,
                                      @JsonProperty("contentVersion") int contentVersion,
                                      @JsonProperty("htmlContent") String htmlContent,
                                      @JsonProperty("jsonContent") JsonObject jsonContent) {
@@ -64,3 +64,4 @@ public class ContentTransformerRequest {
         return jsonContent;
     }
 }
+

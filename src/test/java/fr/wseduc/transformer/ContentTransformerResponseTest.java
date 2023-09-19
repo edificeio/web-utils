@@ -18,7 +18,7 @@ public class ContentTransformerResponseTest {
         JsonObject jsonBody = new JsonObject("{\"contentVersion\":0,\"jsonContent\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Le lorem ipsum est, en imprimerie, une suite de mots sans signification utilisée à titre provisoire pour calibrer une mise en pag\"}]}]},\"plainTextContent\":\"Le lorem ipsum est, en imprimerie, une suite de mots sans signification utilisée à titre provisoire pour calibrer une mise en pag\"}");
         JsonObject jsonContent = new JsonObject("{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Le lorem ipsum est, en imprimerie, une suite de mots sans signification utilisée à titre provisoire pour calibrer une mise en pag\"}]}]}");
 
-        Assert.assertEquals(new ContentTransformerResponse(0, null, jsonContent.getMap(), "Le lorem ipsum est, en imprimerie, une suite de mots sans signification utilisée à titre provisoire pour calibrer une mise en pag"), jsonBody.mapTo(ContentTransformerResponse.class));
+        Assert.assertEquals(new ContentTransformerResponse(0, null, jsonContent.getMap(), "Le lorem ipsum est, en imprimerie, une suite de mots sans signification utilisée à titre provisoire pour calibrer une mise en pag", null, null), jsonBody.mapTo(ContentTransformerResponse.class));
     }
 
 }
