@@ -24,6 +24,7 @@ import java.util.Map;
 
 import static fr.wseduc.webutils.Utils.getOrElse;
 
+// TODO vertx4
 public class JsonObject extends io.vertx.core.json.JsonObject {
 
 	public JsonObject(String json) {
