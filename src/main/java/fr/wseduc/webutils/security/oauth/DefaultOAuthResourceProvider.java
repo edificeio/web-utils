@@ -36,7 +36,7 @@ public class DefaultOAuthResourceProvider implements OAuthResourceProvider {
 	}
 
 	protected void getOAuthInfos(final SecureHttpServerRequest request, final JsonObject payload, final Handler<AsyncResult<JsonObject>> handler){
-		eb.send(OAUTH_ADDRESS, payload, new Handler<AsyncResult<Message<JsonObject>>>() {
+		eb.request(OAUTH_ADDRESS, payload, new Handler<AsyncResult<Message<JsonObject>>>() {
 
 			@Override
 			public void handle(AsyncResult<Message<JsonObject>> event) {

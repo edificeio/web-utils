@@ -1,6 +1,7 @@
 package fr.wseduc.webutils.http.response;
 
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.buffer.Buffer;
@@ -8,6 +9,9 @@ import io.vertx.core.http.HttpFrame;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.http.Cookie;
+import io.vertx.core.net.HostAndPort;
+
+import java.util.Set;
 
 public class BufferHttpResponse implements HttpServerResponse {
     final private Buffer buffer = Buffer.buffer();
@@ -22,15 +26,15 @@ public class BufferHttpResponse implements HttpServerResponse {
     }
 
     @Override
-    public HttpServerResponse write(Buffer data) {
+    public Future<Void> write(Buffer data) {
         buffer.appendBuffer(data);
         return original.write(data);
     }
 
     @Override
-    public void end(Buffer buffer) {
+    public Future<Void> end(Buffer buffer) {
         buffer.appendBuffer(buffer);
-        original.end(buffer);
+        return original.end(buffer);
     }
 
     @Override
@@ -141,14 +145,14 @@ public class BufferHttpResponse implements HttpServerResponse {
 
     @Override
     
-    public HttpServerResponse write(String chunk, String enc) {
+    public Future<Void> write(String chunk, String enc) {
         buffer.appendBuffer(Buffer.buffer(chunk, enc));
         return original.write(chunk, enc);
     }
 
     @Override
     
-    public HttpServerResponse write(String chunk) {
+    public Future<Void> write(String chunk) {
         buffer.appendBuffer(Buffer.buffer(chunk));
         return original.write(chunk);
     }
@@ -160,37 +164,47 @@ public class BufferHttpResponse implements HttpServerResponse {
     }
 
     @Override
-    public void end(String chunk) {
+    public Future<Void> writeEarlyHints(MultiMap headers) {
+        return original.writeEarlyHints(headers);
+    }
+
+    @Override
+    public void writeEarlyHints(MultiMap headers, Handler<AsyncResult<Void>> handler) {
+        original.writeEarlyHints(headers, handler);
+    }
+
+    @Override
+    public Future<Void> end(String chunk) {
         buffer.appendBuffer(Buffer.buffer(chunk));
-        original.end(chunk);
+        return original.end(chunk);
     }
 
     @Override
-    public void end(String chunk, String enc) {
+    public Future<Void> end(String chunk, String enc) {
         buffer.appendBuffer(Buffer.buffer(chunk, enc));
-        original.end(chunk, enc);
+        return original.end(chunk, enc);
     }
 
     @Override
-    public void end() {
-        original.end();
+    public Future<Void> end() {
+        return original.end();
     }
 
     @Override
     
-    public HttpServerResponse sendFile(String filename) {
+    public Future<Void> sendFile(String filename) {
         return original.sendFile(filename);
     }
 
     @Override
     
-    public HttpServerResponse sendFile(String filename, long offset) {
+    public Future<Void> sendFile(String filename, long offset) {
         return original.sendFile(filename, offset);
     }
 
     @Override
     
-    public HttpServerResponse sendFile(String filename, long offset, long length) {
+    public Future<Void> sendFile(String filename, long offset, long length) {
         return original.sendFile(filename, offset, length);
     }
 
@@ -277,13 +291,23 @@ public class BufferHttpResponse implements HttpServerResponse {
     }
 
     @Override
-    public void reset() {
-        original.reset();
+    public Future<HttpServerResponse> push(HttpMethod method, HostAndPort authority, String path, MultiMap headers) {
+        return null;
     }
 
     @Override
-    public void reset(long code) {
-        original.reset(code);
+    public Future<HttpServerResponse> push(HttpMethod method, String host, String path, MultiMap headers) {
+        return null;
+    }
+
+    @Override
+    public boolean reset() {
+        return original.reset();
+    }
+
+    @Override
+    public boolean reset(long code) {
+        return original.reset(code);
     }
 
     @Override
@@ -326,21 +350,18 @@ public class BufferHttpResponse implements HttpServerResponse {
 	}
 
 	@Override
-	public HttpServerResponse write(Buffer buff, Handler<AsyncResult<Void>> handler)
-	{
-		return original.write(buff, handler);
+	public void write(Buffer buff, Handler<AsyncResult<Void>> handler) {
+        original.write(buff, handler);
 	}
 
 	@Override
-	public HttpServerResponse write(String str, Handler<AsyncResult<Void>> handler)
-	{
-		return original.write(str, handler);
+	public void write(String str, Handler<AsyncResult<Void>> handler) {
+        original.write(str, handler);
 	}
 
 	@Override
-	public HttpServerResponse write(String str, String str2, Handler<AsyncResult<Void>> handler)
-	{
-		return original.write(str, str2, handler);
+	public void write(String str, String str2, Handler<AsyncResult<Void>> handler) {
+        original.write(str, str2, handler);
 	}
 
 	@Override
@@ -354,4 +375,14 @@ public class BufferHttpResponse implements HttpServerResponse {
 	{
 		return original.removeCookie(str, bool);
 	}
+
+    @Override
+    public Set<Cookie> removeCookies(String name, boolean invalidate) {
+        return null;
+    }
+
+    @Override
+    public @io.vertx.codegen.annotations.Nullable Cookie removeCookie(String name, String domain, String path, boolean invalidate) {
+        return null;
+    }
 }

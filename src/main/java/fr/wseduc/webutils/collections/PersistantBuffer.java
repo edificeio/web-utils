@@ -223,7 +223,7 @@ public class PersistantBuffer {
 				@Override
 				public void handle(AsyncResult<Void> voidAsyncResult) {
 					if (voidAsyncResult.failed()) {
-						log.error("Error closing buffer file.");
+						log.error("Error closing buffer file.", voidAsyncResult.cause());
 					}
 					f = null;
 					vertx.fileSystem().delete(filePath, new Handler<AsyncResult<Void>>() {

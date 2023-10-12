@@ -21,19 +21,25 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.security.PrivateKey;
 import java.util.Base64;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import fr.wseduc.webutils.security.JWT;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
+import io.vertx.codegen.annotations.Nullable;
+import io.vertx.core.*;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
+import io.vertx.core.http.impl.HttpClientResponseImpl;
+import io.vertx.core.http.impl.headers.HeadersMultiMap;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.json.DecodeException;
 
 import fr.wseduc.webutils.http.Renders;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.core.net.NetSocket;
+import org.apache.commons.lang3.StringUtils;
 
 import static fr.wseduc.webutils.Utils.isNotEmpty;
 
@@ -125,122 +131,100 @@ public class OAuth2Client {
 
 	public void getAccessToken(String code, boolean basic,
 			final Handler<JsonObject> handler) throws UnsupportedEncodingException {
-		String stringLog = "POST %s %d rt=%d";
-		long startTime = System.currentTimeMillis();
-		@SuppressWarnings("deprecation")
-		HttpClientRequest req = httpClient.post(this.uri.getPath() + tokenUrn, new Handler<HttpClientResponse>() {
-			@Override
-			public void handle(final HttpClientResponse response) {
-				long endTime = System.currentTimeMillis();
-				long responseTime = endTime - startTime;
-				log.info(String.format(stringLog, response.request().path(), response.statusCode(), responseTime));
-				response.bodyHandler(new Handler<Buffer>() {
-
-					@Override
-					public void handle(Buffer r) {
-						try
-						{
-							JsonObject j = new JsonObject(r.toString("UTF-8"));
-							if (response.statusCode() == 200) {
-								JsonObject json = new JsonObject()
-								.put("status", "ok")
-								.put("token", j);
-								handler.handle(json);
-							} else {
-								handler.handle(j.put("statusCode", response.statusCode()));
-							}
-						}
-						catch(DecodeException e)
-						{
-							handler.handle(new JsonObject().put("statusCode", response.statusCode()));
-						}
-					}
-				});
-			}
-		});
-		String body = "grant_type=authorization_code&code=" + code +
-				"&redirect_uri=" + redirectUri;
+		HeadersMultiMap headers = new HeadersMultiMap()
+				.add("Content-Type", "application/x-www-form-urlencoded")
+				.add("Accept", "application/json; charset=UTF-8");
+		StringBuilder body = new StringBuilder("grant_type=authorization_code&code=" + code + "&redirect_uri=" + redirectUri);
 		if (basic) {
-		req.headers()
-			.add("Authorization", "Basic " + Base64.getEncoder().encodeToString((clientId + ":" + secret).getBytes()));
+			headers.add("Authorization", "Basic " + Base64.getEncoder().encodeToString((clientId + ":" + secret).getBytes()));
 		} else {
-			body += "&client_id=" + clientId + "&client_secret=" + secret;
+			body.append("&client_id=" + clientId + "&client_secret=" + secret);
 		}
-		req.headers()
-			.add("Content-Type", "application/x-www-form-urlencoded")
-			.add("Accept", "application/json; charset=UTF-8");
-		req.exceptionHandler(except -> log.error("Error getting access token.", except));
-		req.end(body);
+    String stringLog = "POST %s %d rt=%d";
+    long startTime = System.currentTimeMillis();
+		httpClient.request(
+				new RequestOptions()
+						.setMethod(HttpMethod.POST)
+						.setAbsoluteURI(this.uri.getPath() + tokenUrn)
+						.setHeaders(headers))
+				.flatMap(request -> request.send(body.toString()))
+				.onSuccess(response -> {
+          long endTime = System.currentTimeMillis();
+          long responseTime = endTime - startTime;
+          log.info(String.format(stringLog, response.request().path(), response.statusCode(), responseTime));
+          response.bodyHandler(buffer -> {
+            try {
+              JsonObject j = new JsonObject(buffer.toString("UTF-8"));
+              if (response.statusCode() == 200) {
+                JsonObject json = new JsonObject()
+                  .put("status", "ok")
+                  .put("token", j);
+                handler.handle(json);
+              } else {
+                handler.handle(j.put("statusCode", response.statusCode()));
+              }
+            }
+            catch(DecodeException e)
+            {
+              handler.handle(new JsonObject().put("statusCode", response.statusCode()));
+            }
+          });
+        })
+				.onFailure(except -> log.error("Error getting access token.", except));
 	}
 
 	public void clientCredentialsToken(String scope,
 			final Handler<JsonObject> handler) throws UnsupportedEncodingException {
-		HttpClientRequest req = httpClient.post(this.uri.getPath() + tokenUrn, new Handler<HttpClientResponse>() {
-
-			@Override
-			public void handle(final HttpClientResponse response) {
-				response.bodyHandler(new Handler<Buffer>() {
-
-					@Override
-					public void handle(Buffer r) {
-						JsonObject j = new JsonObject(r.toString("UTF-8"));
-						if (response.statusCode() == 200) {
-							JsonObject json = new JsonObject()
-									.put("status", "ok")
-									.put("token", j);
-							handler.handle(json);
-						} else {
-							handler.handle(j.put("statusCode", response.statusCode()));
-						}
-					}
-				});
-			}
-		});
-		req.headers()
-				.add("Authorization", "Basic " + Base64.getEncoder().encode(
-						(clientId + ":" + secret).getBytes("UTF-8")))
-		.add("Content-Type", "application/x-www-form-urlencoded")
-				.add("Accept", "application/json; charset=UTF-8");
-		String body = "grant_type=client_credentials";
+		StringBuilder body = new StringBuilder("grant_type=client_credentials");
 		if (scope != null && !scope.trim().isEmpty()) {
-			body += "&scope=" + scope;
+			body.append("&scope=" + scope);
 		}
-		req.exceptionHandler(except -> log.error("Error getting client credentials token.", except));
-		req.end(body, "UTF-8");
+
+		httpClient.request(
+				new RequestOptions()
+						.setMethod(HttpMethod.POST)
+						.setAbsoluteURI(this.uri.getPath() + tokenUrn)
+						.setHeaders(new HeadersMultiMap()
+								.add("Authorization", "Basic " + Base64.getEncoder().encode((clientId + ":" + secret).getBytes("UTF-8")))
+								.add("Content-Type", "application/x-www-form-urlencoded")
+								.add("Accept", "application/json; charset=UTF-8")))
+				.flatMap(request -> request.send(body.toString()))
+				.onSuccess(response -> response.bodyHandler(r -> {
+                    JsonObject j = new JsonObject(r.toString("UTF-8"));
+                    if (response.statusCode() == 200) {
+                        JsonObject json = new JsonObject()
+                                .put("status", "ok")
+                                .put("token", j);
+                        handler.handle(json);
+                    } else {
+                        handler.handle(j.put("statusCode", response.statusCode()));
+                    }
+                }))
+				.onFailure(except -> log.error("Error getting client credentials token.", except));
 	}
 
 	public void client2LO(JsonObject payload, PrivateKey privateKey, final Handler<JsonObject> handler) throws Exception{
 		String jwt = JWT.encodeAndSign(payload, null, privateKey);
+		httpClient.request(new RequestOptions()
+				.setMethod(HttpMethod.POST)
+				.setAbsoluteURI(this.uri.getPath() + tokenUrn)
+				.setHeaders(new HeadersMultiMap()
+						.add("Content-Type", "application/x-www-form-urlencoded")
+						.add("Accept", "application/json; charset=UTF-8")))
+				.flatMap(request -> request.send(new StringBuilder("grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer").append("&assertion=").append(jwt).toString()))
+				.onSuccess(response -> response.bodyHandler(r -> {
+                    JsonObject j = new JsonObject(r.toString("UTF-8"));
+                    if (response.statusCode() == 200) {
 
-		HttpClientRequest req = httpClient.post(this.uri.getPath() + tokenUrn, new Handler<HttpClientResponse>() {
-
-			@Override
-			public void handle(final HttpClientResponse response) {
-				response.bodyHandler(new Handler<Buffer>() {
-
-					@Override
-					public void handle(Buffer r) {
-						JsonObject j = new JsonObject(r.toString("UTF-8"));
-						if (response.statusCode() == 200) {
-
-							JsonObject json = new JsonObject()
-									.put("status", "ok")
-									.put("token", j);
-							handler.handle(json);
-						} else {
-							handler.handle(j.put("statusCode", response.statusCode()));
-						}
-					}
-				});
-			}
-		});
-		req.headers()
-				.add("Content-Type", "application/x-www-form-urlencoded")
-				.add("Accept", "application/json; charset=UTF-8");
-		String body = "grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer";
-		body += "&assertion=" + jwt;
-		req.exceptionHandler(except -> log.error("Error getting 2LO access token.", except));
-		req.end(body, "UTF-8");
+                        JsonObject json = new JsonObject()
+                                .put("status", "ok")
+                                .put("token", j);
+                        handler.handle(json);
+                    } else {
+                        handler.handle(j.put("statusCode", response.statusCode()));
+                    }
+                }))
+				.onFailure(except -> log.error("Error getting 2LO access token.", except));
 	}
 
 
@@ -251,12 +235,18 @@ public class OAuth2Client {
 
 	public void getProtectedResource(String path, String accessToken, Map<String, String> headers,
 			Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, headers, null, httpClient.get(this.uri.getPath() + path, handler));
+		createRequest(HttpMethod.GET, this.uri.getPath() + path, accessToken, headers)
+		.flatMap(HttpClientRequest::send)
+		.onSuccess(handler)
+		.onFailure(th -> onSendRequestFail(th, path, handler));
 	}
 
 	public void getProtectedResource(String path, String accessToken, String acceptMimeType,
 			Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, acceptMimeType, httpClient.get(this.uri.getPath() + path, handler));
+		createRequest(HttpMethod.GET, this.uri.getPath() + path, accessToken, extraHeadersForMimeType(acceptMimeType))
+				.flatMap(HttpClientRequest::send)
+				.onSuccess(handler)
+				.onFailure(th -> onSendRequestFail(th, path, handler));
 	}
 
 	public void postProtectedResource(String path, String accessToken, String body,
@@ -266,12 +256,18 @@ public class OAuth2Client {
 
 	public void postProtectedResource(String path, String accessToken, Map<String, String> headers,
 									  String body, Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, headers, body, httpClient.post(this.uri.getPath() + path, handler));
+		createRequest(HttpMethod.PUT, this.uri.getPath() + path, accessToken, headers)
+				.flatMap(r -> r.send(body))
+				.onSuccess(handler)
+				.onFailure(th -> onSendRequestFail(th, path, handler));
 	}
 
 	public void postProtectedResource(String path, String accessToken, String acceptMimeType,
 			String body, Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, acceptMimeType, httpClient.post(this.uri.getPath() + path, handler), body, null);
+		createRequest(HttpMethod.POST, this.uri.getPath() + path, accessToken, extraHeadersForMimeType(acceptMimeType))
+				.flatMap(r -> r.send(body))
+				.onSuccess(handler)
+				.onFailure(th -> onSendRequestFail(th, path, handler));
 	}
 
 	public void putProtectedResource(String path, String accessToken, String body,
@@ -281,12 +277,19 @@ public class OAuth2Client {
 
 	public void putProtectedResource(String path, String accessToken, Map<String, String> headers,
 									 String body, Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, headers, body, httpClient.put(this.uri.getPath() + path, handler));
+		createRequest(HttpMethod.PUT, this.uri.getPath() + path, accessToken, headers)
+				.flatMap(r -> r.send(body))
+				.onSuccess(handler)
+				.onFailure(th -> onSendRequestFail(th, path, handler));
 	}
 
 	public void putProtectedResource(String path, String accessToken, String acceptMimeType,
 			String body, Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, acceptMimeType, httpClient.put(this.uri.getPath() + path, handler), body, null);
+		createRequest(HttpMethod.PUT, this.uri.getPath() + path, accessToken, extraHeadersForMimeType(acceptMimeType))
+				.flatMap(r -> r.send(body))
+				.onSuccess(handler)
+				.onFailure(th -> onSendRequestFail(th, path, handler));
+
 	}
 
 	public void deleteProtectedResource(String path, String accessToken,
@@ -296,43 +299,160 @@ public class OAuth2Client {
 
 	public void deleteProtectedResource(String path, String accessToken, Map<String, String> headers,
 										Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, headers, null, httpClient.delete(this.uri.getPath() + path, handler));
+		createRequest(HttpMethod.DELETE, this.uri.getPath() + path, accessToken, headers)
+				.flatMap(HttpClientRequest::send)
+				.onSuccess(handler)
+				.onFailure(th -> onSendRequestFail(th, path, handler));
 	}
 
 	public void deleteProtectedResource(String path, String accessToken, String acceptMimeType,
 									  Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, acceptMimeType, httpClient.delete(this.uri.getPath() + path, handler));
+		createRequest(HttpMethod.DELETE, this.uri.getPath() + path, accessToken, extraHeadersForMimeType(acceptMimeType))
+				.flatMap(HttpClientRequest::send)
+				.onSuccess(handler)
+				.onFailure(th -> onSendRequestFail(th, path, handler));
 	}
 
-	private void sendProtectedResource(String accessToken, Map<String, String> headers, String body,
-			HttpClientRequest req) {
-		String acceptMimeType = "application/json; charset=UTF-8";
-		if (headers != null && headers.containsKey("Accept")) {
-			acceptMimeType = headers.remove("Accept");
-		}
-		sendProtectedResource(accessToken, acceptMimeType, req, body, headers);
+	private void onSendRequestFail(Throwable th, String path, Handler<HttpClientResponse> handler) {
+		log.error("Error while calling " + path, th);
+		handler.handle(createFake500Response(th, path));
 	}
 
-	private void sendProtectedResource(String accessToken, String acceptMimeType,
-									   HttpClientRequest req) {
-		sendProtectedResource(accessToken, acceptMimeType, req, null, null);
+	private HttpClientResponse createFake500Response(Throwable th, String path) {
+		// TODO vertx4 improve
+		return new HttpClientResponse() {
+			@Override
+			public HttpClientResponse fetch(long amount) {
+				return this;
+			}
+
+			@Override
+			public HttpClientResponse resume() {
+				return this;
+			}
+
+			@Override
+			public HttpClientResponse exceptionHandler(Handler<Throwable> handler) {
+				return this;
+			}
+
+			@Override
+			public HttpClientResponse handler(Handler<Buffer> handler) {
+				return this;
+			}
+
+			@Override
+			public HttpClientResponse pause() {
+				return this;
+			}
+
+			@Override
+			public HttpClientResponse endHandler(Handler<Void> endHandler) {
+				return this;
+			}
+
+			@Override
+			public NetSocket netSocket() {
+				return null;
+			}
+
+			@Override
+			public HttpVersion version() {
+				return HttpVersion.HTTP_1_1;
+			}
+
+			@Override
+			public int statusCode() {
+				return 500;
+			}
+
+			@Override
+			public String statusMessage() {
+				return "server.error";
+			}
+
+			@Override
+			public MultiMap headers() {
+				return new HeadersMultiMap();
+			}
+
+			@Override
+			public @Nullable String getHeader(String headerName) {
+				return null;
+			}
+
+			@Override
+			public String getHeader(CharSequence headerName) {
+				return null;
+			}
+
+			@Override
+			public @Nullable String getTrailer(String trailerName) {
+				return null;
+			}
+
+			@Override
+			public MultiMap trailers() {
+				return null;
+			}
+
+			@Override
+			public List<String> cookies() {
+				return null;
+			}
+
+			@Override
+			public Future<Buffer> body() {
+				return null;
+			}
+
+			@Override
+			public Future<Void> end() {
+				return null;
+			}
+
+			@Override
+			public HttpClientResponse customFrameHandler(Handler<HttpFrame> handler) {
+				return this;
+			}
+
+			@Override
+			public HttpClientRequest request() {
+				return null;
+			}
+
+			@Override
+			public HttpClientResponse streamPriorityHandler(Handler<StreamPriority> handler) {
+				return this;
+			}
+		};
 	}
 
-	private void sendProtectedResource(String accessToken, String acceptMimeType,
-			HttpClientRequest req, String body, Map<String, String> customHeaders) {
-		req.headers()
-				.add("Authorization", "Bearer " + accessToken)
-				.add("Accept", acceptMimeType);
-		if (customHeaders != null) {
-			req.headers().addAll(customHeaders);
+	private Map<String, String> extraHeadersForMimeType(String acceptMimeType) {
+		final Map<String, String> extraHeaders = new HashMap<>();
+		if(StringUtils.isBlank(acceptMimeType)) {
+			extraHeaders.put("Accept", acceptMimeType);
 		}
-		req.exceptionHandler(except -> log.error("Error sending protected resource.", except));
-		if (body != null) {
-			req.end(body);
-		} else {
-			req.end();
-		}
+		return extraHeaders;
 	}
+
+	private Future<HttpClientRequest> createRequest(final HttpMethod method, String uri, String accessToken, Map<String, String> extraHeaders) {
+		final MultiMap headers = new HeadersMultiMap();
+		if(extraHeaders != null) {
+			extraHeaders.forEach(headers::add);
+		}
+		if(!headers.contains("Accept")) {
+			headers.add("Accept", "application/json; charset=UTF-8");
+		}
+		if(StringUtils.isNotBlank(accessToken)) {
+			headers.add("Authorization", "Bearer " + accessToken);
+		}
+		return httpClient.request(new RequestOptions()
+				.setMethod(method)
+				.setURI(uri)
+				.setHeaders(headers));
+	}
+
 
 	public void close() {
 		if (httpClient != null) {

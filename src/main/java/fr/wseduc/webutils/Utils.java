@@ -53,7 +53,7 @@ public class Utils {
 		String src = new Scanner(Utils.class.getClassLoader()
 				.getResourceAsStream(resource), "UTF-8")
 				.useDelimiter("\\A").next();
-		return new fr.wseduc.webutils.collections.JsonObject(src);
+		return new JsonObject(src);
 	}
 
 	public static JsonObject validAndGet(JsonObject json, List<String> fields,

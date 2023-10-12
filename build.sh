@@ -1,46 +1,41 @@
 #!/bin/bash
 
+MVN_OPTS="-Duser.home=/var/maven"
 
-if [[ "$*" == *"--no-user"* ]]
-then
-  USER_OPTION=""
-else
-  if [ -z ${USER_UID:+x} ]
-  then
-    export USER_UID=1000
-    export GROUP_GID=1000
-  fi
-  USER_OPTION="-u $USER_UID:$GROUP_GID"
-fi
-
-
+init() {
+  me=`id -u`:`id -g`
+  echo "DEFAULT_DOCKER_USER=$me" > .env
+}
 clean () {
-  docker compose run --rm $USER_OPTION gradle gradle clean
+  docker compose run --rm maven mvn $MVN_OPTS clean
 }
 
 install() {
-  docker compose run --rm $USER_OPTION gradle gradle install publishToMavenLocal
+  # TODO vertx4
+  docker compose run --rm maven mvn $MVN_OPTS install -DskipTests
 }
 
-testGradle () {
-  ./gradlew "$GRADLE_OPTION"test
+test () {
+  docker compose run --rm maven mvn $MVN_OPTS test
 }
 
 publish() {
-  if [ -e "?/.gradle" ] && [ ! -e "?/.gradle/gradle.properties" ]
-  then
-    echo "odeUsername=$NEXUS_ODE_USERNAME" > "?/.gradle/gradle.properties"
-    echo "odePassword=$NEXUS_ODE_PASSWORD" >> "?/.gradle/gradle.properties"
-    echo "sonatypeUsername=$NEXUS_SONATYPE_USERNAME" >> "?/.gradle/gradle.properties"
-    echo "sonatypePassword=$NEXUS_SONATYPE_PASSWORD" >> "?/.gradle/gradle.properties"
-  fi
-  docker compose run --rm $USER_OPTION gradle gradle publish
+  version=`docker compose run --rm maven mvn $MVN_OPTS help:evaluate -Dexpression=project.version -q -DforceStdout`
+  level=`echo $version | cut -d'-' -f3`
+  case "$level" in
+    *SNAPSHOT) export nexusRepository='snapshots' ;;
+    *)         export nexusRepository='releases' ;;
+  esac
+  docker compose run --rm  maven mvn $MVN_OPTS -DrepositoryId=ode-$nexusRepository -DskipTests --settings /var/maven/.m2/settings.xml deploy
 }
 
 for param in "$@"
 do
   case $param in
     '--no-user')
+      ;;
+    init)
+      init
       ;;
     clean)
       clean
@@ -49,7 +44,7 @@ do
       install
       ;;
     test)
-      testGradle
+      test
       ;;
     publish)
       publish

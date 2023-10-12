@@ -19,24 +19,16 @@ package fr.wseduc.webutils.email;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.wseduc.webutils.DefaultAsyncResult;
+import fr.wseduc.webutils.Either;
 import fr.wseduc.webutils.eventbus.ResultMessage;
 import fr.wseduc.webutils.exception.AsyncResultException;
 import fr.wseduc.webutils.exception.InvalidConfigurationException;
-import fr.wseduc.webutils.Either;
-
-import static fr.wseduc.webutils.DefaultAsyncResult.handleAsyncError;
-import static fr.wseduc.webutils.DefaultAsyncResult.handleAsyncResult;
-import static fr.wseduc.webutils.Utils.isNotEmpty;
-
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.Message;
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientOptions;
-import io.vertx.core.http.HttpClientRequest;
-import io.vertx.core.http.HttpClientResponse;
+import io.vertx.core.http.*;
+import io.vertx.core.http.impl.headers.HeadersMultiMap;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -54,6 +46,10 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static fr.wseduc.webutils.DefaultAsyncResult.handleAsyncError;
+import static fr.wseduc.webutils.DefaultAsyncResult.handleAsyncResult;
+import static fr.wseduc.webutils.Utils.isNotEmpty;
 
 public class GoMailSender extends NotificationHelper implements EmailSender {
 
@@ -131,24 +127,12 @@ public class GoMailSender extends NotificationHelper implements EmailSender {
 	}
 
 	private void send(JsonObject json, final Handler<AsyncResult<Message<JsonObject>>> handler) {
-		HttpClientRequest req = httpClient.post("/smtp/" + this.platform, new Handler<HttpClientResponse>() {
-			@Override
-			public void handle(HttpClientResponse resp) {
-				if (resp.statusCode() == 200) {
-					handler.handle(new DefaultAsyncResult<>(new ResultMessage()));
-				} else {
-					handler.handle(new DefaultAsyncResult<>(new AsyncResultException("GoMail HTTP status: " + resp.statusMessage())));
-				}
-			}
-		});
-		req.putHeader("authorization", basicAuthHeader);
 		JsonObject to = new JsonObject();
 		JsonObject from = new JsonObject();
 		JsonObject subject = new JsonObject();
 		JsonObject headers = new JsonObject();
 
 		to.put("address", json.getJsonArray("to").getString(0));
-
 		from.put("address", json.getString("from"));
 		subject.put("Subject", json.getString("subject"));
 
@@ -189,8 +173,20 @@ public class GoMailSender extends NotificationHelper implements EmailSender {
 		if (headers.size() > 0) {
 			payload.put("headers", headers);
 		}
-		req.exceptionHandler(e -> log.error("Error sending to gomail.", e));
-		req.end(payload.encode());
+
+		httpClient.request(new RequestOptions()
+				.setMethod(HttpMethod.POST)
+				.setURI("/smtp/" + this.platform)
+				.setHeaders(new HeadersMultiMap().add("authorization", basicAuthHeader)))
+				.flatMap(request -> request.send(payload.encode()))
+				.onSuccess(resp -> {
+					if (resp.statusCode() == 200) {
+						handler.handle(new DefaultAsyncResult<>(new ResultMessage()));
+					} else {
+						handler.handle(new DefaultAsyncResult<>(new AsyncResultException("GoMail HTTP status: " + resp.statusMessage())));
+					}
+				})
+				.onFailure(e -> log.error("Error sending to gomail.", e));
 	}
 
 	@Override
@@ -206,39 +202,37 @@ public class GoMailSender extends NotificationHelper implements EmailSender {
 		}
 		final DateFormat df = new SimpleDateFormat(DATE_FORMAT);
 		final String start = df.format(startDate);
-		HttpClientRequest req = httpClient.get("/bounce/hard/since/" + start, new Handler<HttpClientResponse>() {
-			@Override
-			public void handle(final HttpClientResponse resp) {
-				if (resp.statusCode() == 200) {
-					resp.bodyHandler(new Handler<Buffer>() {
-						@Override
-						public void handle(Buffer buffer) {
-							try {
-								JsonObject res = new JsonObject(buffer.toString());
 
-								JsonArray l = res.getJsonArray("hard_bounces");
-								if (l == null || l.size() == 0) {
-									handler.handle(
-											new Either.Right<String, List<Bounce>>(Collections.<Bounce>emptyList()));
-									return;
-								}
-								List<Bounce> bounces = mapper.readValue(l.encode(), new TypeReference<List<Bounce>>() {
-								});
-								handler.handle(new Either.Right<String, List<Bounce>>(bounces));
+		httpClient.request(new RequestOptions()
+				.setMethod(HttpMethod.GET)
+				.setURI("/bounce/hard/since/" + start)
+				.setHeaders(new HeadersMultiMap().add("authorization", basicAuthHeader)))
+				.flatMap(HttpClientRequest::send)
+				.onSuccess(resp -> {
+					if (resp.statusCode() == 200) {
+						resp.bodyHandler(buffer -> {
+                            try {
+                                JsonObject res = new JsonObject(buffer.toString());
 
-							} catch (RuntimeException | IOException e) {
-								handler.handle(new Either.Left<String, List<Bounce>>(e.getMessage()));
-								log.error(e.getMessage(), e);
-							}
-						}
-					});
-				} else {
-					handler.handle(new Either.Left<String, List<Bounce>>("GoMail HTTP status: " + resp.statusMessage()));
-				}
-			}
-		});
-		req.putHeader("authorization", basicAuthHeader);
-		req.exceptionHandler(except -> log.error("Exception when query hard bounce.", except));
-		req.end();
+                                JsonArray l = res.getJsonArray("hard_bounces");
+                                if (l == null || l.size() == 0) {
+                                    handler.handle(
+                                            new Either.Right<>(Collections.emptyList()));
+                                    return;
+                                }
+                                List<Bounce> bounces = mapper.readValue(l.encode(), new TypeReference<List<Bounce>>() {
+                                });
+                                handler.handle(new Either.Right<>(bounces));
+
+                            } catch (RuntimeException | IOException e) {
+                                handler.handle(new Either.Left<>(e.getMessage()));
+                                log.error(e.getMessage(), e);
+                            }
+                        });
+					} else {
+						handler.handle(new Either.Left<>("GoMail HTTP status: " + resp.statusMessage()));
+					}
+				})
+				.onFailure(except -> log.error("Exception when query hard bounce.", except));
 	}
 }

@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+         xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.edifice</groupId>
+        <artifactId>edifice-parent</artifactId>
+        <version>1.0</version>
+    </parent>
+
+    <groupId>fr.wseduc</groupId>
+    <artifactId>web-utils</artifactId>
+    <version>3.0-b2school-SNAPSHOT</version>
+
+    <repositories>
+        <repository>
+            <id>ode</id>
+            <name>ODE Repository</name>
+            <url>https://maven.opendigitaleducation.com/nexus/content/groups/public</url>
+        </repository>
+    </repositories>
+
+    <properties>
+        <mustache.version>1.15</mustache.version>
+        <jodaTimeVersion>2.12.5</jodaTimeVersion>
+        <eventbusWrapperVersion>1.1.0</eventbusWrapperVersion>
+        <javaHtmlSanitizerVersion>20220608.1</javaHtmlSanitizerVersion>
+        <jacksonDatabindVersion>2.15.2</jacksonDatabindVersion>
+        <commonsTextVersion>1.11.0</commonsTextVersion>
+        <commonsCodecVersion>1.16.0</commonsCodecVersion>
+        <micrometerPrometheusVersion>1.1.0</micrometerPrometheusVersion>
+        <xss-utils.version>1.0-SNAPSHOT</xss-utils.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-mail-client</artifactId>
+            <version>${vertxVersion}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-codegen</artifactId>
+            <version>${vertxVersion}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.samskivert</groupId>
+            <artifactId>jmustache</artifactId>
+            <version>${mustache.version}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>joda-time</groupId>
+            <artifactId>joda-time</artifactId>
+            <version>${jodaTimeVersion}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
+            <version>${commonsTextVersion}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>fr.wseduc</groupId>
+            <artifactId>eventbus-wrapper</artifactId>
+            <version>${eventbusWrapperVersion}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.edifice</groupId>
+            <artifactId>xss-utils</artifactId>
+            <version>${xss-utils.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-unit</artifactId>
+            <version>${vertxVersion}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>commons-codec</groupId>
+            <artifactId>commons-codec</artifactId>
+            <version>${commonsCodecVersion}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
+            <artifactId>owasp-java-html-sanitizer</artifactId>
+            <version>${javaHtmlSanitizerVersion}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jacksonDatabindVersion}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-micrometer-metrics</artifactId>
+            <version>${vertxVersion}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+</project>

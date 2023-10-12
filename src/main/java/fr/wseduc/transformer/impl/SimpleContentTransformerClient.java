@@ -6,12 +6,14 @@ import fr.wseduc.transformer.to.ContentTransformerResponse;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientRequest;
-import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.http.RequestOptions;
+import io.vertx.core.http.impl.headers.HeadersMultiMap;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 
 /**
@@ -40,24 +42,28 @@ public class SimpleContentTransformerClient implements IContentTransformerClient
      */
     public Future<ContentTransformerResponse> transform(final ContentTransformerRequest contentTransformerRequest) {
         final Promise<ContentTransformerResponse> promise = Promise.promise();
-        final HttpClientRequest request = this.httpClient.post("/transform", response -> {
-            final int statusCode = response.statusCode();
-            if (statusCode == 200) {
-                response.bodyHandler(body -> promise.complete(Json.decodeValue(body, ContentTransformerResponse.class)));
-            } else {
-                promise.fail("transform.error." + statusCode);
-                response.bodyHandler( body -> log.warn(createReport(statusCode, contentTransformerRequest, body.toString())));
-            }
-        });
-        request.exceptionHandler(th -> {
-            promise.fail("transform.error.500");
-            log.warn(createReport(500, contentTransformerRequest, th.getMessage()));
-        });
-        request.putHeader("Content-Type", "application/json");
+        HeadersMultiMap headers = new HeadersMultiMap().add("Content-Type", "application/json");
         if(isNotEmpty(authHeader)) {
-            request.putHeader("Authorization", authHeader);
+            headers.add("Authorization", authHeader);
         }
-        request.end(JsonObject.mapFrom(contentTransformerRequest).encode());
+        httpClient.request(new RequestOptions()
+                .setMethod(HttpMethod.POST)
+                .setURI("/transform")
+                .setHeaders(headers))
+                .flatMap(request -> request.send(JsonObject.mapFrom(contentTransformerRequest).encode()))
+                .onSuccess(response -> {
+                    final int statusCode = response.statusCode();
+                    if (statusCode == 200) {
+                        response.bodyHandler(body -> promise.complete(Json.decodeValue(body, ContentTransformerResponse.class)));
+                    } else {
+                      promise.fail("transform.error." + statusCode);
+                      response.bodyHandler( body -> log.warn(createReport(statusCode, contentTransformerRequest, body.toString())));
+                    }
+                })
+                .onFailure(th -> {
+                  promise.fail("transform.error.500");
+                  log.warn(createReport(500, contentTransformerRequest, th.getMessage()));
+                });
         return promise.future();
     }
 
