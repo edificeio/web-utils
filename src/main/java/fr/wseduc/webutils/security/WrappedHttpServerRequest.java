@@ -21,10 +21,14 @@ import java.util.Map;
 import fr.wseduc.webutils.http.response.BufferHttpResponse;
 import fr.wseduc.webutils.request.HttpServerRequestWithBuffering;
 import fr.wseduc.webutils.request.ProxyHttpRequest;
+import io.netty.handler.codec.DecoderResult;
+import io.vertx.codegen.annotations.Nullable;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
+import io.vertx.core.net.HostAndPort;
 import io.vertx.core.net.NetSocket;
 import io.vertx.core.net.SocketAddress;
 
@@ -32,6 +36,7 @@ import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSession;
 import javax.security.cert.X509Certificate;
 import java.util.Optional;
+import java.util.Set;
 
 // TODO vertx 4
 public class WrappedHttpServerRequest implements HttpServerRequest, HttpServerRequestWithBuffering {
@@ -150,6 +155,11 @@ public class WrappedHttpServerRequest implements HttpServerRequest, HttpServerRe
 	}
 
 	@Override
+	public @Nullable HostAndPort authority() {
+		return request.authority();
+	}
+
+	@Override
 	public String host() {
 		return request.host();
 	}
@@ -172,6 +182,16 @@ public class WrappedHttpServerRequest implements HttpServerRequest, HttpServerRe
 	@Override
 	public String getHeader(CharSequence headerName) {
 		return request.getHeader(headerName);
+	}
+
+	@Override
+	public HttpServerRequest setParamsCharset(String charset) {
+		return request.setParamsCharset(charset);
+	}
+
+	@Override
+	public String getParamsCharset() {
+		return request.getParamsCharset();
 	}
 
 	@Override
@@ -230,6 +250,21 @@ public class WrappedHttpServerRequest implements HttpServerRequest, HttpServerRe
 	}
 
 	@Override
+	public Future<Buffer> body() {
+		return request.body();
+	}
+
+	@Override
+	public Future<Void> end() {
+		return request.end();
+	}
+
+	@Override
+	public Future<NetSocket> toNetSocket() {
+		return request.toNetSocket();
+	}
+
+	@Override
 	public HttpServerRequest setExpectMultipart(boolean expect) {
 		request.setExpectMultipart(expect);
 		return this;
@@ -257,6 +292,11 @@ public class WrappedHttpServerRequest implements HttpServerRequest, HttpServerRe
 	}
 
 	@Override
+	public Future<ServerWebSocket> toWebSocket() {
+		return request.toWebSocket();
+	}
+
+	@Override
 	public boolean isEnded() {
 		return request.isEnded();
 	}
@@ -278,6 +318,11 @@ public class WrappedHttpServerRequest implements HttpServerRequest, HttpServerRe
 	}
 
 	@Override
+	public DecoderResult decoderResult() {
+		return request.decoderResult();
+	}
+
+	@Override
 	public long bytesRead()
 	{
 		return request.bytesRead();
@@ -296,6 +341,16 @@ public class WrappedHttpServerRequest implements HttpServerRequest, HttpServerRe
 	}
 
 	@Override
+	public Set<Cookie> cookies(String name) {
+		return request.cookies(name);
+	}
+
+	@Override
+	public Set<Cookie> cookies() {
+		return request.cookies();
+	}
+
+	@Override
 	public int cookieCount()
 	{
 		return request.cookieCount();
@@ -305,6 +360,11 @@ public class WrappedHttpServerRequest implements HttpServerRequest, HttpServerRe
 	public Cookie getCookie(String str)
 	{
 		return request.getCookie(str);
+	}
+
+	@Override
+	public @Nullable Cookie getCookie(String name, String domain, String path) {
+		return request.getCookie(name, domain, path);
 	}
 
 }
