@@ -28,12 +28,7 @@ import fr.wseduc.webutils.request.CookieHelper;
 import fr.wseduc.webutils.request.filter.Filter;
 import fr.wseduc.webutils.request.filter.SecurityHandler;
 import fr.wseduc.webutils.security.SecuredAction;
-import io.vertx.core.AbstractVerticle;
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.MultiMap;
-import io.vertx.core.Vertx;
+import io.vertx.core.*;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerOptions;
@@ -67,7 +62,7 @@ public abstract class Server extends AbstractVerticle {
 	private HttpServer server;
 
 	@Override
-	public void start() throws Exception {
+	public void start(Promise<Void> startPromise) throws Exception {
 		super.start();
 		config = config();
 		FileResolver.getInstance().setBasePath(config);
@@ -166,9 +161,14 @@ public abstract class Server extends AbstractVerticle {
 			log.error("Error application not registred.", e);
 		}
 		final HttpServerOptions httpOptions = createHttpServerOptions();
-		server = vertx.createHttpServer(httpOptions)
-				.requestHandler(rm)
-				.listen(config.getInteger("port"));
+		vertx.createHttpServer(httpOptions)
+			.requestHandler(rm)
+			.listen(config.getInteger("port"))
+			.onSuccess(e -> {
+				server = e;
+				startPromise.complete();
+			})
+			.onFailure(startPromise::fail);
 	}
 
 	private HttpServerOptions createHttpServerOptions() {
@@ -249,16 +249,17 @@ public abstract class Server extends AbstractVerticle {
 	}
 
 	@Override
-	public void stop(Future<Void> stopFuture) throws Exception {
+	public void stop(Promise<Void> stopFuture) throws Exception {
 		log.info("Closing http server with port : "+config.getInteger("port"));
-		final List<Future> futures = new ArrayList<>();
+		final List<Future<Void>> futures = new ArrayList<>();
 		if(server!=null){
-			final Future<Void> f = Future.future();
-			futures.add(f);
+			final Promise<Void> f = Promise.promise();
+			futures.add(f.future());
 			server.close(f);
-		} 
-		final Future<Void> f = Future.future();
+		}
+		final Promise<Void> f = Promise.promise();
 		super.stop(f);
-		CompositeFuture.all(futures).map(e->(Void) null).onComplete(stopFuture);
+		futures.add(f.future());
+		Future.all(futures).map(e->(Void) null).onComplete(stopFuture);
 	}
 }
