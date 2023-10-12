@@ -17,12 +17,14 @@
 package fr.wseduc.webutils.eventbus;
 
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
 
+// TODO vertx 4
 public class ResultMessage implements Message<JsonObject> {
 
 	private final JsonObject body;
@@ -84,8 +86,13 @@ public class ResultMessage implements Message<JsonObject> {
 	}
 
 	@Override
-	public <R> void reply(Object message, Handler<AsyncResult<Message<R>>> replyHandler) {
+	public <R> void replyAndRequest(Object message, Handler<AsyncResult<Message<R>>> replyHandler) {
 
+	}
+
+	@Override
+	public <R> Future<Message<R>> replyAndRequest(@io.vertx.codegen.annotations.Nullable Object message) {
+		return Message.super.replyAndRequest(message);
 	}
 
 	@Override
@@ -94,13 +101,19 @@ public class ResultMessage implements Message<JsonObject> {
 	}
 
 	@Override
-	public <R> void reply(Object message, DeliveryOptions options, Handler<AsyncResult<Message<R>>> replyHandler) {
+	public <R> void replyAndRequest(Object message, DeliveryOptions options, Handler<AsyncResult<Message<R>>> replyHandler) {
 
+	}
+
+	@Override
+	public <R> Future<Message<R>> replyAndRequest(@io.vertx.codegen.annotations.Nullable Object message, DeliveryOptions options) {
+		return null;
 	}
 
 	@Override
 	public void fail(int failureCode, String message) {
 
 	}
+
 
 }

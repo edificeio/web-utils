@@ -259,6 +259,6 @@ public abstract class Server extends AbstractVerticle {
 		} 
 		final Future<Void> f = Future.future();
 		super.stop(f);
-		CompositeFuture.all(futures).map(e->(Void) null).setHandler(stopFuture);
+		CompositeFuture.all(futures).map(e->(Void) null).onComplete(stopFuture);
 	}
 }

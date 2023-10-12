@@ -86,6 +86,7 @@ compileTestJava {
 
 dependencies {
   compileOnly "io.vertx:vertx-core:$vertxVersion"
+  compileOnly "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
   compile "io.vertx:vertx-mail-client:$vertxVersion"
   compile "com.samskivert:jmustache:$mustacheVersion"
   compile "joda-time:joda-time:$jodaTimeVersion"

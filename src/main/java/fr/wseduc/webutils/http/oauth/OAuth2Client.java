@@ -19,15 +19,18 @@ package fr.wseduc.webutils.http.oauth;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.security.PrivateKey;
 import java.util.Base64;
 import java.util.Map;
 
 import fr.wseduc.webutils.security.JWT;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
+import io.vertx.core.http.impl.headers.HeadersMultiMap;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.json.DecodeException;
 
@@ -37,6 +40,7 @@ import io.vertx.core.logging.LoggerFactory;
 
 import static fr.wseduc.webutils.Utils.isNotEmpty;
 
+// TODO vertx 4
 public class OAuth2Client {
 
 	protected static final Logger log = LoggerFactory.getLogger(OAuth2Client.class);
@@ -125,117 +129,94 @@ public class OAuth2Client {
 
 	public void getAccessToken(String code, boolean basic,
 			final Handler<JsonObject> handler) throws UnsupportedEncodingException {
-		HttpClientRequest req = httpClient.post(this.uri.getPath() + tokenUrn, new Handler<HttpClientResponse>() {
-
-			@Override
-			public void handle(final HttpClientResponse response) {
-				response.bodyHandler(new Handler<Buffer>() {
-
-					@Override
-					public void handle(Buffer r) {
-						try
-						{
-							JsonObject j = new JsonObject(r.toString("UTF-8"));
-							if (response.statusCode() == 200) {
-								JsonObject json = new JsonObject()
-								.put("status", "ok")
-								.put("token", j);
-								handler.handle(json);
-							} else {
-								handler.handle(j.put("statusCode", response.statusCode()));
-							}
-						}
-						catch(DecodeException e)
-						{
-							handler.handle(new JsonObject().put("statusCode", response.statusCode()));
-						}
-					}
-				});
-			}
-		});
-		String body = "grant_type=authorization_code&code=" + code +
-				"&redirect_uri=" + redirectUri;
+		HeadersMultiMap headers = new HeadersMultiMap()
+				.add("Content-Type", "application/x-www-form-urlencoded")
+				.add("Accept", "application/json; charset=UTF-8");
+		StringBuilder body = new StringBuilder("grant_type=authorization_code&code=" + code + "&redirect_uri=" + redirectUri);
 		if (basic) {
-		req.headers()
-			.add("Authorization", "Basic " + Base64.getEncoder().encodeToString((clientId + ":" + secret).getBytes()));
+			headers.add("Authorization", "Basic " + Base64.getEncoder().encodeToString((clientId + ":" + secret).getBytes()));
 		} else {
-			body += "&client_id=" + clientId + "&client_secret=" + secret;
+			body.append("&client_id=" + clientId + "&client_secret=" + secret);
 		}
-		req.headers()
-			.add("Content-Type", "application/x-www-form-urlencoded")
-			.add("Accept", "application/json; charset=UTF-8");
-		req.exceptionHandler(except -> log.error("Error getting access token.", except));
-		req.end(body);
+		httpClient.request(
+				new RequestOptions()
+						.setMethod(HttpMethod.POST)
+						.setAbsoluteURI(this.uri.getPath() + tokenUrn)
+						.setHeaders(headers))
+				.flatMap(request -> request.send(body.toString()))
+				.onSuccess(response -> response.bodyHandler(buffer -> {
+                    try
+                    {
+                        JsonObject j = new JsonObject(buffer.toString("UTF-8"));
+                        if (response.statusCode() == 200) {
+                            JsonObject json = new JsonObject()
+                                    .put("status", "ok")
+                                    .put("token", j);
+                            handler.handle(json);
+                        } else {
+                            handler.handle(j.put("statusCode", response.statusCode()));
+                        }
+                    }
+                    catch(DecodeException e)
+                    {
+                        handler.handle(new JsonObject().put("statusCode", response.statusCode()));
+                    }
+                }))
+				.onFailure(except -> log.error("Error getting access token.", except));
 	}
 
 	public void clientCredentialsToken(String scope,
 			final Handler<JsonObject> handler) throws UnsupportedEncodingException {
-		HttpClientRequest req = httpClient.post(this.uri.getPath() + tokenUrn, new Handler<HttpClientResponse>() {
-
-			@Override
-			public void handle(final HttpClientResponse response) {
-				response.bodyHandler(new Handler<Buffer>() {
-
-					@Override
-					public void handle(Buffer r) {
-						JsonObject j = new JsonObject(r.toString("UTF-8"));
-						if (response.statusCode() == 200) {
-							JsonObject json = new JsonObject()
-									.put("status", "ok")
-									.put("token", j);
-							handler.handle(json);
-						} else {
-							handler.handle(j.put("statusCode", response.statusCode()));
-						}
-					}
-				});
-			}
-		});
-		req.headers()
-				.add("Authorization", "Basic " + Base64.getEncoder().encode(
-						(clientId + ":" + secret).getBytes("UTF-8")))
-		.add("Content-Type", "application/x-www-form-urlencoded")
-				.add("Accept", "application/json; charset=UTF-8");
-		String body = "grant_type=client_credentials";
+		StringBuilder body = new StringBuilder("grant_type=client_credentials");
 		if (scope != null && !scope.trim().isEmpty()) {
-			body += "&scope=" + scope;
+			body.append("&scope=" + scope);
 		}
-		req.exceptionHandler(except -> log.error("Error getting client credentials token.", except));
-		req.end(body, "UTF-8");
+
+		httpClient.request(
+				new RequestOptions()
+						.setMethod(HttpMethod.POST)
+						.setAbsoluteURI(this.uri.getPath() + tokenUrn)
+						.setHeaders(new HeadersMultiMap()
+								.add("Authorization", "Basic " + Base64.getEncoder().encode((clientId + ":" + secret).getBytes("UTF-8")))
+								.add("Content-Type", "application/x-www-form-urlencoded")
+								.add("Accept", "application/json; charset=UTF-8")))
+				.flatMap(request -> request.send(body.toString()))
+				.onSuccess(response -> response.bodyHandler(r -> {
+                    JsonObject j = new JsonObject(r.toString("UTF-8"));
+                    if (response.statusCode() == 200) {
+                        JsonObject json = new JsonObject()
+                                .put("status", "ok")
+                                .put("token", j);
+                        handler.handle(json);
+                    } else {
+                        handler.handle(j.put("statusCode", response.statusCode()));
+                    }
+                }))
+				.onFailure(except -> log.error("Error getting client credentials token.", except));
 	}
 
 	public void client2LO(JsonObject payload, PrivateKey privateKey, final Handler<JsonObject> handler) throws Exception{
 		String jwt = JWT.encodeAndSign(payload, null, privateKey);
+		httpClient.request(new RequestOptions()
+				.setMethod(HttpMethod.POST)
+				.setAbsoluteURI(this.uri.getPath() + tokenUrn)
+				.setHeaders(new HeadersMultiMap()
+						.add("Content-Type", "application/x-www-form-urlencoded")
+						.add("Accept", "application/json; charset=UTF-8")))
+				.flatMap(request -> request.send(new StringBuilder("grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer").append("&assertion=").append(jwt).toString()))
+				.onSuccess(response -> response.bodyHandler(r -> {
+                    JsonObject j = new JsonObject(r.toString("UTF-8"));
+                    if (response.statusCode() == 200) {
 
-		HttpClientRequest req = httpClient.post(this.uri.getPath() + tokenUrn, new Handler<HttpClientResponse>() {
-
-			@Override
-			public void handle(final HttpClientResponse response) {
-				response.bodyHandler(new Handler<Buffer>() {
-
-					@Override
-					public void handle(Buffer r) {
-						JsonObject j = new JsonObject(r.toString("UTF-8"));
-						if (response.statusCode() == 200) {
-
-							JsonObject json = new JsonObject()
-									.put("status", "ok")
-									.put("token", j);
-							handler.handle(json);
-						} else {
-							handler.handle(j.put("statusCode", response.statusCode()));
-						}
-					}
-				});
-			}
-		});
-		req.headers()
-				.add("Content-Type", "application/x-www-form-urlencoded")
-				.add("Accept", "application/json; charset=UTF-8");
-		String body = "grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer";
-		body += "&assertion=" + jwt;
-		req.exceptionHandler(except -> log.error("Error getting 2LO access token.", except));
-		req.end(body, "UTF-8");
+                        JsonObject json = new JsonObject()
+                                .put("status", "ok")
+                                .put("token", j);
+                        handler.handle(json);
+                    } else {
+                        handler.handle(j.put("statusCode", response.statusCode()));
+                    }
+                }))
+				.onFailure(except -> log.error("Error getting 2LO access token.", except));
 	}
 
 
@@ -276,7 +257,9 @@ public class OAuth2Client {
 
 	public void putProtectedResource(String path, String accessToken, Map<String, String> headers,
 									 String body, Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, headers, body, httpClient.put(this.uri.getPath() + path, handler));
+		sendProtectedResource(accessToken, headers, body, httpClient.request(new RequestOptions()
+				.setMethod(HttpMethod.PUT)
+				.setAbsoluteURI(this.uri.getPath() + path), handler));
 	}
 
 	public void putProtectedResource(String path, String accessToken, String acceptMimeType,

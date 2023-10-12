@@ -33,6 +33,7 @@ import javax.net.ssl.SSLSession;
 import javax.security.cert.X509Certificate;
 import java.util.Optional;
 
+// TODO vertx 4
 public class WrappedHttpServerRequest implements HttpServerRequest, HttpServerRequestWithBuffering {
 
 	private HttpServerRequest request;
@@ -121,11 +122,6 @@ public class WrappedHttpServerRequest implements HttpServerRequest, HttpServerRe
 	@Override
 	public HttpMethod method() {
 		return request.method();
-	}
-
-	@Override
-	public String rawMethod() {
-		return request.rawMethod();
 	}
 
 	@Override
@@ -234,11 +230,6 @@ public class WrappedHttpServerRequest implements HttpServerRequest, HttpServerRe
 	}
 
 	@Override
-	public NetSocket netSocket() {
-		return request.netSocket();
-	}
-
-	@Override
 	public HttpServerRequest setExpectMultipart(boolean expect) {
 		request.setExpectMultipart(expect);
 		return this;
@@ -263,11 +254,6 @@ public class WrappedHttpServerRequest implements HttpServerRequest, HttpServerRe
 	@Override
 	public String getFormAttribute(String attributeName) {
 		return request.getFormAttribute(attributeName);
-	}
-
-	@Override
-	public ServerWebSocket upgrade() {
-		return request.upgrade();
 	}
 
 	@Override
