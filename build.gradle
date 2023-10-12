@@ -98,6 +98,7 @@ dependencies {
   testCompile "com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer:$javaHtmlSanitizerVersion"
   provided "io.vertx:vertx-micrometer-metrics:$vertxVersion"
   provided "io.micrometer:micrometer-registry-prometheus:$micrometerPrometheusVersion"
+  compileOnly "io.vertx:vertx-codegen:$vertxVersion"
 }
 
 
