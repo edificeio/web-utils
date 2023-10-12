@@ -32,10 +32,8 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.Message;
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientOptions;
-import io.vertx.core.http.HttpClientRequest;
-import io.vertx.core.http.HttpClientResponse;
+import io.vertx.core.http.*;
+import io.vertx.core.http.impl.headers.HeadersMultiMap;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -111,12 +109,15 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 		} else {
 			payload.put("date", start);
 		}
-		HttpClientRequest req = httpClient.post("/v2.0/report", new Handler<HttpClientResponse>() {
-			@Override
-			public void handle(final HttpClientResponse resp) {
-				resp.bodyHandler(buffer -> {
+		httpClient.request(new RequestOptions()
+				.setMethod(HttpMethod.POST)
+				.setURI("/v2.0/report")
+				.setHeaders(new HeadersMultiMap().add("api-key", apiKey)))
+				.flatMap(request -> request.send(payload.encode()))
+				.flatMap(HttpClientResponse::body)
+				.map(buffer -> new JsonObject(buffer.toString()))
+				.onSuccess(res -> {
 					try {
-						JsonObject res = new JsonObject(buffer.toString());
 						if ("success".equals(res.getString("code"))) {
 							JsonArray l = res.getJsonArray("data");
 							if (l == null || l.size() == 0) {
@@ -135,12 +136,8 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 						handler.handle(new Either.Left<>(e.getMessage()));
 						log.error(e.getMessage(), e);
 					}
-				});
-			}
-		});
-		req.putHeader("api-key", apiKey);
-		req.exceptionHandler(except -> log.error("Error when query hardbounce to sendinblue.", except));
-		req.end(payload.encode());
+				})
+				.onFailure(except -> log.error("Error when query hardbounce to sendinblue.", except));
 	}
 
 	@Override
@@ -176,34 +173,9 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 	}
 
 	private void send(JsonObject json, final Handler<AsyncResult<Message<JsonObject>>> handler) {
-		
-		HttpClientRequest req = httpClient.post("/v3/smtp/email", resp -> {
-			if (resp.statusCode() == 201) {
-				handleAsyncResult(new ResultMessage(), handler);
-			} else {
-				resp.bodyHandler(buffer -> {
-					try {
-						final JsonObject err = new JsonObject(buffer.toString());
-						final String code = err.getString("code");
-						log.error("Could not send mail with SendInBlue:" + code + " -> " + err.getString("message"));
-						handleAsyncError(err.getString("message"), handler);
-					} catch (DecodeException e) {
-                        log.error("Could not decode response: " + buffer.toString());
-						handleAsyncError(buffer.toString(), handler);
-					}
-				});
-			}
-		});
-
-		req.putHeader("api-key", apiKey);
-		req.putHeader("accept", "application/json");
-        req.putHeader("content-type", "application/json");
-
-		JsonArray to = new JsonArray();
-
-		for(Object o : json.getJsonArray("to")) {
-			String email = o.toString();
-			to.add(new JsonObject().put("email", email));
+		JsonObject to = new JsonObject();
+		for (Object o: json.getJsonArray("to")) {
+			to.put(o.toString(), "");
 		}
 
 		final JsonObject sender = new JsonObject().put("email", json.getString("from"));
@@ -214,7 +186,7 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 				.put("from", new JsonArray().add(json.getString("from")))
 				.put("subject", json.getString("subject"))
 				.put("htmlContent", json.getString("body"));
-				
+
 		JsonObject headers = new JsonObject();
 		if (isNotEmpty(dedicatedIp)) {
 			headers.put("X-Mailin-IP", dedicatedIp);
@@ -254,10 +226,10 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 			JsonArray attachments = new JsonArray();
 			for (Object o : json.getJsonArray("attachments")) {
 				JsonObject att = (JsonObject) o;
-		
+
 				// Calculate the attachment size only once and store it in a variable
 				int attachmentSize = att.getString("content").getBytes().length;
-		
+
 				// Check if adding this attachment would exceed the max size limit
 				if (maxSize > 0 && (mailSize + attachmentSize) > maxSize) {
 					log.warn("Mail too big, can't attach " + att.getString("name"));
@@ -267,9 +239,9 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 					String attachmentName = att.getString("name");
 					if (!attachmentName.contains(".")) {
 						// Optional: set a default extension if missing
-						attachmentName += ".png"; 
-					}					
-					
+						attachmentName += ".png";
+					}
+
 					attachments.add(new JsonObject()
 							.put("name", attachmentName)
 							.put("content", att.getString("content")));
@@ -278,8 +250,26 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 			payload.put("attachment", attachments);
 		}
 
-		req.exceptionHandler(except -> log.error("Error sending to sendinblue.", except));
-		req.end(payload.encode());
+		httpClient.request(new RequestOptions()
+						.setMethod(HttpMethod.POST)
+						.setURI("/v2.0/email")
+						.setHeaders(new HeadersMultiMap().add("api-key", apiKey)))
+				.flatMap(request -> request.send(payload.encode()))
+				.onSuccess(resp -> {
+					if (resp.statusCode() == 200) {
+						handleAsyncResult(new ResultMessage(), handler);
+					} else {
+						resp.bodyHandler(buffer -> {
+							try {
+								JsonObject err = new JsonObject(buffer.toString());
+								handleAsyncError(err.getString("message"), handler);
+							} catch (DecodeException e) {
+								handleAsyncError(buffer.toString(), handler);
+							}
+						});
+					}
+				})
+				.onFailure(except -> log.error("Error sending to sendinblue.", except));
 	}
 
 	public ObjectMapper getMapper() {

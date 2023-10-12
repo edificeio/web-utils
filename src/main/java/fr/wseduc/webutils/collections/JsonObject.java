@@ -24,6 +24,7 @@ import java.util.Map;
 
 import static fr.wseduc.webutils.Utils.getOrElse;
 
+@Deprecated
 public class JsonObject extends io.vertx.core.json.JsonObject {
 
 	public JsonObject(String json) {

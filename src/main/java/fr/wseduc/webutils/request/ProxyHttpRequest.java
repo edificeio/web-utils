@@ -1,11 +1,16 @@
 package fr.wseduc.webutils.request;
 
 import java.util.Map;
+import java.util.Set;
 
+import io.netty.handler.codec.DecoderResult;
+import io.vertx.codegen.annotations.Nullable;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
+import io.vertx.core.net.HostAndPort;
 import io.vertx.core.net.NetSocket;
 import io.vertx.core.net.SocketAddress;
 
@@ -61,11 +66,6 @@ public class ProxyHttpRequest implements HttpServerRequest {
     }
 
     @Override
-    public String rawMethod() {
-        return original.rawMethod();
-    }
-
-    @Override
     public boolean isSSL() {
         return original.isSSL();
     }
@@ -91,6 +91,11 @@ public class ProxyHttpRequest implements HttpServerRequest {
     
     public String query() {
         return original.query();
+    }
+
+    @Override
+    public @Nullable HostAndPort authority() {
+        return original.authority();
     }
 
     @Override
@@ -121,6 +126,16 @@ public class ProxyHttpRequest implements HttpServerRequest {
     
     public String getHeader(CharSequence headerName) {
         return original.getHeader(headerName);
+    }
+
+    @Override
+    public HttpServerRequest setParamsCharset(String charset) {
+        return original.setParamsCharset(charset);
+    }
+
+    @Override
+    public String getParamsCharset() {
+        return original.getParamsCharset();
     }
 
     @Override
@@ -171,13 +186,21 @@ public class ProxyHttpRequest implements HttpServerRequest {
     }
 
     @Override
-    
-    public NetSocket netSocket() {
-        return original.netSocket();
+    public Future<Buffer> body() {
+        return original.body();
     }
 
     @Override
-    
+    public Future<Void> end() {
+        return original.end();
+    }
+
+    @Override
+    public Future<NetSocket> toNetSocket() {
+        return original.toNetSocket();
+    }
+
+    @Override
     public HttpServerRequest setExpectMultipart(boolean expect) {
         return original.setExpectMultipart(expect);
     }
@@ -206,8 +229,8 @@ public class ProxyHttpRequest implements HttpServerRequest {
     }
 
     @Override
-    public ServerWebSocket upgrade() {
-        return original.upgrade();
+    public Future<ServerWebSocket> toWebSocket() {
+        return original.toWebSocket();
     }
 
     @Override
@@ -233,7 +256,12 @@ public class ProxyHttpRequest implements HttpServerRequest {
 		return original.streamPriorityHandler(handler);
 	}
 
-	@Override
+    @Override
+    public DecoderResult decoderResult() {
+        return original.decoderResult();
+    }
+
+    @Override
 	public long bytesRead()
 	{
 		return original.bytesRead();
@@ -251,7 +279,17 @@ public class ProxyHttpRequest implements HttpServerRequest {
 		return original.cookieMap();
 	}
 
-	@Override
+    @Override
+    public Set<Cookie> cookies(String name) {
+        return original.cookies(name);
+    }
+
+    @Override
+    public Set<Cookie> cookies() {
+        return cookies();
+    }
+
+    @Override
 	public int cookieCount()
 	{
 		return original.cookieCount();
@@ -262,4 +300,9 @@ public class ProxyHttpRequest implements HttpServerRequest {
 	{
 		return original.getCookie(str);
 	}
+
+    @Override
+    public @Nullable Cookie getCookie(String name, String domain, String path) {
+        return original.getCookie(name, domain, path);
+    }
 }

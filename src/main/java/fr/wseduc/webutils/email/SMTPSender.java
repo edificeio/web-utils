@@ -13,6 +13,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.mail.*;
+import io.vertx.ext.mail.impl.MailAttachmentImpl;
 
 import java.util.*;
 
@@ -98,7 +99,7 @@ public class SMTPSender extends NotificationHelper implements EmailSender {
                 && !json.getJsonArray("attachments").isEmpty()) {
             List<MailAttachment> attachments = new ArrayList<>();
             for (JsonObject att : (List<JsonObject>) json.getJsonArray("attachments").getList()) {
-                MailAttachment attachment = new MailAttachment()
+                MailAttachment attachment = new MailAttachmentImpl()
                         .setName(att.getString("name"))
                         .setData(Buffer.buffer(att.getString("content")));
 
