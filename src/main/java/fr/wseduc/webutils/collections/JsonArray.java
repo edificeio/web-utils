@@ -24,6 +24,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+@Deprecated
 public class JsonArray extends io.vertx.core.json.JsonArray {
 
 	private final List<Object> list;
@@ -43,78 +44,6 @@ public class JsonArray extends io.vertx.core.json.JsonArray {
 
 	public JsonArray(Buffer buf) {
 		this(Json.decodeValue(buf, List.class));
-	}
-
-	@Override
-	public io.vertx.core.json.JsonArray add(Enum value) {
-		list.add(value);
-		return this;
-	}
-
-	@Override
-	public io.vertx.core.json.JsonArray add(CharSequence value) {
-		list.add(value);
-		return this;
-	}
-
-	@Override
-	public io.vertx.core.json.JsonArray add(String value) {
-		list.add(value);
-		return this;
-	}
-
-	@Override
-	public io.vertx.core.json.JsonArray add(Integer value) {
-		list.add(value);
-		return this;
-	}
-
-	@Override
-	public io.vertx.core.json.JsonArray add(Long value) {
-		list.add(value);
-		return this;
-	}
-
-	@Override
-	public io.vertx.core.json.JsonArray add(Double value) {
-		list.add(value);
-		return this;
-	}
-
-	@Override
-	public io.vertx.core.json.JsonArray add(Float value) {
-		list.add(value);
-		return this;
-	}
-
-	@Override
-	public io.vertx.core.json.JsonArray add(Boolean value) {
-		list.add(value);
-		return this;
-	}
-
-	@Override
-	public io.vertx.core.json.JsonArray add(JsonObject value) {
-		list.add(value);
-		return this;
-	}
-
-	@Override
-	public io.vertx.core.json.JsonArray add(io.vertx.core.json.JsonArray value) {
-		list.add(value);
-		return this;
-	}
-
-	@Override
-	public io.vertx.core.json.JsonArray add(byte[] value) {
-		list.add(value);
-		return this;
-	}
-
-	@Override
-	public io.vertx.core.json.JsonArray add(Instant value) {
-		list.add(value);
-		return this;
 	}
 
 	@Override

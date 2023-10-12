@@ -4,12 +4,12 @@ pipeline {
   agent any
     stages {
       stage("Initialization") {
-        when {
-          environment name: 'RENAME_BUILDS', value: 'true'
-        }
+          when {
+              environment name: 'RENAME_BUILDS', value: 'true'
+          }
         steps {
           script {
-            def version = sh(returnStdout: true, script: 'grep \'version=\' gradle.properties  | cut -d\'=\' -f2')
+            def version = sh(returnStdout: true, script: 'docker compose run --rm maven mvn -Duser.home=/var/maven help:evaluate -Dexpression=project.version -q -DforceStdout')
             buildName "${env.GIT_BRANCH.replace("origin/", "")}@${version}"
           }
         }
@@ -17,7 +17,7 @@ pipeline {
       stage('Build') {
         steps {
           checkout scm
-          sh './build.sh $BUILD_SH_EXTRA_PARAM clean install publish'
+          sh './build.sh $BUILD_SH_EXTRA_PARAM init clean install publish'
         }
       }
     }

@@ -29,6 +29,7 @@ import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.json.jackson.JacksonCodec;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import static java.util.Collections.emptySet;
@@ -68,7 +69,7 @@ public class RequestUtils {
 			@Override
 			public void handle(Buffer event) {
 				try {
-					JsonObject json = new fr.wseduc.webutils.collections.JsonObject(XSSUtils.stripXSS(event.toString("UTF-8")));
+					JsonObject json = new JsonObject(XSSUtils.stripXSS(event.toString("UTF-8")));
 					handler.handle(json);
 				} catch (RuntimeException e) {
 					log.warn(e.getMessage(), e);
@@ -85,7 +86,7 @@ public class RequestUtils {
 			public void handle(Buffer event) {
 				try {
 					String obj = XSSUtils.stripXSS(event.toString("UTF-8"));
-					JsonArray json = new fr.wseduc.webutils.collections.JsonArray(obj);
+					JsonArray json = new JsonArray(obj);
 					handler.handle(json);
 				} catch (RuntimeException e) {
 					log.warn(e.getMessage(), e);
@@ -148,7 +149,7 @@ public class RequestUtils {
 				try {
 
 					String obj = XSSUtils.stripXSS(event.toString("UTF-8"));
-					final T body = Json.decodeValue(obj, typeReference);
+					final T body = JacksonCodec.decodeValue(obj, typeReference);
 					promise.complete(body);
 				} catch (RuntimeException e) {
 					log.warn(e.getMessage(), e);
@@ -166,7 +167,7 @@ public class RequestUtils {
 			@Override
 			public void handle(Buffer event) {
 				try {
-					final JsonObject json = new fr.wseduc.webutils.collections.JsonObject(XSSUtils.stripXSS(event.toString("UTF-8")));
+					final JsonObject json = new JsonObject(XSSUtils.stripXSS(event.toString("UTF-8")));
 					validator.validate(schema, json, event1 -> {
 						if (event1.succeeded()) {
 							if ("ok".equals(event1.result().body().getString("status"))) {
@@ -291,7 +292,6 @@ public class RequestUtils {
 	/**
 	 * Parses the date contained in a GET param with {@link RequestUtils#DEFAULT_DATE_FORMAT}.
 	 * @param paramName Name of the GET param containing the date
-	 * @param format Expected format of the date
 	 * @param request Http request
 	 * @return the parsed date or {@code empty} if the request parameter was not present in the request or if its value
 	 * was empty

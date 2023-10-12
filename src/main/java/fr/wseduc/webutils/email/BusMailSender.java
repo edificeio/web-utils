@@ -45,7 +45,7 @@ public class BusMailSender extends NotificationHelper {
 	protected void sendEmail(JsonObject json, Handler<AsyncResult<Message<JsonObject>>> handler) {
 		try {
 			json.put("body", new String(json.getString("body").getBytes("UTF-8"), "ISO-8859-1"));
-			eb.send(emailAddress, json, handler);
+			eb.request(emailAddress, json, handler);
 		} catch (UnsupportedEncodingException e) {
 			log.error(e.getMessage(), e);
 			handler.handle(new DefaultAsyncResult<>(e));

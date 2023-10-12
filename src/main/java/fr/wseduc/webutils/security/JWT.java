@@ -21,9 +21,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientOptions;
-import io.vertx.core.http.HttpClientResponse;
+import io.vertx.core.http.*;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.logging.Logger;
@@ -182,41 +180,42 @@ public final class JWT {
 
 	@SuppressWarnings("deprecation")
 	private void findCertificates(final Handler<Void> handler) {
-		String stringLog = "GET %s %d rt=%d";
-		long startTime = System.currentTimeMillis();
-
-		httpClient.getNow(certsPath, new Handler<HttpClientResponse>() {
-			@Override
-			public void handle(HttpClientResponse response) {
-				long endTime = System.currentTimeMillis();
-				long responseTime = endTime - startTime;
-				log.info(String.format(stringLog, response.request().path(), response.statusCode(), responseTime));
-				if (response.statusCode() == 200) {
-					response.bodyHandler(new Handler<Buffer>() {
-						@Override
-						public void handle(Buffer buffer) {
-							JsonObject cert =  new JsonObject(buffer.toString("UTF-8"));
-							JsonArray certificateKeys = cert.getJsonArray("keys");
-							if(certificateKeys != null)
-							{
-								for(int i = 0; i < certificateKeys.size(); ++i)
-								{
-									JsonObject JWT = certificateKeys.getJsonObject(i);
+    String stringLog = "GET %s %d rt=%d";
+    long startTime = System.currentTimeMillis();
+    httpClient.request(HttpMethod.GET, certsPath)
+		.flatMap(HttpClientRequest::send)
+		.onSuccess(response -> {
+      long endTime = System.currentTimeMillis();
+      long responseTime = endTime - startTime;
+      log.info(String.format(stringLog, response.request().path(), response.statusCode(), responseTime));
+      if (response.statusCode() == 200) {
+				response.bodyHandler(buffer -> {
+                    JsonObject cert =  new JsonObject(buffer.toString("UTF-8"));
+                    JsonArray certificateKeys = cert.getJsonArray("keys");
+                    if(certificateKeys != null)
+                    {
+                        for(int i = 0; i < certificateKeys.size(); ++i)
+                        {
+                            JsonObject JWT = certificateKeys.getJsonObject(i);
 									if (JWT != null)
 										readJWT(JWT, false);
-								}
-							}
-							else
-								readJWT(cert, true);
+                        }
+                    }
+                    else
+                        readJWT(cert, true);
 
-							if (handler != null) {
-								handler.handle(null);
-							}
-						}
-					});
-				} else if (handler != null) {
-					handler.handle(null);
-				}
+                    if (handler != null) {
+                        handler.handle(null);
+                    }
+                });
+			} else if (handler != null) {
+				handler.handle(null);
+			}
+		})
+		.onFailure(th -> {
+			log.error("JWT::Error while fetching certificates", th);
+			if (handler != null) {
+				handler.handle(null);
 			}
 		});
 	}

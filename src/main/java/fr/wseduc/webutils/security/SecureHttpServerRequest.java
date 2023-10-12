@@ -19,6 +19,7 @@ package fr.wseduc.webutils.security;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSession;
@@ -27,11 +28,14 @@ import javax.security.cert.X509Certificate;
 import fr.wseduc.webutils.http.response.BufferHttpResponse;
 import fr.wseduc.webutils.request.HttpServerRequestWithBuffering;
 import fr.wseduc.webutils.request.ProxyHttpRequest;
+import io.netty.handler.codec.DecoderResult;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.net.HostAndPort;
 import io.vertx.core.net.NetSocket;
 import io.vertx.core.net.SocketAddress;
 
@@ -126,11 +130,6 @@ public class SecureHttpServerRequest implements HttpServerRequest, HttpServerReq
 	@Override
 	public HttpMethod method() {
 		return request.method();
-	}
-
-	@Override
-	public String rawMethod() {
-		return request.rawMethod();
 	}
 
 	@Override
@@ -239,11 +238,6 @@ public class SecureHttpServerRequest implements HttpServerRequest, HttpServerReq
 	}
 
 	@Override
-	public NetSocket netSocket() {
-		return request.netSocket();
-	}
-
-	@Override
 	public HttpServerRequest setExpectMultipart(boolean expect) {
 		if (!request.isExpectMultipart()) request.setExpectMultipart(expect);
 		return this;
@@ -268,11 +262,6 @@ public class SecureHttpServerRequest implements HttpServerRequest, HttpServerReq
 	@Override
 	public String getFormAttribute(String attributeName) {
 		return request.getFormAttribute(attributeName);
-	}
-
-	@Override
-	public ServerWebSocket upgrade() {
-		return request.upgrade();
 	}
 
 	@Override
@@ -342,4 +331,58 @@ public class SecureHttpServerRequest implements HttpServerRequest, HttpServerReq
 		return request.getCookie(str);
 	}
 
+	@Override
+	public @io.vertx.codegen.annotations.Nullable HostAndPort authority() {
+		return request.authority();
+	}
+
+	@Override
+	public HttpServerRequest setParamsCharset(String charset) {
+		return request.setParamsCharset(charset);
+	}
+
+	@Override
+	public String getParamsCharset() {
+		return request.getParamsCharset();
+	}
+
+	@Override
+	public Future<Buffer> body() {
+		return request.body();
+	}
+
+	@Override
+	public Future<Void> end() {
+		return request.end();
+	}
+
+	@Override
+	public Future<NetSocket> toNetSocket() {
+		return request.toNetSocket();
+	}
+
+	@Override
+	public Future<ServerWebSocket> toWebSocket() {
+		return request.toWebSocket();
+	}
+
+	@Override
+	public DecoderResult decoderResult() {
+		return request.decoderResult();
+	}
+
+	@Override
+	public @io.vertx.codegen.annotations.Nullable Cookie getCookie(String name, String domain, String path) {
+		return request.getCookie(name, domain, path);
+	}
+
+	@Override
+	public Set<Cookie> cookies(String name) {
+		return request.cookies(name);
+	}
+
+	@Override
+	public Set<Cookie> cookies() {
+		return request.cookies();
+	}
 }
