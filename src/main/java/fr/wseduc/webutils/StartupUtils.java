@@ -95,7 +95,7 @@ public class StartupUtils {
 		JsonObject jo = new JsonObject();
 		jo.put("application", app)
 		.put("actions", actions);
-		eb.send(address, jo, (AsyncResult<Message<JsonObject>> appEvent) -> {
+		eb.request(address, jo, (AsyncResult<Message<JsonObject>> appEvent) -> {
 				if(appEvent.failed()){
 					log.error("Error registering application " + app.getString("name"));
 					if(handler != null) handler.handle(appEvent);
@@ -109,7 +109,7 @@ public class StartupUtils {
 				}
 
 				final JsonObject widgets = new JsonObject().put("widgets", widgetsArray);
-				eb.send(address+".widgets", widgets, new Handler<AsyncResult<Message<JsonObject>>>() {
+				eb.request(address+".widgets", widgets, new Handler<AsyncResult<Message<JsonObject>>>() {
 					public void handle(AsyncResult<Message<JsonObject>> event) {
 						if(event.failed()){
 							log.error("Error registering widgets for application " + app.getString("name"));
