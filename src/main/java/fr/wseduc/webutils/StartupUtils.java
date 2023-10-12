@@ -31,9 +31,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.file.FileProps;
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientOptions;
-import io.vertx.core.http.HttpClientResponse;
+import io.vertx.core.http.*;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
@@ -54,37 +52,36 @@ public class StartupUtils {
 		final String s = new JsonObject().put("application", app).put("actions", actions).encode();
 		final HttpClient httpClient = vertx.createHttpClient(new HttpClientOptions()
 				.setDefaultHost("localhost").setDefaultPort(appRegistryPort).setKeepAlive(false));
-		httpClient.put("/appregistry/application", event -> {
+		httpClient.request(HttpMethod.PUT, "/appregistry/application")
+		.map(r -> r.putHeader("Content-Type", "application/json"))
+		.flatMap(req -> req.send(s))
+		.onSuccess(event -> {
 			if (event.statusCode() != 200) {
 				log.error("Error recording application : " + s);
 				httpClient.close();
 			} else {
 				final JsonArray widgetsArray = loadWidgets(app.getString("name"), vertx);
-				if(widgetsArray.size() == 0){
+				if(widgetsArray.isEmpty()){
 					httpClient.close();
 					return;
 				}
 
 				final String widgets = new JsonObject().put("widgets", widgetsArray).encode();
-				httpClient.post("/appregistry/widget", new Handler<HttpClientResponse>() {
-					@Override
-					public void handle(HttpClientResponse event) {
-						if (event.statusCode() != 200) {
+				httpClient.request(HttpMethod.POST, "/appregistry/widget")
+				.map(r -> r.putHeader("Content-Type", "application/json"))
+				.flatMap(req -> req.send(widgets))
+				.onSuccess(res -> {
+						if (res.statusCode() != 200) {
 							log.error("Error recording widgets for application " + app.getString("name"));
 						} else {
 							log.info("Successfully registered widgets for application " + app.getString("name"));
 						}
 						httpClient.close();
-					}
 				})
-				.putHeader("Content-Type", "application/json")
-				.exceptionHandler(exceptw -> log.error("Error sending widgets to appregistry : " + widgets, exceptw))
-				.end(widgets);
+				.onFailure(exceptw -> log.error("Error sending widgets to appregistry : " + widgets, exceptw));
 			}
 		})
-		.exceptionHandler(except -> log.error("Error sending application to appregistry : " + s, except))
-		.putHeader("Content-Type", "application/json")
-		.end(s);
+		.onFailure(except -> log.error("Error sending application to appregistry : " + s, except));
 	}
 
 	public static void sendStartup(final JsonObject app, JsonArray actions, final EventBus eb, final String address, final Vertx vertx,
