@@ -105,7 +105,7 @@ public class JsonSchemaValidator {
 				.put("key", schema)
 				.put("json", json);
 
-		eb.send(address, j, new DeliveryOptions().setSendTimeout(10000), handler);
+		eb.request(address, j, new DeliveryOptions().setSendTimeout(10000), handler);
 	}
 
 }
