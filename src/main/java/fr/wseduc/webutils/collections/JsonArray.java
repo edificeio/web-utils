@@ -24,6 +24,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+// TODO vertx4
 public class JsonArray extends io.vertx.core.json.JsonArray {
 
 	private final List<Object> list;
