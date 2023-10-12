@@ -82,7 +82,7 @@ public class AWS4Signature {
 		canonicalHeaders.add("x-amz-content-sha256", hashPayload);
 		canonicalHeaders.add("x-amz-date", now);
 
-        final String signature = sign(request.method().name(), request.path(), Utils.getOrElse(request.query(), ""),
+        final String signature = sign(request.getMethod().name(), request.path(), Utils.getOrElse(request.query(), ""),
                 canonicalHeaders, region, accessKey, secretKey, payloadSha256);
         request.putHeader("Authorization",
                 "AWS4-HMAC-SHA256 Credential=" + accessKey + "/" + DATE_FORMAT.format(Instant.now()) + "/" + region + "/s3/aws4_request, " +
