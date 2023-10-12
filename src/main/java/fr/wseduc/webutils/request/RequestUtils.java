@@ -29,6 +29,7 @@ import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.json.jackson.JacksonCodec;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import static java.util.Collections.emptySet;
@@ -148,7 +149,7 @@ public class RequestUtils {
 				try {
 
 					String obj = XSSUtils.stripXSS(event.toString("UTF-8"));
-					final T body = Json.decodeValue(obj, typeReference);
+					final T body = JacksonCodec.decodeValue(obj, typeReference);
 					promise.complete(body);
 				} catch (RuntimeException e) {
 					log.warn(e.getMessage(), e);
@@ -291,7 +292,6 @@ public class RequestUtils {
 	/**
 	 * Parses the date contained in a GET param with {@link RequestUtils#DEFAULT_DATE_FORMAT}.
 	 * @param paramName Name of the GET param containing the date
-	 * @param format Expected format of the date
 	 * @param request Http request
 	 * @return the parsed date or {@code empty} if the request parameter was not present in the request or if its value
 	 * was empty
