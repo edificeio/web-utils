@@ -19,16 +19,13 @@ package fr.wseduc.webutils.http.oauth;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.security.PrivateKey;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.Map;
 
 import fr.wseduc.webutils.security.JWT;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
+import io.vertx.core.*;
 import io.vertx.core.http.*;
 import io.vertx.core.http.impl.headers.HeadersMultiMap;
 import io.vertx.core.json.JsonObject;
@@ -37,6 +34,7 @@ import io.vertx.core.json.DecodeException;
 import fr.wseduc.webutils.http.Renders;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
 
 import static fr.wseduc.webutils.Utils.isNotEmpty;
 
@@ -227,12 +225,18 @@ public class OAuth2Client {
 
 	public void getProtectedResource(String path, String accessToken, Map<String, String> headers,
 			Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, headers, null, httpClient.get(this.uri.getPath() + path, handler));
+		createRequest(HttpMethod.GET, this.uri.getPath() + path, accessToken, headers)
+		.flatMap(HttpClientRequest::send)
+		.onSuccess(handler)
+		.onFailure(th -> onSendRequestFail(th, path, handler));
 	}
 
 	public void getProtectedResource(String path, String accessToken, String acceptMimeType,
 			Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, acceptMimeType, httpClient.get(this.uri.getPath() + path, handler));
+		createRequest(HttpMethod.GET, this.uri.getPath() + path, accessToken, extraHeadersForMimeType(acceptMimeType))
+				.flatMap(HttpClientRequest::send)
+				.onSuccess(handler)
+				.onFailure(th -> onSendRequestFail(th, path, handler));
 	}
 
 	public void postProtectedResource(String path, String accessToken, String body,
@@ -242,12 +246,18 @@ public class OAuth2Client {
 
 	public void postProtectedResource(String path, String accessToken, Map<String, String> headers,
 									  String body, Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, headers, body, httpClient.post(this.uri.getPath() + path, handler));
+		createRequest(HttpMethod.PUT, this.uri.getPath() + path, accessToken, headers)
+				.flatMap(r -> r.send(body))
+				.onSuccess(handler)
+				.onFailure(th -> onSendRequestFail(th, path, handler));
 	}
 
 	public void postProtectedResource(String path, String accessToken, String acceptMimeType,
 			String body, Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, acceptMimeType, httpClient.post(this.uri.getPath() + path, handler), body, null);
+		createRequest(HttpMethod.POST, this.uri.getPath() + path, accessToken, extraHeadersForMimeType(acceptMimeType))
+				.flatMap(r -> r.send(body))
+				.onSuccess(handler)
+				.onFailure(th -> onSendRequestFail(th, path, handler));
 	}
 
 	public void putProtectedResource(String path, String accessToken, String body,
@@ -257,14 +267,19 @@ public class OAuth2Client {
 
 	public void putProtectedResource(String path, String accessToken, Map<String, String> headers,
 									 String body, Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, headers, body, httpClient.request(new RequestOptions()
-				.setMethod(HttpMethod.PUT)
-				.setAbsoluteURI(this.uri.getPath() + path), handler));
+		createRequest(HttpMethod.PUT, this.uri.getPath() + path, accessToken, headers)
+				.flatMap(r -> r.send(body))
+				.onSuccess(handler)
+				.onFailure(th -> onSendRequestFail(th, path, handler));
 	}
 
 	public void putProtectedResource(String path, String accessToken, String acceptMimeType,
 			String body, Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, acceptMimeType, httpClient.put(this.uri.getPath() + path, handler), body, null);
+		createRequest(HttpMethod.PUT, this.uri.getPath() + path, accessToken, extraHeadersForMimeType(acceptMimeType))
+				.flatMap(r -> r.send(body))
+				.onSuccess(handler)
+				.onFailure(th -> onSendRequestFail(th, path, handler));
+
 	}
 
 	public void deleteProtectedResource(String path, String accessToken,
@@ -274,43 +289,50 @@ public class OAuth2Client {
 
 	public void deleteProtectedResource(String path, String accessToken, Map<String, String> headers,
 										Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, headers, null, httpClient.delete(this.uri.getPath() + path, handler));
+		createRequest(HttpMethod.DELETE, this.uri.getPath() + path, accessToken, headers)
+				.flatMap(HttpClientRequest::send)
+				.onSuccess(handler)
+				.onFailure(th -> onSendRequestFail(th, path, handler));
 	}
 
 	public void deleteProtectedResource(String path, String accessToken, String acceptMimeType,
 									  Handler<HttpClientResponse> handler) {
-		sendProtectedResource(accessToken, acceptMimeType, httpClient.delete(this.uri.getPath() + path, handler));
+		createRequest(HttpMethod.DELETE, this.uri.getPath() + path, accessToken, extraHeadersForMimeType(acceptMimeType))
+				.flatMap(HttpClientRequest::send)
+				.onSuccess(handler)
+				.onFailure(th -> onSendRequestFail(th, path, handler));
 	}
 
-	private void sendProtectedResource(String accessToken, Map<String, String> headers, String body,
-			HttpClientRequest req) {
-		String acceptMimeType = "application/json; charset=UTF-8";
-		if (headers != null && headers.containsKey("Accept")) {
-			acceptMimeType = headers.remove("Accept");
-		}
-		sendProtectedResource(accessToken, acceptMimeType, req, body, headers);
+	private void onSendRequestFail(Throwable th, String path, Handler<HttpClientResponse> handler) {
+		log.error("Error while calling " + path, th);
+		handler.handle(null);
 	}
 
-	private void sendProtectedResource(String accessToken, String acceptMimeType,
-									   HttpClientRequest req) {
-		sendProtectedResource(accessToken, acceptMimeType, req, null, null);
+	private Map<String, String> extraHeadersForMimeType(String acceptMimeType) {
+		final Map<String, String> extraHeaders = new HashMap<>();
+		if(StringUtils.isBlank(acceptMimeType)) {
+			extraHeaders.put("Accept", acceptMimeType);
+		}
+		return extraHeaders;
 	}
 
-	private void sendProtectedResource(String accessToken, String acceptMimeType,
-			HttpClientRequest req, String body, Map<String, String> customHeaders) {
-		req.headers()
-				.add("Authorization", "Bearer " + accessToken)
-				.add("Accept", acceptMimeType);
-		if (customHeaders != null) {
-			req.headers().addAll(customHeaders);
+	private Future<HttpClientRequest> createRequest(final HttpMethod method, String uri, String accessToken, Map<String, String> extraHeaders) {
+		final MultiMap headers = new HeadersMultiMap();
+		if(extraHeaders != null) {
+			extraHeaders.forEach(headers::add);
 		}
-		req.exceptionHandler(except -> log.error("Error sending protected resource.", except));
-		if (body != null) {
-			req.end(body);
-		} else {
-			req.end();
+		if(!headers.contains("Accept")) {
+			headers.add("Accept", "application/json; charset=UTF-8");
 		}
+		if(StringUtils.isNotBlank(accessToken)) {
+			headers.add("Authorization", "Bearer " + accessToken);
+		}
+		return httpClient.request(new RequestOptions()
+				.setMethod(method)
+				.setURI(uri)
+				.setHeaders(headers));
 	}
+
 
 	public void close() {
 		if (httpClient != null) {
