@@ -1,9 +1,11 @@
 version: "3"
 services:
-  gradle:
-    image: opendigitaleducation/gradle:4.5.1
-    working_dir: /home/gradle/project
+  maven:
+    image: maven:3.3-jdk-8
+    user: "$DEFAULT_DOCKER_USER"
+    working_dir: /usr/src/maven
     volumes:
-      - ./:/home/gradle/project
-      - ~/.m2:/home/gradle/.m2
-      - ~/.gradle:/home/gradle/.gradle
+      - ./:/usr/src/maven
+      - ~/.m2:/var/maven/.m2
+    environment:
+      MAVEN_CONFIG: /var/maven/.m2
