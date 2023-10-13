@@ -26,7 +26,7 @@ publish() {
     *SNAPSHOT) export nexusRepository='snapshots' ;;
     *)         export nexusRepository='releases' ;;
   esac
-  docker-compose run --rm  maven mvn /-DrepositoryId=ode-$nexusRepository -DskiptTests -Dmaven.test.skip=true deploy
+  docker-compose run --rm  maven mvn -DrepositoryId=ode-$nexusRepository -DskiptTests -Dmaven.test.skip=true deploy
 }
 
 for param in "$@"
