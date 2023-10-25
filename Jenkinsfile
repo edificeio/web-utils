@@ -4,12 +4,12 @@ pipeline {
   agent any
     stages {
       stage("Initialization") {
-        when {
-          environment name: 'RENAME_BUILDS', value: 'true'
-        }
+          when {
+              environment name: 'RENAME_BUILDS', value: 'true'
+          }
         steps {
           script {
-            def version = sh(returnStdout: true, script: 'grep \'version=\' gradle.properties  | cut -d\'=\' -f2')
+            def version = sh(returnStdout: true, script: 'docker compose run --rm maven mvn $MVN_OPTS help:evaluate -Dexpression=project.version -q -DforceStdout')
             buildName "${env.GIT_BRANCH.replace("origin/", "")}@${version}"
           }
         }
