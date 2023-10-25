@@ -22,11 +22,15 @@ import java.net.URLEncoder;
 import java.security.PrivateKey;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import fr.wseduc.webutils.security.JWT;
+import io.vertx.codegen.annotations.Nullable;
 import io.vertx.core.*;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
+import io.vertx.core.http.impl.HttpClientResponseImpl;
 import io.vertx.core.http.impl.headers.HeadersMultiMap;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.json.DecodeException;
@@ -34,6 +38,7 @@ import io.vertx.core.json.DecodeException;
 import fr.wseduc.webutils.http.Renders;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.core.net.NetSocket;
 import org.apache.commons.lang3.StringUtils;
 
 import static fr.wseduc.webutils.Utils.isNotEmpty;
@@ -305,7 +310,117 @@ public class OAuth2Client {
 
 	private void onSendRequestFail(Throwable th, String path, Handler<HttpClientResponse> handler) {
 		log.error("Error while calling " + path, th);
-		handler.handle(null);
+		handler.handle(createFake500Response(th, path));
+	}
+
+	private HttpClientResponse createFake500Response(Throwable th, String path) {
+		// TODO vertx4 improve
+		return new HttpClientResponse() {
+			@Override
+			public HttpClientResponse fetch(long amount) {
+				return this;
+			}
+
+			@Override
+			public HttpClientResponse resume() {
+				return this;
+			}
+
+			@Override
+			public HttpClientResponse exceptionHandler(Handler<Throwable> handler) {
+				return this;
+			}
+
+			@Override
+			public HttpClientResponse handler(Handler<Buffer> handler) {
+				return this;
+			}
+
+			@Override
+			public HttpClientResponse pause() {
+				return this;
+			}
+
+			@Override
+			public HttpClientResponse endHandler(Handler<Void> endHandler) {
+				return this;
+			}
+
+			@Override
+			public NetSocket netSocket() {
+				return null;
+			}
+
+			@Override
+			public HttpVersion version() {
+				return HttpVersion.HTTP_1_1;
+			}
+
+			@Override
+			public int statusCode() {
+				return 500;
+			}
+
+			@Override
+			public String statusMessage() {
+				return "server.error";
+			}
+
+			@Override
+			public MultiMap headers() {
+				return new HeadersMultiMap();
+			}
+
+			@Override
+			public @Nullable String getHeader(String headerName) {
+				return null;
+			}
+
+			@Override
+			public String getHeader(CharSequence headerName) {
+				return null;
+			}
+
+			@Override
+			public @Nullable String getTrailer(String trailerName) {
+				return null;
+			}
+
+			@Override
+			public MultiMap trailers() {
+				return null;
+			}
+
+			@Override
+			public List<String> cookies() {
+				return null;
+			}
+
+			@Override
+			public Future<Buffer> body() {
+				return null;
+			}
+
+			@Override
+			public Future<Void> end() {
+				return null;
+			}
+
+			@Override
+			public HttpClientResponse customFrameHandler(Handler<HttpFrame> handler) {
+				return this;
+			}
+
+			@Override
+			public HttpClientRequest request() {
+				return null;
+			}
+
+			@Override
+			public HttpClientResponse streamPriorityHandler(Handler<StreamPriority> handler) {
+				return this;
+			}
+		};
 	}
 
 	private Map<String, String> extraHeadersForMimeType(String acceptMimeType) {
