@@ -63,7 +63,7 @@ public abstract class Server extends AbstractVerticle {
 
 	@Override
 	public void start(Promise<Void> startPromise) throws Exception {
-		super.start();
+		super.start(startPromise);
 		config = config();
 		FileResolver.getInstance().setBasePath(config);
 		rm = new RouteMatcher();
@@ -166,7 +166,7 @@ public abstract class Server extends AbstractVerticle {
 			.listen(config.getInteger("port"))
 			.onSuccess(e -> {
 				server = e;
-				startPromise.complete();
+				startPromise.tryComplete();
 			})
 			.onFailure(startPromise::fail);
 	}
