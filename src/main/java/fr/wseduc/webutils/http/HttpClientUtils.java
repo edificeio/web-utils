@@ -75,6 +75,7 @@ public class HttpClientUtils {
 				uri = uri.replaceFirst(req.path(), prefix + req.path());
 			}
 		}
+		req.pause();
 		client.request(new RequestOptions()
 						.setMethod(req.method())
 						.setURI(uri)
@@ -108,6 +109,7 @@ public class HttpClientUtils {
 							}
 						}
 					));
+					req.resume();
 				});
 	}
 
