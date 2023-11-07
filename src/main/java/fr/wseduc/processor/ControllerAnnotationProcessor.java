@@ -31,6 +31,7 @@ import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
 import javax.tools.StandardLocation;
 import java.io.*;
+import java.nio.file.NoSuchFileException;
 import java.util.*;
 
 @SupportedAnnotationTypes({"fr.wseduc.security.SecuredAction", "fr.wseduc.bus.BusAddress",
@@ -267,7 +268,7 @@ public class ControllerAnnotationProcessor extends AbstractProcessor {
 					e.getValue().add(line);
 				}
 				r.close();
-			} catch (FileNotFoundException x) {
+			} catch (FileNotFoundException|NoSuchFileException x) {
 				// doesn't exist
 			} catch (IOException ex) {
 				error("Failed to load existing secured actions : " + ex);
