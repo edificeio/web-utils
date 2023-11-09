@@ -153,10 +153,25 @@ public class CookieHelper {
 	private void signCookie(Cookie cookie)
 			throws InvalidKeyException, NoSuchAlgorithmException,
 			IllegalStateException, UnsupportedEncodingException {
+		cookie.setValue(signValue(cookie));
+	}
+
+	/**
+	 *
+	 * @param cookie Cookie to be signed
+	 * @return The value to be set for the oneSessionId
+	 * @throws InvalidKeyException
+	 * @throws NoSuchAlgorithmException
+	 * @throws IllegalStateException
+	 * @throws UnsupportedEncodingException
+	 */
+	public String signValue(final Cookie cookie)
+			throws InvalidKeyException, NoSuchAlgorithmException,
+			IllegalStateException, UnsupportedEncodingException {
 		String signature = HmacSha1.sign(
 				cookie.getDomain()+cookie.getName()+
-				cookie.getPath()+cookie.getValue(), signKey);
-		cookie.setValue(cookie.getValue() + ":" + signature);
+						cookie.getPath()+cookie.getValue(), signKey);
+		return cookie.getValue() + ":" + signature;
 	}
 
 	public String getSigned(String name, HttpServerRequest request) {
