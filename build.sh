@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 if [ -z ${USER_UID:+x} ]
 then
   export USER_UID=1000
