@@ -3,11 +3,18 @@
          xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.edifice</groupId>
+        <artifactId>edifice-parent</artifactId>
+        <version>1.0</version>
+    </parent>
+
     <groupId>fr.wseduc</groupId>
     <artifactId>web-utils</artifactId>
     <version>3.0-b2school-SNAPSHOT</version>
+
     <properties>
-        <vertx.version>4.4.5</vertx.version>
         <mustache.version>1.15</mustache.version>
         <jodaTimeVersion>2.9.4</jodaTimeVersion>
         <eventbusWrapperVersion>1.1.0</eventbusWrapperVersion>
@@ -16,32 +23,7 @@
         <commonsTextVersion>1.9</commonsTextVersion>
         <commonsCodecVersion>1.15</commonsCodecVersion>
         <micrometerPrometheusVersion>1.1.0</micrometerPrometheusVersion>
-        <java.version>1.8</java.version>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
-        <maven-surefire-plugin.version>2.22.2</maven-surefire-plugin.version>
     </properties>
-
-    <repositories>
-        <repository>
-            <id>ode</id>
-            <name>ODE Repository</name>
-            <url>https://maven.opendigitaleducation.com/nexus/content/groups/public</url>
-        </repository>
-    </repositories>
-    <distributionManagement>
-        <snapshotRepository>
-            <id>ode-snapshots</id>
-            <name>Snapshots</name>
-            <url>https://maven.opendigitaleducation.com/nexus/content/repositories/snapshots/</url>
-        </snapshotRepository>
-        <repository>
-            <id>ode-releases</id>
-            <name>Releases</name>
-            <url>https://maven.opendigitaleducation.com/nexus/content/repositories/releases/</url>
-        </repository>
-    </distributionManagement>
-
 
     <dependencies>
         <dependency>
@@ -118,20 +100,4 @@
         </dependency>
     </dependencies>
 
-    <build>
-        <plugins>
-            <plugin>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>${maven-compiler-plugin.version}</version>
-                <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                </configuration>
-            </plugin>
-            <plugin>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>${maven-surefire-plugin.version}</version>
-            </plugin>
-        </plugins>
-    </build>
 </project>
