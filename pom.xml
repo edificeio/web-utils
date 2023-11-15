@@ -14,6 +14,14 @@
     <artifactId>web-utils</artifactId>
     <version>3.0-b2school-SNAPSHOT</version>
 
+    <repositories>
+        <repository>
+            <id>ode</id>
+            <name>ODE Repository</name>
+            <url>https://maven.opendigitaleducation.com/nexus/content/groups/public</url>
+        </repository>
+    </repositories>
+
     <properties>
         <mustache.version>1.15</mustache.version>
         <jodaTimeVersion>2.9.4</jodaTimeVersion>
