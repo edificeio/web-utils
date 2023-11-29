@@ -53,6 +53,6 @@ public class SimpleContentTransformerFactory implements IContentTransformerFacto
         } else {
             authHeader = "Basic " + auth;
         }
-        return new SimpleContentTransformerClient(vertx.createHttpClient(options), auth);
+        return new SimpleContentTransformerClient(vertx.createHttpClient(options), authHeader);
     }
 }
