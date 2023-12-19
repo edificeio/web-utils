@@ -135,17 +135,24 @@ public class Sms {
 	 * @return A report of the send job
 	 */
 	public Future<SmsSendingReport> send(HttpServerRequest request, final String phone, String template, JsonObject params, final String module){
+		return processTemplate(request, template, params)
+				.compose(body -> send(phone, body));
+	}
+
+	/**
+	 * Send a message to a phone number
+	 * @param phone complete phone number of the user
+	 * @param message the message to be sent
+	 * @return a report of the send job
+	 */
+	public Future<SmsSendingReport> send(String phone, String message) {
 		if (StringUtils.isBlank(phone)) {
 			return Future.failedFuture("empty.target");
+		} else {
+			final String formattedPhone = StringValidation.formatPhone(phone);
+			final JsonObject smsObject = getFactory().getSmsObjectFor(formattedPhone, message);
+			return getFactory().send(smsObject);
 		}
-
-		final String formattedPhone = StringValidation.formatPhone(phone);
-
-		return processTemplate(request, template, params)
-		.compose( body -> {
-			final JsonObject smsObject = getFactory().getSmsObjectFor(formattedPhone, body);
-			return getFactory().send( smsObject );
-		});
 	}
 
 	private Future<String> processTemplate(HttpServerRequest request, String template, JsonObject params){
