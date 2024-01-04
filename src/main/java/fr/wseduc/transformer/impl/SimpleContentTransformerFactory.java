@@ -45,6 +45,9 @@ public class SimpleContentTransformerFactory implements IContentTransformerFacto
             .setIdleTimeout(contentTransformerConfig.getInteger("idle-timeout", TCPSSLOptions.DEFAULT_IDLE_TIMEOUT))
             .setKeepAliveTimeout(contentTransformerConfig.getInteger("keepalive-timeout", HttpClientOptions.DEFAULT_KEEP_ALIVE_TIMEOUT))
             .setHttp2KeepAliveTimeout(contentTransformerConfig.getInteger("keepalive-timeout", HttpClientOptions.DEFAULT_HTTP2_KEEP_ALIVE_TIMEOUT));
+        if(uri.getScheme().equals("https")) {
+            options.setSsl(true);
+        }
         final String auth = contentTransformerConfig.getString("auth");
         final String authHeader;
         if(isEmpty(auth)) {
