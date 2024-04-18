@@ -168,7 +168,7 @@ public abstract class Server extends AbstractVerticle {
 				server = e;
 				startPromise.tryComplete();
 			})
-			.onFailure(startPromise::fail);
+			.onFailure(startPromise::tryFail);
 	}
 
 	private HttpServerOptions createHttpServerOptions() {
