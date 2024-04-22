@@ -42,7 +42,6 @@ public class DefaultOAuthResourceProvider implements OAuthResourceProvider {
 			public void handle(AsyncResult<Message<JsonObject>> event) {
 				if (event.succeeded()) {
 					Message<JsonObject> res = event.result();
-					request.resume();
 					if ("ok".equals(res.body().getString("status"))) {
 						handler.handle(new DefaultAsyncResult<>(res.body()));
 					} else {
@@ -75,6 +74,7 @@ public class DefaultOAuthResourceProvider implements OAuthResourceProvider {
 				request.setAttribute("remote_user", res.result().getString("remote_user"));
 				request.setAttribute("scope", res.result().getString("scope"));
 				request.setAttribute("authorization_type", "Bearer");
+				request.resume();
 				handler.handle(customValidation(request));
 			}else{
 				handler.handle(false);
