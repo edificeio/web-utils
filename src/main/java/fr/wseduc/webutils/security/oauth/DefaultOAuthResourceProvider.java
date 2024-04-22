@@ -89,7 +89,7 @@ public class DefaultOAuthResourceProvider implements OAuthResourceProvider {
 	@Override
 	public boolean hasBearerHeader(HttpServerRequest request) {
 		String authorization = request.headers().get("Authorization");
-		return authorization != null && authorization.startsWith("Bearer ");
+		return authorization != null && (authorization.startsWith("Bearer ") || authorization.contains(", Bearer "));
 	}
 
 }
