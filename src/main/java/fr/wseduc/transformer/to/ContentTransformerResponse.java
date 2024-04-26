@@ -56,10 +56,10 @@ public class ContentTransformerResponse {
                                       @JsonProperty("cleanJson") Map<String, Object> cleanJson) {
         this.contentVersion = contentVersion;
         this.htmlContent = htmlContent;
-        this.jsonContent = jsonContent == null ? new JsonObject() : new JsonObject(jsonContent);
+        this.jsonContent = jsonContent == null ? null : new JsonObject(jsonContent);
         this.plainTextContent = plainTextContent;
         this.cleanHtml = cleanHtml;
-        this.cleanJson = cleanJson == null ? new JsonObject() : new JsonObject(cleanJson);
+        this.cleanJson = cleanJson == null ? null : new JsonObject(cleanJson);
     }
 
     public int getContentVersion() {
