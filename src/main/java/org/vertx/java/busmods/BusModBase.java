@@ -25,6 +25,8 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
+import java.util.Optional;
+
 /**
  * Base helper class for Java modules which use the event bus.<p>
  * You don't have to use this class but it contains some useful functionality.<p>
@@ -70,6 +72,9 @@ public abstract class BusModBase extends AbstractVerticle {
 	protected void sendError(Message<JsonObject> message, String error) {
 		sendError(message, error, null);
 	}
+	protected void sendError(Message<JsonObject> message, Throwable e) {
+		sendError(message, e.getMessage(), e);
+	}
 
 	protected void sendError(Message<JsonObject> message, String error, Throwable e) {
 		logger.error(error, e);
@@ -98,6 +103,10 @@ public abstract class BusModBase extends AbstractVerticle {
 		return b == null ? defaultValue : b.booleanValue();
 	}
 
+	protected Optional<String> getStringConfig(String fieldName) {
+		String s = config.getString(fieldName);
+		return Optional.ofNullable(s);
+	}
 	protected String getOptionalStringConfig(String fieldName, String defaultValue) {
 		String s = config.getString(fieldName);
 		return s == null ? defaultValue : s;
