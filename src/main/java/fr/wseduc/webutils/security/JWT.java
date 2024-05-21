@@ -180,6 +180,7 @@ public final class JWT {
 		});
 	}
 
+	@SuppressWarnings("deprecation")
 	private void findCertificates(final Handler<Void> handler) {
 		httpClient.getNow(certsPath, new Handler<HttpClientResponse>() {
 			@Override
@@ -195,8 +196,8 @@ public final class JWT {
 								for(int i = 0; i < certificateKeys.size(); ++i)
 								{
 									JsonObject JWT = certificateKeys.getJsonObject(i);
-									if(JWT != null && readJWT(JWT, false) == true)
-										break;
+									if (JWT != null)
+										readJWT(JWT, false);
 								}
 							}
 							else
