@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import fr.wseduc.webutils.template.TemplateProcessor;
-import fr.wseduc.webutils.template.FileTemplateProcessor;
 import fr.wseduc.webutils.template.lambdas.FormatBirthDateLambda;
 import fr.wseduc.webutils.template.lambdas.I18nLambda;
 import fr.wseduc.webutils.template.lambdas.InfraLambda;
@@ -55,7 +54,7 @@ public class Renders {
 	private List<HookProcess> hookRenderProcess;
 	protected JsonObject config;
 	protected String staticHost;
-	protected FileTemplateProcessor templateProcessor;
+	protected TemplateProcessor templateProcessor;
 	protected static final List<String> allowedHosts = new ArrayList<>();
 
 	public Renders(Vertx vertx, JsonObject config) {
@@ -65,7 +64,7 @@ public class Renders {
 		}
 		this.vertx = vertx;
 		if (vertx != null) {
-			this.templateProcessor = new FileTemplateProcessor(vertx, "view/", false);
+			this.templateProcessor = new TemplateProcessor(vertx, "view/", false);
 			this.templateProcessor.setLambda("formatBirthDate", new FormatBirthDateLambda());
 			this.templateProcessor.setLambda("modVersion", new ModsLambda(vertx));
 		}
@@ -83,7 +82,7 @@ public class Renders {
 		this.staticHost = (String) server.get("static-host");
 
 		if (templateProcessor == null && vertx != null) {
-			this.templateProcessor = new FileTemplateProcessor(vertx, "view/", false);
+			this.templateProcessor = new TemplateProcessor(vertx, "view/", false);
 			this.templateProcessor.setLambda("formatBirthDate", new FormatBirthDateLambda());
 			this.templateProcessor.setLambda("modVersion", new ModsLambda(vertx));
 		}
@@ -170,8 +169,7 @@ public class Renders {
 	public void processTemplate(final HttpServerRequest request, JsonObject p, String resourceName, Reader r, final Handler<Writer> handler)
 	{
 		this.setLambdaTemplateRequest(request);
-		this.templateProcessor.escapeHTML(true);
-		this.templateProcessor.processTemplate(this.genTemplateName(resourceName, request), p, r, handler);
+		this.templateProcessor.escapeHTML(true).processTemplate(this.genTemplateName(resourceName, request), p, r, handler);
 	}
 
 	public void processTemplate(final HttpServerRequest request, JsonObject p, String resourceName, boolean escapeHTML, final Handler<String> handler)

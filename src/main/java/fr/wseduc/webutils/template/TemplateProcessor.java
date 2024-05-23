@@ -43,11 +43,25 @@ public class TemplateProcessor
 {
   protected static final Logger log = LoggerFactory.getLogger(TemplateProcessor.class);
 
-  protected Mustache.Compiler compiler = Mustache.compiler().defaultValue("");
+  private Vertx vertx;
+  private String templateFolder;
+
+  private Mustache.Compiler compiler = Mustache.compiler().defaultValue("");
   private Map<String, Mustache.Lambda> templateLambdas = new ConcurrentHashMap<String, Mustache.Lambda>();
 
-  public TemplateProcessor()
+  private final ConcurrentMap<String, Template> cache = new ConcurrentHashMap<String, Template>();
+  private boolean useCache = false;
+
+  public TemplateProcessor(Vertx vertx, String templateFolder)
   {
+    this.vertx = vertx;
+    this.templateFolder = templateFolder.endsWith("/") ? templateFolder : templateFolder + "/";
+  }
+
+  public TemplateProcessor(Vertx vertx, String templateFolder, boolean useCache)
+  {
+    this(vertx, templateFolder);
+    this.enableCache(useCache);
   }
 
   // =========================================== COMPILER CONFIGURATION ===========================================
@@ -76,60 +90,106 @@ public class TemplateProcessor
     return this;
   }
 
+  // ================================================= CACHE CONTROL ==============================================
+
+  public void enableCache(boolean useCache)
+  {
+    this.useCache = useCache;
+  }
+
+  public void clearCache()
+  {
+    this.cache.clear();
+  }
+
   // ============================================= TEMPLATE PROCESSING ============================================
 
-
-  public void processTemplate(String templateString, JsonObject params, final Handler<String> handler)
+  public void processTemplate(String resourceName, JsonObject params, final Handler<String> handler)
   {
-    this.processTemplateToWriter(templateString, params, new Handler<Writer>()
+    processTemplate(resourceName, params, null, new Handler<Writer>()
     {
       @Override
       public void handle(Writer w)
       {
-        handler.handle(w == null ? null : w.toString());
+        if (w != null)
+          handler.handle(w.toString());
+        else
+          handler.handle(null);
       }
     });
   }
 
-  public void processTemplateToWriter(String templateString, JsonObject params, final Handler<Writer> handler)
-  {
-    this.getTemplate(templateString, new Handler<Template>()
-    {
-      @Override
-      public void handle(Template t)
-      {
-        processTemplate(t, params, handler);
-      }
-    });
-  }
-
-  protected void processTemplate(Template t, JsonObject params, final Handler<Writer> handler)
+  public void processTemplate(String resourceName, JsonObject params, Reader r, final Handler<Writer> handler)
   {
     final JsonObject ctxParams = (params == null) ? new JsonObject() : params.copy();
     final Map<String, Object> ctx = JsonUtils.convertMap(ctxParams);
     this.applyLambdas(ctx);
 
-    if (t != null)
+    getTemplate(resourceName, r, new Handler<Template>()
     {
-      try
+      @Override
+      public void handle(Template t)
       {
-        Writer writer = new StringWriter();
-        t.execute(ctx, writer);
-        handler.handle(writer);
+        if (t != null)
+        {
+          try
+          {
+            Writer writer = new StringWriter();
+            t.execute(ctx, writer);
+            handler.handle(writer);
+          }
+          catch (Exception e)
+          {
+            log.error(e.getMessage(), e);
+            handler.handle(null);
+          }
+        }
+        else
+          handler.handle(null);
       }
-      catch (Exception e)
-      {
-        log.error(e.getMessage(), e);
-        handler.handle(null);
-      }
-    }
-    else
-      handler.handle(null);
+    });
   }
 
-  protected void getTemplate(String templateString, final Handler<Template> handler)
+  private void getTemplate(String resourceName, Reader r, final Handler<Template> handler)
   {
-    handler.handle(compiler.compile(templateString));
+    String path;
+    if (resourceName != null && r != null && !resourceName.trim().isEmpty()) // Pourquoi a-t-on besoin que resourceName soit valide si r est déjà non-nul ?!
+    {
+      handler.handle(compiler.compile(r));
+      return;
+    }
+    else
+      path = this.templateFolder + resourceName;
+
+    final String p = absolutePath(path);
+    if (this.useCache == true)
+    {
+      Template cacheEntry = cache.get(p);
+      if(cacheEntry != null)
+      {
+        handler.handle(cacheEntry);
+        return;
+      }
+    }
+
+    this.vertx.fileSystem().readFile(p, new Handler<AsyncResult<Buffer>>()
+    {
+      @Override
+      public void handle(AsyncResult<Buffer> ar)
+      {
+        if (ar.succeeded())
+        {
+          Template template = compiler.compile(ar.result().toString("UTF-8"));
+
+          if(useCache == true)
+            cache.put(p, template);
+
+          handler.handle(template);
+        }
+        else
+          handler.handle(null);
+      }
+    });
   }
 
   // ================================================ PRIVATE UTILS ===============================================
