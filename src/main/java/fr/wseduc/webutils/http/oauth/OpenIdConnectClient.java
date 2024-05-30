@@ -143,4 +143,8 @@ public final class OpenIdConnectClient extends OAuth2Client {
 		this.basic = basic;
 	}
 
+	public JWT getJwtInstance() {
+		return jwt;
+	}
+
 }
