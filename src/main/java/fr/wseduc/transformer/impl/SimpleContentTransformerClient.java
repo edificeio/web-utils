@@ -42,18 +42,35 @@ public class SimpleContentTransformerClient implements IContentTransformerClient
                                                         final HttpServerRequest httpCallerRequest) {
         final Promise<ContentTransformerResponse> promise = Promise.promise();
         final HttpClientRequest request = this.httpClient.post("/transform", response -> {
-            if (response.statusCode() == 200) {
+            final int statusCode = response.statusCode();
+            if (statusCode == 200) {
                 response.bodyHandler(body -> promise.complete(Json.decodeValue(body, ContentTransformerResponse.class)));
             } else {
-                response.bodyHandler( body -> promise.fail("transform.error." + response.statusCode() + " with response body: " + body.toString()));
+                promise.fail("transform.error." + statusCode);
+                response.bodyHandler( body -> log.warn(createReport(statusCode, contentTransformerRequest, httpCallerRequest, body.toString())));
             }
         });
-        request.exceptionHandler(promise::fail);
+        request.exceptionHandler(th -> {
+            promise.fail("transform.error.500");
+            log.warn(createReport(500, contentTransformerRequest, httpCallerRequest, th.getMessage()));
+        });
         request.putHeader("Content-Type", "application/json");
         if(isNotEmpty(authHeader)) {
             request.putHeader("Authorization", authHeader);
         }
         request.end(JsonObject.mapFrom(contentTransformerRequest).encode());
         return promise.future();
+    }
+
+    private String createReport(final int statusCode, final ContentTransformerRequest contentTransformerRequest,
+                                    final HttpServerRequest httpCallerRequest, final String body) {
+        final JsonObject report = new JsonObject()
+          .put("httpcode", statusCode)
+          .put("payload", Json.encode(contentTransformerRequest))
+          .put("originalMethod", httpCallerRequest.method().name());
+        if(body != null) {
+          report.put("response", body);
+        }
+        return Json.encode(report);
     }
 }

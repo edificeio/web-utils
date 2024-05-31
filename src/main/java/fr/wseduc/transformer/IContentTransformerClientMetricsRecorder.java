@@ -13,8 +13,9 @@ public interface IContentTransformerClientMetricsRecorder {
      * Called when a transformation raised an error.
      * @param request Transformation request
      * @param durationInMs Duration of the transformation
+     * @param th error that caused the transformation to fail
      */
-    void onTransformFailure(final ContentTransformerRequest request, final long durationInMs);
+    void onTransformFailure(final ContentTransformerRequest request, final long durationInMs, final Throwable th);
 
     static final NoopContentTransformerClientMetricsRecorder noop = new NoopContentTransformerClientMetricsRecorder();
 
@@ -26,7 +27,7 @@ public interface IContentTransformerClientMetricsRecorder {
         }
 
         @Override
-        public void onTransformFailure(final ContentTransformerRequest request, final long durationInMs) {
+        public void onTransformFailure(final ContentTransformerRequest request, final long durationInMs, Throwable th) {
 
         }
     }
