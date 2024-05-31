@@ -21,6 +21,7 @@ public class ContentTransformerClientMetricsRecorder implements IContentTransfor
     private final Timer sendingTimes;
     private final Counter successCounter;
     private final Counter failureCounter;
+    private final Counter failureCounterTooLarge;
     private final DistributionSummary durationPerByte;
 
     public ContentTransformerClientMetricsRecorder(final Configuration configuration) {
@@ -33,7 +34,7 @@ public class ContentTransformerClientMetricsRecorder implements IContentTransfor
                 Timer.builder("content.transform.time")
                 .tags(tags)
                 .description("time to transform content"),
-                configuration.sla, 100
+                configuration.sla, 1000
         ).register(registry);
         successCounter = Counter.builder("content.transform.ok")
                 .description("number of times a content was successfully transformed")
@@ -41,6 +42,10 @@ public class ContentTransformerClientMetricsRecorder implements IContentTransfor
                 .register(registry);
         failureCounter = Counter.builder("content.transform.ko")
                 .description("number of times an error occurred while trying to transform a content")
+                .tags(tags)
+                .register(registry);
+        failureCounterTooLarge = Counter.builder("content.transform.too.large")
+          .description("number of times an error occurred because the payload was too large")
                 .tags(tags)
                 .register(registry);
         durationPerByte = DistributionSummary.builder("content.transform.rate")
@@ -57,11 +62,16 @@ public class ContentTransformerClientMetricsRecorder implements IContentTransfor
     }
 
     @Override
-    public void onTransformFailure(final ContentTransformerRequest request, final long durationInMs) {
-        onTransform(false, request, durationInMs);
+    public void onTransformFailure(final ContentTransformerRequest request, final long durationInMs, Throwable th) {
+        final String exMessage = th.getMessage();
+        if(exMessage.endsWith("413")) { // If the error comes from a payload too large then we use a special counter
+            failureCounterTooLarge.increment();
+        } else {
+            onTransform(false, request, durationInMs);
+        }
     }
 
-    public void onTransform(final boolean success, final ContentTransformerRequest request, final long durationInMs) {
+    private void onTransform(final boolean success, final ContentTransformerRequest request, final long durationInMs) {
         sendingTimes.record(durationInMs, TimeUnit.MILLISECONDS);
         if (request.getHtmlContent() != null) {
             durationPerByte.record((double) durationInMs/request.getHtmlContent().length());
