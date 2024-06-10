@@ -47,12 +47,6 @@ public class ContentTransformerRequest {
         this.htmlContent = htmlContent;
         this.jsonContent =jsonContent;
     }
-    public ContentTransformerRequest(int contentVersion, String htmlContent) {
-        this(ContentTransformerAction.HTML2JSON, contentVersion, htmlContent, null);
-    }
-    public ContentTransformerRequest(int contentVersion, JsonObject jsonContent) {
-        this(ContentTransformerAction.JSON2HTML, contentVersion, null, jsonContent);
-    }
 
     public Set<ContentTransformerFormat> getRequestedFormats() {
         return requestedFormats;

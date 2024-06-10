@@ -1,9 +1,13 @@
 package fr.wseduc.webutils.security.oauth;
 
+import io.netty.handler.codec.DecoderResult;
+import io.vertx.codegen.annotations.Nullable;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.*;
+import io.vertx.core.net.HostAndPort;
 import io.vertx.core.net.NetSocket;
 import io.vertx.core.net.SocketAddress;
 
@@ -12,7 +16,9 @@ import org.junit.Test;
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSession;
 import javax.security.cert.X509Certificate;
+import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -54,6 +60,22 @@ public class DefaultOAuthResourceProviderTest {
     public String absoluteURI() {
             throw new UnsupportedOperationException("Unimplemented method 'absoluteURI'");
     }
+
+    @Override
+    public Future<Buffer> body() {
+      throw new UnsupportedOperationException("Unimplemented method 'body'");
+    }
+
+    @Override
+    public Future<Void> end() {
+      throw new UnsupportedOperationException("Unimplemented method 'end'");
+    }
+
+    @Override
+    public Future<NetSocket> toNetSocket() {
+      throw new UnsupportedOperationException("Unimplemented method 'toNetSocket'");
+    }
+
     @Override
     public long bytesRead() {
             throw new UnsupportedOperationException("Unimplemented method 'bytesRead'");
@@ -70,6 +92,17 @@ public class DefaultOAuthResourceProviderTest {
     public Map<String, Cookie> cookieMap() {
             throw new UnsupportedOperationException("Unimplemented method 'cookieMap'");
     }
+
+    @Override
+    public Set<Cookie> cookies(String s) {
+      throw new UnsupportedOperationException("Unimplemented method 'query'");
+    }
+
+    @Override
+    public Set<Cookie> cookies() {
+      throw new UnsupportedOperationException("Unimplemented method 'query'");
+    }
+
     @Override
     public HttpServerRequest customFrameHandler(Handler<HttpFrame> arg0) {
             throw new UnsupportedOperationException("Unimplemented method 'customFrameHandler'");
@@ -94,10 +127,22 @@ public class DefaultOAuthResourceProviderTest {
     public Cookie getCookie(String arg0) {
             throw new UnsupportedOperationException("Unimplemented method 'getCookie'");
     }
+
+    @Override
+    public @Nullable Cookie getCookie(String s, String s1, String s2) {
+      throw new UnsupportedOperationException("Unimplemented method 'query'");
+    }
+
     @Override
     public String getFormAttribute(String arg0) {
             throw new UnsupportedOperationException("Unimplemented method 'getFormAttribute'");
     }
+
+    @Override
+    public Future<ServerWebSocket> toWebSocket() {
+      throw new UnsupportedOperationException("Unimplemented method 'query'");
+    }
+
     @Override
     public String getHeader(String arg0) {
             throw new UnsupportedOperationException("Unimplemented method 'getHeader'");
@@ -106,6 +151,17 @@ public class DefaultOAuthResourceProviderTest {
     public String getHeader(CharSequence arg0) {
             throw new UnsupportedOperationException("Unimplemented method 'getHeader'");
     }
+
+    @Override
+    public HttpServerRequest setParamsCharset(String s) {
+      throw new UnsupportedOperationException("Unimplemented method 'query'");
+    }
+
+    @Override
+    public String getParamsCharset() {
+      throw new UnsupportedOperationException("Unimplemented method 'query'");
+    }
+
     @Override
     public String getParam(String arg0) {
             throw new UnsupportedOperationException("Unimplemented method 'getParam'");
@@ -143,10 +199,6 @@ public class DefaultOAuthResourceProviderTest {
             throw new UnsupportedOperationException("Unimplemented method 'method'");
     }
     @Override
-    public NetSocket netSocket() {
-            throw new UnsupportedOperationException("Unimplemented method 'netSocket'");
-    }
-    @Override
     public MultiMap params() {
             throw new UnsupportedOperationException("Unimplemented method 'params'");
     }
@@ -166,10 +218,12 @@ public class DefaultOAuthResourceProviderTest {
     public String query() {
             throw new UnsupportedOperationException("Unimplemented method 'query'");
     }
+
     @Override
-    public String rawMethod() {
-            throw new UnsupportedOperationException("Unimplemented method 'rawMethod'");
+    public @Nullable HostAndPort authority() {
+      throw new UnsupportedOperationException("Unimplemented method 'authority'");
     }
+
     @Override
     public SocketAddress remoteAddress() {
             throw new UnsupportedOperationException("Unimplemented method 'remoteAddress'");
@@ -198,10 +252,12 @@ public class DefaultOAuthResourceProviderTest {
     public HttpServerRequest streamPriorityHandler(Handler<StreamPriority> arg0) {
             throw new UnsupportedOperationException("Unimplemented method 'streamPriorityHandler'");
     }
+
     @Override
-    public ServerWebSocket upgrade() {
-            throw new UnsupportedOperationException("Unimplemented method 'upgrade'");
+    public DecoderResult decoderResult() {
+      throw new UnsupportedOperationException("Unimplemented method 'decoderResult'");
     }
+
     @Override
     public HttpServerRequest uploadHandler(Handler<HttpServerFileUpload> arg0) {
             throw new UnsupportedOperationException("Unimplemented method 'uploadHandler'");
