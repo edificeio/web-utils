@@ -27,6 +27,7 @@ import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -83,7 +84,7 @@ public class Sms {
 			.put("provider", smsProvider)
 			.put("action", "send-sms")
 			.put("parameters", new JsonObject()
-				.put("receivers", new fr.wseduc.webutils.collections.JsonArray().add(target))
+				.put("receivers", new JsonArray().add(target))
 				.put("message", body)
 				.put("senderForResponse", true)
 				.put("noStopClause", true));
