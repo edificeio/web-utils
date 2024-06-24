@@ -127,7 +127,6 @@ public class GoMailSender extends NotificationHelper implements EmailSender {
 	}
 
 	private void send(JsonObject json, final Handler<AsyncResult<Message<JsonObject>>> handler) {
-		// TODO vertx 4 : check correct migration
 		JsonObject to = new JsonObject();
 		JsonObject from = new JsonObject();
 		JsonObject subject = new JsonObject();
