@@ -28,7 +28,6 @@ import java.util.Set;
 
 import static fr.wseduc.webutils.DefaultAsyncResult.handleAsyncResult;
 
-// TODO vertx4
 public class AsyncLocalMap<K, V> implements AsyncMap<K, V> {
 
 	private Vertx vertx;
