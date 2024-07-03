@@ -112,7 +112,7 @@ public class AlgorithmTest {
 		canonicalHeaders.add("x-amz-content-sha256", AWS4Signature.EMPTY_PAYLOAD_SHA256);
 		canonicalHeaders.add("x-amz-date", now);
 		String signature = AWS4Signature.sign("GET", "/storage/00/00/1cd26124-5c22-4777-ae63-7a8ff4e30000",
-				"", canonicalHeaders, "fr-par", "", "", null);
+				"", canonicalHeaders, "fr-par", "", "", null, Instant.now());
 		System.out.println(now);
 		System.out.println(signature);
 		assertEquals("6bbb885acc9fe37317e6c2c7725efa93", signature);
