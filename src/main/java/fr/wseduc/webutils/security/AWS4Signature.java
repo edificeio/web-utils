@@ -37,7 +37,7 @@ public class AWS4Signature {
     private static final DateTimeFormatter DATETIME_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'").withZone(ZoneId.of("Z"));
 
     public static String sign(String httpMethod, String canonicalUri, String canonicalQueryString, MultiMap canonicalHeaders,
-            String region, String accessKey, String secretKey, String payloadSha256)
+            String region, String accessKey, String secretKey, String payloadSha256, Instant now)
             throws NoSuchAlgorithmException, InvalidKeyException, IllegalStateException, UnsupportedEncodingException {
 
         final StringBuilder canonicalRequest = new StringBuilder()
@@ -46,7 +46,6 @@ public class AWS4Signature {
                 .append(canonicalQueryString).append("\n");
 
         final String hashPayload = (payloadSha256 != null ? payloadSha256: EMPTY_PAYLOAD_SHA256);
-        final Instant now = Instant.now();
 
         for (Map.Entry<String, String> h : canonicalHeaders.entries()) { // TODO add uri encode
             canonicalRequest.append(h.getKey().toLowerCase()).append(":").append(h.getValue()).append("\n");
@@ -76,16 +75,17 @@ public class AWS4Signature {
             throws NoSuchAlgorithmException, InvalidKeyException, IllegalStateException, UnsupportedEncodingException {
 
         final String hashPayload = (payloadSha256 != null ? payloadSha256: EMPTY_PAYLOAD_SHA256);
-        final String now = DATETIME_FORMAT.format(Instant.now());
+        final Instant instant = Instant.now();
+        final String now = DATETIME_FORMAT.format(instant);
         MultiMap canonicalHeaders = MultiMap.caseInsensitiveMultiMap();
 		canonicalHeaders.add("host", request.getHost());
 		canonicalHeaders.add("x-amz-content-sha256", hashPayload);
 		canonicalHeaders.add("x-amz-date", now);
 
         final String signature = sign(request.method().name(), request.path(), Utils.getOrElse(request.query(), ""),
-                canonicalHeaders, region, accessKey, secretKey, payloadSha256);
+                canonicalHeaders, region, accessKey, secretKey, payloadSha256, instant);
         request.putHeader("Authorization",
-                "AWS4-HMAC-SHA256 Credential=" + accessKey + "/" + DATE_FORMAT.format(Instant.now()) + "/" + region + "/s3/aws4_request, " +
+                "AWS4-HMAC-SHA256 Credential=" + accessKey + "/" + DATE_FORMAT.format(instant) + "/" + region + "/s3/aws4_request, " +
                 "SignedHeaders=" + canonicalHeaders.names().stream().collect(Collectors.joining(";")) + ", " +
                 "Signature=" + signature
         );
