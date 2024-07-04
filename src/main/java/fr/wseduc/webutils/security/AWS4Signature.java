@@ -17,7 +17,7 @@
 package fr.wseduc.webutils.security;
 
 import java.io.UnsupportedEncodingException;
-import java.math.BigInteger;
+import java.net.URLEncoder;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
@@ -47,11 +47,14 @@ public class AWS4Signature {
 
         final String hashPayload = (payloadSha256 != null ? payloadSha256: EMPTY_PAYLOAD_SHA256);
 
-        for (Map.Entry<String, String> h : canonicalHeaders.entries()) { // TODO add uri encode
-            canonicalRequest.append(h.getKey().toLowerCase()).append(":").append(h.getValue()).append("\n");
+        final StringBuilder headersNames = new StringBuilder();
+        for (Map.Entry<String, String> h : canonicalHeaders.entries()) {
+            headersNames.append(h.getKey()).append(";");
+            canonicalRequest.append(h.getKey().toLowerCase()).append(":")
+                    .append(URLEncoder.encode(h.getValue(), "UTF-8")).append("\n");
         }
         canonicalRequest.append("\n");
-        canonicalRequest.append(canonicalHeaders.names().stream().collect(Collectors.joining(";"))).append("\n");
+        canonicalRequest.append(headersNames.deleteCharAt(headersNames.length()-1).toString()).append("\n");
         canonicalRequest.append(hashPayload);
 
         final String day = DATE_FORMAT.format(now);
@@ -66,9 +69,16 @@ public class AWS4Signature {
         final byte[] dateRegionKey = HmacSha256.sign(region, dateKey);
         final byte[] dateRegionServiceKey = HmacSha256.sign("s3", dateRegionKey);
         final byte[] signingKey = HmacSha256.sign("aws4_request", dateRegionServiceKey);
-        final String signature = new BigInteger(1, HmacSha256.sign(stringToSign.toString(), signingKey)).toString(16);
-
+        // final String signature = new BigInteger(1, HmacSha256.sign(stringToSign.toString(), signingKey)).toString(16);
+        final String signature = byteArrayToHex(HmacSha256.sign(stringToSign.toString(), signingKey));
         return signature;
+    }
+
+    public static String byteArrayToHex(byte[] a) {
+        final StringBuilder sb = new StringBuilder(a.length * 2);
+        for(byte b: a)
+            sb.append(String.format("%02x", b));
+        return sb.toString();
     }
 
     public static void sign(HttpClientRequest request, String region, String accessKey, String secretKey, String payloadSha256)
@@ -78,6 +88,9 @@ public class AWS4Signature {
         final Instant instant = Instant.now();
         final String now = DATETIME_FORMAT.format(instant);
         MultiMap canonicalHeaders = MultiMap.caseInsensitiveMultiMap();
+        // for (Entry<String, String> e: request.headers().entries()) {
+		// 	canonicalHeaders.add(e.getKey(), e.getValue());
+		// }
 		canonicalHeaders.add("host", request.getHost());
 		canonicalHeaders.add("x-amz-content-sha256", hashPayload);
 		canonicalHeaders.add("x-amz-date", now);
