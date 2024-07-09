@@ -38,7 +38,6 @@ import javax.security.cert.X509Certificate;
 import java.util.Optional;
 import java.util.Set;
 
-// TODO vertx 4
 public class WrappedHttpServerRequest implements HttpServerRequest, HttpServerRequestWithBuffering {
 
 	private HttpServerRequest request;

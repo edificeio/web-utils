@@ -43,7 +43,6 @@ import org.apache.commons.lang3.StringUtils;
 
 import static fr.wseduc.webutils.Utils.isNotEmpty;
 
-// TODO vertx 4
 public class OAuth2Client {
 
 	protected static final Logger log = LoggerFactory.getLogger(OAuth2Client.class);

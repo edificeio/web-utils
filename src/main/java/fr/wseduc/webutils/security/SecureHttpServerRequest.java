@@ -39,7 +39,6 @@ import io.vertx.core.net.HostAndPort;
 import io.vertx.core.net.NetSocket;
 import io.vertx.core.net.SocketAddress;
 
-// TODO vertx 4
 public class SecureHttpServerRequest implements HttpServerRequest, HttpServerRequestWithBuffering {
 
 	private HttpServerRequest request;

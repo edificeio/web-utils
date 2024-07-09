@@ -24,7 +24,6 @@ import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
 
-// TODO vertx 4
 public class ResultMessage implements Message<JsonObject> {
 
 	private final JsonObject body;
