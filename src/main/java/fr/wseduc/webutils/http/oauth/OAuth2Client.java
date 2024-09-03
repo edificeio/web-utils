@@ -125,10 +125,15 @@ public class OAuth2Client {
 
 	public void getAccessToken(String code, boolean basic,
 			final Handler<JsonObject> handler) throws UnsupportedEncodingException {
+		String stringLog = "POST %s %d rt=%d";
+		long startTime = System.currentTimeMillis();
+		@SuppressWarnings("deprecation")
 		HttpClientRequest req = httpClient.post(this.uri.getPath() + tokenUrn, new Handler<HttpClientResponse>() {
-
 			@Override
 			public void handle(final HttpClientResponse response) {
+				long endTime = System.currentTimeMillis();
+				long responseTime = endTime - startTime;
+				log.info(String.format(stringLog, response.request().path(), response.statusCode(), responseTime));
 				response.bodyHandler(new Handler<Buffer>() {
 
 					@Override
