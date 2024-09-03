@@ -93,9 +93,14 @@ public final class OpenIdConnectClient extends OAuth2Client {
 	}
 
 	private void getUserInfo(String accessToken, final JsonObject payload, final Handler<JsonObject> handler) {
+		String stringLog = "POST %s %d rt=%d";
+		long startTime = System.currentTimeMillis();
 		getProtectedResource(userInfoUrn, accessToken, new Handler<HttpClientResponse>() {
 			@Override
 			public void handle(HttpClientResponse resp) {
+				long endTime = System.currentTimeMillis();
+				long responseTime = endTime - startTime;
+				log.info(String.format(stringLog, resp.request().path() , resp.statusCode(), responseTime));
 				if (resp.statusCode() == 200) {
 					resp.bodyHandler(new Handler<Buffer>() {
 						@Override

@@ -182,9 +182,15 @@ public final class JWT {
 
 	@SuppressWarnings("deprecation")
 	private void findCertificates(final Handler<Void> handler) {
+		String stringLog = "GET %s %d rt=%d";
+		long startTime = System.currentTimeMillis();
+
 		httpClient.getNow(certsPath, new Handler<HttpClientResponse>() {
 			@Override
 			public void handle(HttpClientResponse response) {
+				long endTime = System.currentTimeMillis();
+				long responseTime = endTime - startTime;
+				log.info(String.format(stringLog, response.request().path(), response.statusCode(), responseTime));
 				if (response.statusCode() == 200) {
 					response.bodyHandler(new Handler<Buffer>() {
 						@Override
