@@ -93,7 +93,7 @@ public final class OpenIdConnectClient extends OAuth2Client {
 	}
 
 	private void getUserInfo(String accessToken, final JsonObject payload, final Handler<JsonObject> handler) {
-		String stringLog = "POST %s %d rt=%d";
+		String stringLog = "GET %s %d rt=%d";
 		long startTime = System.currentTimeMillis();
 		getProtectedResource(userInfoUrn, accessToken, new Handler<HttpClientResponse>() {
 			@Override
