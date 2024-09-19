@@ -29,6 +29,14 @@ public class ContentTransformerRequest {
      * Json content to transform into html
      */
     private final JsonObject jsonContent;
+    /**
+     * ID of the resource having this content.
+     */
+    private final String resourceId;
+    /**
+     * Type of the resource having this content, for example "post". 
+     */
+    private final String resourceType;
 
     /**
      * Constructor
@@ -36,16 +44,22 @@ public class ContentTransformerRequest {
      * @param contentVersion version of content to transform
      * @param htmlContent html content to transform into json
      * @param jsonContent json content to transform into html
+     * @param resourceId ID of the resource having this content
+     * @param resourceType Type of the resource having this content
      */
     @JsonCreator
     public ContentTransformerRequest(@JsonProperty("requestedFormats") Set<ContentTransformerFormat> requestedFormats,
                                      @JsonProperty("contentVersion") int contentVersion,
                                      @JsonProperty("htmlContent") String htmlContent,
-                                     @JsonProperty("jsonContent") JsonObject jsonContent) {
+                                     @JsonProperty("jsonContent") JsonObject jsonContent,
+                                     @JsonProperty("resourceType") String resourceType,
+                                     @JsonProperty("resourceId") String resourceId) {
         this.requestedFormats = requestedFormats;
         this.contentVersion = contentVersion;
         this.htmlContent = htmlContent;
         this.jsonContent =jsonContent;
+        this.resourceType = resourceType;
+        this.resourceId = resourceId;
     }
 
     public Set<ContentTransformerFormat> getRequestedFormats() {
@@ -62,6 +76,14 @@ public class ContentTransformerRequest {
 
     public JsonObject getJsonContent() {
         return jsonContent;
+    }
+
+    public String getResourceId() {
+        return resourceId;
+    }
+
+    public String getResourceType() {
+        return resourceType;
     }
 }
 
