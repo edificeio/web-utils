@@ -38,8 +38,7 @@ public class SimpleContentTransformerClient implements IContentTransformerClient
      * @param contentTransformerRequest a request containing the content to transform
      * @return the response containing the transformed content
      */
-    public Future<ContentTransformerResponse> transform(final ContentTransformerRequest contentTransformerRequest,
-                                                        final HttpServerRequest httpCallerRequest) {
+    public Future<ContentTransformerResponse> transform(final ContentTransformerRequest contentTransformerRequest) {
         final Promise<ContentTransformerResponse> promise = Promise.promise();
         final HttpClientRequest request = this.httpClient.post("/transform", response -> {
             final int statusCode = response.statusCode();
@@ -47,12 +46,12 @@ public class SimpleContentTransformerClient implements IContentTransformerClient
                 response.bodyHandler(body -> promise.complete(Json.decodeValue(body, ContentTransformerResponse.class)));
             } else {
                 promise.fail("transform.error." + statusCode);
-                response.bodyHandler( body -> log.warn(createReport(statusCode, contentTransformerRequest, httpCallerRequest, body.toString())));
+                response.bodyHandler( body -> log.warn(createReport(statusCode, contentTransformerRequest, body.toString())));
             }
         });
         request.exceptionHandler(th -> {
             promise.fail("transform.error.500");
-            log.warn(createReport(500, contentTransformerRequest, httpCallerRequest, th.getMessage()));
+            log.warn(createReport(500, contentTransformerRequest, th.getMessage()));
         });
         request.putHeader("Content-Type", "application/json");
         if(isNotEmpty(authHeader)) {
@@ -63,11 +62,10 @@ public class SimpleContentTransformerClient implements IContentTransformerClient
     }
 
     private String createReport(final int statusCode, final ContentTransformerRequest contentTransformerRequest,
-                                    final HttpServerRequest httpCallerRequest, final String body) {
+                                final String body) {
         final JsonObject report = new JsonObject()
           .put("httpcode", statusCode)
-          .put("payload", Json.encode(contentTransformerRequest))
-          .put("originalMethod", httpCallerRequest.method().name());
+          .put("payload", Json.encode(contentTransformerRequest));
         if(body != null) {
           report.put("response", body);
         }
