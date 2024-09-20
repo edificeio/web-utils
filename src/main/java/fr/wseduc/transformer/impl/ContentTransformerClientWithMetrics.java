@@ -22,10 +22,9 @@ public class ContentTransformerClientWithMetrics implements IContentTransformerC
     }
 
     @Override
-    public Future<ContentTransformerResponse> transform(ContentTransformerRequest request,
-                                                        final HttpServerRequest httpCallerRequest) {
+    public Future<ContentTransformerResponse> transform(ContentTransformerRequest request) {
         final long start = System.currentTimeMillis();
-        return client.transform(request, httpCallerRequest).onSuccess(sent ->
+        return client.transform(request).onSuccess(sent ->
                 metricsRecorder.onTransformSuccess(request, System.currentTimeMillis() - start)
         ).onFailure(th ->
                 metricsRecorder.onTransformFailure(request, System.currentTimeMillis() - start, th)
