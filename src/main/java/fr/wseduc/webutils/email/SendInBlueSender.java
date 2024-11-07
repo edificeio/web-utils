@@ -176,34 +176,50 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 	}
 
 	private void send(JsonObject json, final Handler<AsyncResult<Message<JsonObject>>> handler) {
-		HttpClientRequest req = httpClient.post("/v2.0/email", resp -> {
-			if (resp.statusCode() == 200) {
+		
+		HttpClientRequest req = httpClient.post("/v3/smtp/email", resp -> {
+			if (resp.statusCode() == 201) {
 				handleAsyncResult(new ResultMessage(), handler);
 			} else {
 				resp.bodyHandler(buffer -> {
 					try {
-						JsonObject err = new JsonObject(buffer.toString());
+						final JsonObject err = new JsonObject(buffer.toString());
+						final String code = err.getString("code");
+						log.error("Could not send mail with SendInBlue:" + code + " -> " + err.getString("message"));
 						handleAsyncError(err.getString("message"), handler);
 					} catch (DecodeException e) {
+                        log.error("Could not decode response: " + buffer.toString());
 						handleAsyncError(buffer.toString(), handler);
 					}
 				});
 			}
 		});
+
 		req.putHeader("api-key", apiKey);
-		JsonObject to = new JsonObject();
-		for (Object o: json.getJsonArray("to")) {
-			to.put(o.toString(), "");
+		req.putHeader("accept", "application/json");
+        req.putHeader("content-type", "application/json");
+
+		JsonArray to = new JsonArray();
+
+		for(Object o : json.getJsonArray("to")) {
+			String email = o.toString();
+			to.add(new JsonObject().put("email", email));
 		}
+
+		final JsonObject sender = new JsonObject().put("email", json.getString("from"));
+
 		JsonObject payload = new JsonObject()
 				.put("to", to)
+				.put("sender", sender)
 				.put("from", new JsonArray().add(json.getString("from")))
 				.put("subject", json.getString("subject"))
-				.put("html", json.getString("body"));
+				.put("htmlContent", json.getString("body"));
+				
 		JsonObject headers = new JsonObject();
 		if (isNotEmpty(dedicatedIp)) {
 			headers.put("X-Mailin-IP", dedicatedIp);
 		}
+
 		if (json.getJsonArray("headers") != null) {
 			for (Object o: json.getJsonArray("headers")) {
 				if (!(o instanceof JsonObject)) continue;
@@ -211,9 +227,11 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 				headers.put(h.getString("name"), h.getString("value"));
 			}
 		}
+
 		if (headers.size() > 0) {
 			payload.put("headers", headers);
 		}
+
 		if (json.getJsonArray("cc") != null && json.getJsonArray("cc").size() > 0) {
 			JsonObject cc = new JsonObject();
 			for (Object o: json.getJsonArray("cc")) {
@@ -221,6 +239,7 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 			}
 			payload.put("cc", cc);
 		}
+
 		if (json.getJsonArray("bcc") != null && json.getJsonArray("bcc").size() > 0) {
 			JsonObject bcc = new JsonObject();
 			for (Object o: json.getJsonArray("bcc")) {
@@ -231,19 +250,32 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 
 		int mailSize = json.getString("body").getBytes().length;
 
-		if(json.getJsonArray("attachments") !=  null && json.getJsonArray("attachments").size() > 0) {
-			JsonObject atts = new JsonObject();
-			for(Object o : json.getJsonArray("attachments")) {
-				JsonObject att = (JsonObject)o;
-				mailSize += att.getString("content").getBytes().length;
-				if(maxSize > 0 && mailSize > maxSize) {
-					mailSize -= att.getString("content").getBytes().length;
+		if (json.getJsonArray("attachments") != null && !json.getJsonArray("attachments").isEmpty()) {
+			JsonArray attachments = new JsonArray();
+			for (Object o : json.getJsonArray("attachments")) {
+				JsonObject att = (JsonObject) o;
+		
+				// Calculate the attachment size only once and store it in a variable
+				int attachmentSize = att.getString("content").getBytes().length;
+		
+				// Check if adding this attachment would exceed the max size limit
+				if (maxSize > 0 && (mailSize + attachmentSize) > maxSize) {
 					log.warn("Mail too big, can't attach " + att.getString("name"));
 				} else {
-					atts.put(att.getString("name"), att.getString("content"));
+					mailSize += attachmentSize;
+
+					String attachmentName = att.getString("name");
+					if (!attachmentName.contains(".")) {
+						// Optional: set a default extension if missing
+						attachmentName += ".png"; 
+					}					
+					
+					attachments.add(new JsonObject()
+							.put("name", attachmentName)
+							.put("content", att.getString("content")));
 				}
 			}
-			payload.put("attachment", atts);
+			payload.put("attachment", attachments);
 		}
 
 		req.exceptionHandler(except -> log.error("Error sending to sendinblue.", except));
