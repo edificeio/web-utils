@@ -42,11 +42,14 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLConnection;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -267,7 +270,18 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 					String attachmentName = att.getString("name");
 					if (!attachmentName.contains(".")) {
 						// Optional: set a default extension if missing
-						attachmentName += ".png"; 
+						log.info("Attachment name has no extension, setting default extension: " + att.toString());
+						byte[] decodedBytes = Base64.getDecoder().decode(att.getString("content"));
+						ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(decodedBytes);
+						String mimeType;
+						try {
+							mimeType = URLConnection.guessContentTypeFromStream(byteArrayInputStream);
+						} catch (IOException e) {
+							log.error("Error guessing content type from stream", e);
+							mimeType = "application/octet-stream"; // default MIME type
+						}
+
+						attachmentName += "." + mimeType.split("/")[1];
 					}					
 					
 					attachments.add(new JsonObject()
