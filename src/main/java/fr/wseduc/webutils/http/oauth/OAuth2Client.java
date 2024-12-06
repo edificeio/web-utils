@@ -256,7 +256,7 @@ public class OAuth2Client {
 
 	public void postProtectedResource(String path, String accessToken, Map<String, String> headers,
 									  String body, Handler<HttpClientResponse> handler) {
-		createRequest(HttpMethod.PUT, this.uri.getPath() + path, accessToken, headers)
+		createRequest(HttpMethod.POST, this.uri.getPath() + path, accessToken, headers)
 				.flatMap(r -> r.send(body))
 				.onSuccess(handler)
 				.onFailure(th -> onSendRequestFail(th, path, handler));
@@ -447,10 +447,15 @@ public class OAuth2Client {
 		if(StringUtils.isNotBlank(accessToken)) {
 			headers.add("Authorization", "Bearer " + accessToken);
 		}
-		return httpClient.request(new RequestOptions()
-				.setMethod(method)
-				.setURI(uri)
-				.setHeaders(headers));
+		final RequestOptions options = new RequestOptions()
+			.setMethod(method)
+			.setHeaders(headers);
+		if(uri.startsWith("http://") || uri.startsWith("https://")) {
+			options.setAbsoluteURI(uri);
+		} else {
+			options.setURI(uri);
+		}
+		return httpClient.request(options);
 	}
 
 
