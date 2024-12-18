@@ -69,7 +69,7 @@ public class RequestUtils {
 			@Override
 			public void handle(Buffer event) {
 				try {
-					JsonObject json = new JsonObject(XSSUtils.stripXSS(event.toString("UTF-8")));
+					JsonObject json = new fr.wseduc.webutils.collections.JsonObject(XSSUtils.stripXSS(event.toString("UTF-8")));
 					handler.handle(json);
 				} catch (RuntimeException e) {
 					log.warn(e.getMessage(), e);
@@ -86,7 +86,7 @@ public class RequestUtils {
 			public void handle(Buffer event) {
 				try {
 					String obj = XSSUtils.stripXSS(event.toString("UTF-8"));
-					JsonArray json = new JsonArray(obj);
+					JsonArray json = new fr.wseduc.webutils.collections.JsonArray(obj);
 					handler.handle(json);
 				} catch (RuntimeException e) {
 					log.warn(e.getMessage(), e);
@@ -167,7 +167,7 @@ public class RequestUtils {
 			@Override
 			public void handle(Buffer event) {
 				try {
-					final JsonObject json = new JsonObject(XSSUtils.stripXSS(event.toString("UTF-8")));
+					final JsonObject json = new fr.wseduc.webutils.collections.JsonObject(XSSUtils.stripXSS(event.toString("UTF-8")));
 					validator.validate(schema, json, event1 -> {
 						if (event1.succeeded()) {
 							if ("ok".equals(event1.result().body().getString("status"))) {
