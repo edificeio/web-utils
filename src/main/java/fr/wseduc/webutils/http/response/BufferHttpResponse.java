@@ -292,12 +292,12 @@ public class BufferHttpResponse implements HttpServerResponse {
 
     @Override
     public Future<HttpServerResponse> push(HttpMethod method, HostAndPort authority, String path, MultiMap headers) {
-        return null;
+        return original.push(method, authority, path, headers);
     }
 
     @Override
     public Future<HttpServerResponse> push(HttpMethod method, String host, String path, MultiMap headers) {
-        return null;
+        return original.push(method, host, path, headers);
     }
 
     @Override
@@ -378,11 +378,11 @@ public class BufferHttpResponse implements HttpServerResponse {
 
     @Override
     public Set<Cookie> removeCookies(String name, boolean invalidate) {
-        return null;
+        return original.removeCookies(name, invalidate);
     }
 
     @Override
     public @io.vertx.codegen.annotations.Nullable Cookie removeCookie(String name, String domain, String path, boolean invalidate) {
-        return null;
+        return original.removeCookie(name, domain, path, invalidate);
     }
 }
