@@ -31,7 +31,7 @@
         <commonsTextVersion>1.11.0</commonsTextVersion>
         <commonsCodecVersion>1.16.0</commonsCodecVersion>
         <micrometerPrometheusVersion>1.1.0</micrometerPrometheusVersion>
-        <xss-utils.version>1.0-SNAPSHOT</xss-utils.version>
+        <xss-utils.version>1.1.0</xss-utils.version>
     </properties>
 
     <dependencies>
