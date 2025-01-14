@@ -173,9 +173,12 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 	}
 
 	private void send(JsonObject json, final Handler<AsyncResult<Message<JsonObject>>> handler) {
-		JsonObject to = new JsonObject();
-		for (Object o: json.getJsonArray("to")) {
-			to.put(o.toString(), "");
+
+		JsonArray to = new JsonArray();
+
+		for(Object o : json.getJsonArray("to")) {
+			String email = o.toString();
+			to.add(new JsonObject().put("email", email));
 		}
 
 		final JsonObject sender = new JsonObject().put("email", json.getString("from"));
@@ -237,11 +240,23 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 					mailSize += attachmentSize;
 
 					String attachmentName = att.getString("name");
-					if (!attachmentName.contains(".")) {
-						// Optional: set a default extension if missing
-						attachmentName += ".png";
-					}
+					String contentType = att.getString("contentType");
 
+					// Check if the attachment name contains the file type
+					if (!attachmentName.contains(".")) {
+						// Get the file extension from the content type
+						String fileExtension = "";
+						if (contentType != null && contentType.contains("/")) {
+							String[] parts = contentType.split("/");
+							if (parts.length > 1) {
+								fileExtension = parts[1];
+							}
+						}
+						if (fileExtension != null) {
+							attachmentName += "." + fileExtension;
+						}
+					}
+					
 					attachments.add(new JsonObject()
 							.put("name", attachmentName)
 							.put("content", att.getString("content")));
@@ -252,18 +267,21 @@ public class SendInBlueSender extends NotificationHelper implements EmailSender 
 
 		httpClient.request(new RequestOptions()
 						.setMethod(HttpMethod.POST)
-						.setURI("/v2.0/email")
+						.setURI("/v3/smtp/email")
 						.setHeaders(new HeadersMultiMap().add("api-key", apiKey)))
 				.flatMap(request -> request.send(payload.encode()))
 				.onSuccess(resp -> {
-					if (resp.statusCode() == 200) {
+					if (resp.statusCode() == 201) {
 						handleAsyncResult(new ResultMessage(), handler);
 					} else {
 						resp.bodyHandler(buffer -> {
 							try {
-								JsonObject err = new JsonObject(buffer.toString());
+								final JsonObject err = new JsonObject(buffer.toString());
+								final String code = err.getString("code");
+								log.error("Could not send mail with SendInBlue:" + code + " -> " + err.getString("message"));
 								handleAsyncError(err.getString("message"), handler);
 							} catch (DecodeException e) {
+								log.error("Could not decode response: " + buffer.toString());
 								handleAsyncError(buffer.toString(), handler);
 							}
 						});
