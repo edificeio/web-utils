@@ -63,11 +63,7 @@ public class ContentTransformerRequest {
      * @param htmlContent html content to transform into json
      * @param jsonContent json content to transform into html
      */
-    @JsonCreator
-    public ContentTransformerRequest(@JsonProperty("requestedFormats") Set<ContentTransformerFormat> requestedFormats,
-                                     @JsonProperty("contentVersion") int contentVersion,
-                                     @JsonProperty("htmlContent") String htmlContent,
-                                     @JsonProperty("jsonContent") JsonObject jsonContent) {
+    public ContentTransformerRequest(Set<ContentTransformerFormat> requestedFormats, int contentVersion, String htmlContent, JsonObject jsonContent) {
         this(requestedFormats, contentVersion, htmlContent, jsonContent, Collections.emptySet());
     }
 
