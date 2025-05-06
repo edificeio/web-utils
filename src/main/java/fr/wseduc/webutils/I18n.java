@@ -42,7 +42,7 @@ public class I18n {
 	private Map<String, Map<Locale, JsonObject>> messagesByDomains = new HashMap<>();
 	private Map<String, Map<Locale, JsonObject>> messagesByThemes = new HashMap<>();
 
-	private I18n(){}
+	public I18n(){}
 
 	private static class I18nHolder {
 		private static final I18n instance = new I18n();
@@ -272,6 +272,44 @@ public class I18n {
 			}
 		}
 		return languages;
+	}
+
+	/**
+	 * Initializes translations by directly setting the message map for a domain.
+	 * This bypasses the standard file-based initialization process.
+	 * 
+	 * @param messages Map of Locale to translation JsonObjects to use
+	 * @param domain Domain name to initialize (will use DEFAULT_DOMAIN if null)
+	 * @return The I18n instance for method chaining
+	 */
+	public I18n initializeMessages(Map<Locale, JsonObject> messages, String domain) {
+		if (messages == null) {
+			log.warn("Attempted to initialize null messages map");
+			return this;
+		}
+		
+		final String targetDomain = (domain == null || domain.isEmpty()) ? DEFAULT_DOMAIN : domain;
+		log.info("Directly initializing {} translations for domain: {}", messages.size(), targetDomain);
+		
+		// Create a defensive copy to avoid external modification
+		final Map<Locale, JsonObject> messagesCopy = new HashMap<>();
+		messagesCopy.putAll(messages);
+		
+		// Replace existing messages for the domain
+		messagesByDomains.put(targetDomain, messagesCopy);
+		
+		return this;
+	}
+
+	/**
+	 * Initializes translations for the default domain.
+	 * This is a convenience method that calls initializeMessages with DEFAULT_DOMAIN.
+	 * 
+	 * @param messages Map of Locale to translation JsonObjects to use
+	 * @return The I18n instance for method chaining
+	 */
+	public I18n initializeMessages(Map<Locale, JsonObject> messages) {
+		return initializeMessages(messages, DEFAULT_DOMAIN);
 	}
 
 }
