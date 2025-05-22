@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import fr.wseduc.webutils.I18n;
+import fr.wseduc.webutils.collections.SharedDataHelper;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -38,24 +39,25 @@ public abstract class NotificationHelper implements SendEmail {
 
 	protected final Renders render;
 	protected static final Logger log = LoggerFactory.getLogger(NotificationHelper.class);
-	protected final String senderEmail;
-	protected final String host;
+	protected String senderEmail;
+	protected String host;
 
 	public NotificationHelper(Vertx vertx, JsonObject config) {
 		this.render = new Renders(vertx, config);
-		final Object encodedEmailConfig = vertx.sharedData().getLocalMap("server").get("emailConfig");
+		SharedDataHelper.getInstance().<String, String>get("server", "emailConfig").onSuccess(encodedEmailConfig -> {
+			String defaultMail = "noreply@one1d.fr";
+			String defaultHost = "http://localhost:8009";
 
-		String defaultMail = "noreply@one1d.fr";
-		String defaultHost = "http://localhost:8009";
+			if(encodedEmailConfig != null){
+				JsonObject emailConfig = new JsonObject(encodedEmailConfig.toString());
+				defaultMail = emailConfig.getString("email", defaultMail);
+				defaultHost = emailConfig.getString("host", defaultHost);
+			}
 
-		if(encodedEmailConfig != null){
-			JsonObject emailConfig = new JsonObject(encodedEmailConfig.toString());
-			defaultMail = emailConfig.getString("email", defaultMail);
-			defaultHost = emailConfig.getString("host", defaultHost);
-		}
+			senderEmail = config.getString("email", defaultMail);
+			host = config.getString("host", defaultHost);
+		}).onFailure(ex -> log.error("Error getting jwt signKey", ex));
 
-		this.senderEmail = config.getString("email", defaultMail);
-		this.host = config.getString("host", defaultHost);
 	}
 
 	public void sendEmail(HttpServerRequest request, String to, String cc, String bcc,
