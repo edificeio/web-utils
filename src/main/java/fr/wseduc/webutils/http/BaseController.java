@@ -19,6 +19,7 @@ package fr.wseduc.webutils.http;
 import fr.wseduc.webutils.Controller;
 import fr.wseduc.webutils.Server;
 import fr.wseduc.webutils.security.SecuredAction;
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import org.vertx.java.core.http.RouteMatcher;
@@ -40,5 +41,21 @@ public class BaseController extends Controller {
 					 Map<String, SecuredAction> securedActions) {
     super.init(vertx, config, rm, securedActions);
 	}
+
+  /**
+   * Same as init method but returns a Future in case the init method should
+   * be asynchronous.
+   * By default, it just calls the synchronous init method.
+   * @param vertx The current vertx instance
+   * @param config Module configuration
+   * @param rm Route matcher
+   * @param securedActions Actions
+   * @return A future that completes when this controller is completely initialized
+   */
+  public Future<Void> initAsync(Vertx vertx, JsonObject config, RouteMatcher rm,
+                           Map<String, SecuredAction> securedActions) {
+    init(vertx, config, rm, securedActions);
+    return Future.succeededFuture();
+  }
 
 }

@@ -16,6 +16,7 @@
 
 package fr.wseduc.webutils.request.filter;
 
+import fr.wseduc.webutils.collections.SharedDataHelper;
 import fr.wseduc.webutils.http.Renders;
 import fr.wseduc.webutils.request.CookieHelper;
 import fr.wseduc.webutils.security.SecureHttpServerRequest;
@@ -23,6 +24,8 @@ import fr.wseduc.webutils.security.oauth.OAuthResourceProvider;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.util.HashMap;
+import java.util.Map;
 
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -30,7 +33,6 @@ import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.core.shareddata.LocalMap;
 
 import static fr.wseduc.webutils.Utils.isNotEmpty;
 
@@ -38,6 +40,8 @@ public class UserAuthFilter implements Filter, WithVertx {
 
 	private static final Logger log = LoggerFactory.getLogger(UserAuthFilter.class);
 	public static final String SESSION_ID = "oneSessionId";
+	private static final long AUTH_REDIRECT_CACHE_DELAY = 60_000L;
+	private static final Map<String, String> redirectAuthConfs = new HashMap<>();
 	private final OAuthResourceProvider oauth;
 	private final AbstractBasicFilter basicFilter;
 	private final JWTWithBasicFilter jwtWithBasicFilter;
@@ -141,14 +145,10 @@ public class UserAuthFilter implements Filter, WithVertx {
 				location = location.split(":")[0] + ":8009";
 			}
 			callBack = URLEncoder.encode(callBack, "UTF-8");
-			LocalMap<Object, Object> confServer = null;
-			if (vertx != null) {
-				confServer = vertx.sharedData().getLocalMap("server");
-			}
 			String loginUri = null;
 			String callbackParam = null;
-			if (confServer != null) {
-				final String authLocationsString = (String) confServer.get("authLocations");
+			if (!redirectAuthConfs.isEmpty()) {
+				final String authLocationsString = redirectAuthConfs.get("authLocations");
 				if (isNotEmpty(authLocationsString)) {
 					final JsonObject authLocations = new JsonObject(authLocationsString);
 					final JsonObject authLocation = authLocations.getJsonObject(host);
@@ -157,8 +157,8 @@ public class UserAuthFilter implements Filter, WithVertx {
 						callbackParam = authLocation.getString("callbackParam");
 					}
 				} else {
-					loginUri = (String) confServer.get("loginUri");
-					callbackParam = (String) confServer.get("callbackParam");
+					loginUri = redirectAuthConfs.get("loginUri");
+					callbackParam = redirectAuthConfs.get("callbackParam");
 				}
 			}
 			if (loginUri != null && !loginUri.trim().isEmpty()) {
@@ -195,6 +195,16 @@ public class UserAuthFilter implements Filter, WithVertx {
 		if( queryParamFilter != null ) {
 			queryParamFilter.init(vertx);
 		}
+		updateCachedAuthRedirectionConfs();
+	}
+
+	private void updateCachedAuthRedirectionConfs() {
+		vertx.setPeriodic(AUTH_REDIRECT_CACHE_DELAY, delay -> {
+			SharedDataHelper.getInstance()
+					.<String, String>getLocalMulti("server", "authLocations", "loginUri", "callbackParam")
+					.onSuccess(confs -> confs.entrySet().stream().forEach(e -> redirectAuthConfs.put(e.getKey(), e.getValue())))
+					.onFailure(ex -> log.error("Error updating authConf redirections", ex));
+		});
 	}
 
 }

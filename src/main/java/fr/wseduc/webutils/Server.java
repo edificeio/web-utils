@@ -16,14 +16,22 @@
 
 package fr.wseduc.webutils;
 
+import fr.wseduc.webutils.collections.SharedDataHelper;
 import fr.wseduc.webutils.data.FileResolver;
+
+import static fr.wseduc.webutils.Utils.isNotEmpty;
 import static fr.wseduc.webutils.data.FileResolver.absolutePath;
+import static io.vertx.core.Future.succeededFuture;
+
 import fr.wseduc.webutils.http.BaseController;
 import fr.wseduc.webutils.http.Binding;
 import fr.wseduc.webutils.http.Renders;
 import fr.wseduc.webutils.http.StaticResource;
 import fr.wseduc.webutils.logging.Tracer;
 import fr.wseduc.webutils.logging.TracerFactory;
+import fr.wseduc.webutils.metrics.EventBusProbe;
+import fr.wseduc.webutils.metrics.HealthCheckProbe;
+import fr.wseduc.webutils.metrics.HealthCheckProbeResult;
 import fr.wseduc.webutils.request.CookieHelper;
 import fr.wseduc.webutils.request.filter.Filter;
 import fr.wseduc.webutils.request.filter.SecurityHandler;
@@ -38,14 +46,12 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.shareddata.LocalMap;
+
 import org.vertx.java.core.http.RouteMatcher;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public abstract class Server extends AbstractVerticle {
 
@@ -60,20 +66,86 @@ public abstract class Server extends AbstractVerticle {
 	private LocalMap<String, String> staticRessources;
 	private boolean dev;
 	private HttpServer server;
+  private final List<HealthCheckProbe> probes = new ArrayList<>();
+  private long probeTimeout = 10_000L;
 
 	@Override
 	public void start(Promise<Void> startPromise) throws Exception {
-		super.start(startPromise);
-		config = config();
-		FileResolver.getInstance().setBasePath(config);
-		rm = new RouteMatcher();
-		trace = TracerFactory.getTracer(this.getClass().getSimpleName());
-		i18n = I18n.getInstance();
-		i18n.init(vertx);
-		CookieHelper.getInstance().init((String) vertx
-				.sharedData().getLocalMap("server").get("signKey"),
-				(String) vertx.sharedData().getLocalMap("server").get("sameSiteValue"), log);
-		staticRessources = vertx.sharedData().getLocalMap("staticRessources");
+		final Promise<Void> vertxPromise = Promise.promise();
+		super.start(vertxPromise);
+		vertxPromise.future().onSuccess(x -> {
+			config = config();
+			FileResolver.getInstance().setBasePath(config);
+			rm = new RouteMatcher();
+			trace = TracerFactory.getTracer(this.getClass().getSimpleName());
+			i18n = I18n.getInstance();
+			i18n.init(vertx);
+			final SharedDataHelper sharedDataHelper = SharedDataHelper.getInstance();
+			sharedDataHelper.init(vertx);
+      initializeProbes()
+      .onSuccess(e -> {
+        sharedDataHelper.<String, String>getLocalMulti("server", "signKey", "sameSiteValue", "httpServerOptions")
+          .onSuccess(serverMap -> init(startPromise, serverMap))
+          .onFailure(ex -> log.error("Error loading server map for modue " + this.getClass().getSimpleName(), ex));
+      }).onFailure(th -> startPromise.fail(th));
+		}).onFailure(ex -> log.error("Error on vertx init promise", ex));
+	}
+
+  /**
+   * Read probes from the configuration and initialize them.
+   * The configuration is read from the "probes" field and is a mixed list of :
+   * - string, which is the fully qualified name of the probe to instantiate
+   * - object, with the fields :
+   *    - name, which is the fully qualified name of the probe to instantiate
+   *    - config, which is a JsonObject containing configuration parameters for the probe
+   * @return A future that completes when the initialization of all probes is done.
+   */
+  private Future<Void> initializeProbes() {
+    this.probeTimeout = config.getLong("probes-timeout", 10_000L);
+    final List<Future<HealthCheckProbe>> probes = new ArrayList<>();
+    final JsonArray probesConf = config.getJsonArray("probes");
+    if(probesConf == null) {
+      final EventBusProbe probe = new EventBusProbe();
+      probes.add(probe.init(vertx, null).map(probe));
+    } else {
+      for (Object o : probesConf) {
+        final String probeClassName;
+        final JsonObject conf;
+        if(o instanceof String) {
+          probeClassName = (String) o;
+          conf = new JsonObject();
+        } else if(o instanceof JsonObject) {
+          final JsonObject jo = (JsonObject) o;
+          probeClassName = jo.getString("name");
+          conf = jo.getJsonObject("config");
+        } else {
+          log.error("We expect the probes to be a list of string with the name of the probes or an object");
+          continue;
+        }
+        try {
+          final Class<?> probeClass = Class.forName(probeClassName);
+          if(!HealthCheckProbe.class.isAssignableFrom(probeClass)) {
+            log.error("Specified class " + probeClassName + " is not a probe class");
+            continue;
+          }
+          final HealthCheckProbe probe = (HealthCheckProbe) probeClass.newInstance();
+          probes.add(probe.init(vertx, conf).map(probe));
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+          log.error("Cannot instantiate probe " + probeClassName, e);
+        }
+      }
+    }
+    return Future.all(probes)
+      .map(CompositeFuture::list)
+      .onSuccess(ps -> this.probes.addAll((List)ps))
+      .mapEmpty();
+  }
+
+
+  public void init(Promise<Void> startPromise, Map<String,String> serverConfig) {
+		CookieHelper.getInstance().init(
+				serverConfig.get("signKey"), serverConfig.get("sameSiteValue"), log);
+		staticRessources = vertx.sharedData().getLocalMap("staticRessources"); // TODO JBER
 		dev = "dev".equals(config.getString("mode"));
 
 		log.info("Verticle: " + this.getClass().getSimpleName() + " starts on port: " + config.getInteger("port"));
@@ -125,6 +197,28 @@ public abstract class Server extends AbstractVerticle {
 			}
 		});
 
+    rm.get(prefix + "/health/liveness", event -> Controller.renderJson(event, new JsonObject().put("test", "ok")));
+
+    rm.get(prefix + "/health/readiness", event -> {
+      final List<Future<HealthCheckProbeResult>> futures = probes.stream()
+        .map(this::executeProbeWithTimeout)
+        .collect(Collectors.toList());
+      Future.join(futures)
+        .onSuccess(res -> {
+          final JsonObject result = mergeProbes(res.list());
+          boolean hasKO = res.<HealthCheckProbeResult>list().stream().anyMatch(p -> !p.isOk());
+          if(hasKO) {
+            Controller.renderError(event, result);
+          } else {
+            Controller.renderJson(event, result);
+          }
+        })
+        .onFailure(th -> {
+          log.error("An error occurred while getting readiness probe", th);
+          Controller.renderError(event);
+        });
+    });
+
 		rm.get(prefix + "/monitoring", new Handler<HttpServerRequest>() {
 			@Override
 			public void handle(HttpServerRequest event) {
@@ -149,36 +243,53 @@ public abstract class Server extends AbstractVerticle {
 			JsonArray actions = StartupUtils.loadSecuredActions(vertx);
 			securedActions = StartupUtils.securedActionsToMap(actions);
 			log.info("secureaction loaded : " + actions.encode());
-			if (config.getString("integration-mode","BUS").equals("HTTP")) {
+			if (!Arrays.asList("Starter", "AppRegistry").contains(this.getClass().getSimpleName())) {
+				if (config.getString("integration-mode","BUS").equals("HTTP")) {
 				StartupUtils.sendStartup(application, StartupUtils.applyOverrideRightForRegistry(actions)
 						, vertx,
-						config.getInteger("app-registry.port", 8012));
-			} else {
+							config.getInteger("app-registry.port", 8012));
+				} else {
 				StartupUtils.sendStartup(application, StartupUtils.applyOverrideRightForRegistry(actions),
-						Server.getEventBus(vertx),
-						config.getString("app-registry.address", "wse.app.registry"), vertx);
+							Server.getEventBus(vertx),
+							config.getString("app-registry.address", "wse.app.registry"), vertx);
+				}
 			}
 		} catch (IOException e) {
 			log.error("Error application not registred.", e);
 		}
-		final HttpServerOptions httpOptions = createHttpServerOptions();
+		final HttpServerOptions httpOptions = createHttpServerOptions(serverConfig.get("httpServerOptions"));
 		vertx.createHttpServer(httpOptions)
 			.requestHandler(rm)
 			.listen(config.getInteger("port"))
 			.onSuccess(e -> {
-				server = e;
+				Server.this.server = e;
 				startPromise.tryComplete();
 			})
 			.onFailure(startPromise::tryFail);
 	}
 
-	private HttpServerOptions createHttpServerOptions() {
+  private Future<HealthCheckProbeResult> executeProbeWithTimeout(HealthCheckProbe healthCheckProbe) {
+      try {
+        return healthCheckProbe.probe(probeTimeout);
+      } catch (RuntimeException e) {
+        return succeededFuture(new HealthCheckProbeResult(healthCheckProbe.getName(), false, new JsonObject().put("exception", e.getMessage())));
+      }
+  }
+
+  private JsonObject mergeProbes(final  List<HealthCheckProbeResult> results) {
+    final JsonObject merged = new JsonObject();
+    for (HealthCheckProbeResult result : results) {
+      merged.put(result.getName(), JsonObject.mapFrom(result));
+    }
+    return merged;
+  }
+
+  private HttpServerOptions createHttpServerOptions(String httpServerOptions) {
 		JsonObject rawHttpServerOptions = config().getJsonObject("httpServerOptions");
-		if(rawHttpServerOptions == null) {
-			final LocalMap<Object, Object> server = vertx.sharedData().getLocalMap("server");
-			rawHttpServerOptions = (JsonObject) server.get("httpServerOptions");
+		if(rawHttpServerOptions == null && isNotEmpty(httpServerOptions)) {
+			rawHttpServerOptions = new JsonObject(httpServerOptions);
 		}
-		if(rawHttpServerOptions == null) {
+		if (rawHttpServerOptions == null) {
 			rawHttpServerOptions = new JsonObject();
 		}
 		return new HttpServerOptions(rawHttpServerOptions);
@@ -231,12 +342,14 @@ public abstract class Server extends AbstractVerticle {
 		return vertx.eventBus();
 	}
 
-	protected Server addController(BaseController controller) {
-		log.info("add controller");
-		controller.init(vertx, config, rm, securedActions);
-		securedUriBinding.addAll(controller.securedUriBinding());
-		mfaProtectedBinding.addAll(controller.getMfaProtectedBindings());
-		return this;
+	protected Future<Server> addController(BaseController controller) {
+		log.info("add controller : " + controller.getClass().getName());
+		return controller.initAsync(vertx, config, rm, securedActions)
+      .map(e -> {
+          securedUriBinding.addAll(controller.securedUriBinding());
+          mfaProtectedBinding.addAll(controller.getMfaProtectedBindings());
+        return this;
+      });
 	}
 
 	protected Server clearFilters() {

@@ -1,17 +1,24 @@
 package fr.wseduc.webutils.request.filter;
 
+
+import fr.wseduc.webutils.collections.SharedDataHelper;
 import fr.wseduc.webutils.security.JWT;
 import fr.wseduc.webutils.security.SecureHttpServerRequest;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 abstract public class AbstractQueryParamTokenFilter {
 
+	private static final Logger log = LoggerFactory.getLogger(AbstractQueryParamTokenFilter.class);
 	public static String QUERYPARAM_TOKEN = "queryparam_token";
 	private JWT jwt;
 
 	public AbstractQueryParamTokenFilter init(Vertx vertx) {
-		this.jwt = new JWT(vertx, (String) vertx.sharedData().getLocalMap("server").get("signKey"), null);
+		SharedDataHelper.getInstance().<String, String>getLocal("server", "signKey")
+				.onSuccess(signKey -> jwt = new JWT(vertx, signKey, null))
+				.onFailure(ex -> log.error("Error getting jwt signKey", ex));
 		return this;
 	}
 

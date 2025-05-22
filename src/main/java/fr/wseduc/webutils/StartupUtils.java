@@ -29,6 +29,8 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
+import io.vertx.core.eventbus.ReplyException;
+import io.vertx.core.eventbus.ReplyFailure;
 import io.vertx.core.file.FileProps;
 import io.vertx.core.http.*;
 import io.vertx.core.json.JsonArray;
@@ -44,11 +46,20 @@ public class StartupUtils {
 
 	private static final Logger log = LoggerFactory.getLogger(StartupUtils.class);
 
-	public static void sendStartup(final JsonObject app, JsonArray actions, final Vertx vertx, Integer appRegistryPort) throws IOException {
+    /** Wait 3 seconds between a failed attempt to send a startup signal and the next attempt.*/
+    private static final long DELAY_BETWEEN_STARTUP_ATTEMPTS = 3_000L;
+
+    public static void sendStartup(final JsonObject app, JsonArray actions, final Vertx vertx, Integer appRegistryPort) throws IOException {
+        sendStartup(app, actions, vertx, appRegistryPort, 1);
+    }
+	private static void sendStartup(final JsonObject app, JsonArray actions, final Vertx vertx, Integer appRegistryPort, final int attempt) throws IOException {
+        final JsonArray actionsToSend;
 		if (actions == null || actions.size() == 0) {
-			actions = loadSecuredActions(vertx);
-		}
-		final String s = new JsonObject().put("application", app).put("actions", actions).encode();
+			actionsToSend = loadSecuredActions(vertx);
+		} else {
+            actionsToSend = actions;
+        }
+		final String s = new JsonObject().put("application", app).put("actions", actionsToSend).encode();
 		final HttpClient httpClient = vertx.createHttpClient(new HttpClientOptions()
 				.setDefaultHost("localhost").setDefaultPort(appRegistryPort).setKeepAlive(false));
 		httpClient.request(HttpMethod.PUT, "/appregistry/application")
@@ -56,9 +67,18 @@ public class StartupUtils {
 		.flatMap(req -> req.send(s))
 		.onSuccess(event -> {
 			if (event.statusCode() != 200) {
-				log.error("Error recording application : " + s);
-				httpClient.close();
-			} else {
+                log.error("Error recording application (attempt #" + attempt + "): " + s);
+                httpClient.close();
+                if (event.statusCode() == 404) {
+                    vertx.setTimer(DELAY_BETWEEN_STARTUP_ATTEMPTS, e -> {
+                        try {
+                            sendStartup(app, actionsToSend, vertx, appRegistryPort, attempt + 1);
+                        } catch (IOException ex) {
+                            log.error("Error recording application (attempt #" + attempt + ")", ex);
+                        }
+                    });
+                }
+            } else {
 				final JsonArray widgetsArray = loadWidgets(app.getString("name"), vertx);
 				if(widgetsArray.isEmpty()){
 					httpClient.close();
@@ -83,29 +103,47 @@ public class StartupUtils {
 		.onFailure(except -> log.error("Error sending application to appregistry : " + s, except));
 	}
 
+    public static void sendStartup(final JsonObject app, JsonArray actions, final EventBus eb, final String address, final Vertx vertx,
+                                   final Handler<AsyncResult<Message<JsonObject>>> handler) throws IOException {
+        sendStartup(app, actions, eb, address, vertx, 1, handler);
+    }
 	public static void sendStartup(final JsonObject app, JsonArray actions, final EventBus eb, final String address, final Vertx vertx,
-			final Handler<AsyncResult<Message<JsonObject>>> handler) throws IOException {
-		if (actions == null || actions.size() == 0) {
-			actions = loadSecuredActions(vertx);
-		}
+			final int attempt, final Handler<AsyncResult<Message<JsonObject>>> handler) throws IOException {
+        final JsonArray actionsToSend;
+        if (actions == null || actions.size() == 0) {
+            actionsToSend = loadSecuredActions(vertx);
+        } else {
+            actionsToSend = actions;
+        }
 		JsonObject jo = new JsonObject();
 		jo.put("application", app)
-		.put("actions", applyOverrideRightForRegistry(actions));
+		.put("actions", applyOverrideRightForRegistry(actionsToSend));
 		eb.request(address, jo, (AsyncResult<Message<JsonObject>> appEvent) -> {
-				if(appEvent.failed()){
-					log.error("Error registering application " + app.getString("name"), appEvent.cause());
-					if(handler != null) handler.handle(appEvent);
-					return;
-				}
+            if(appEvent.failed()){
+                log.error("Error registering application " + app.getString("name") + " (attempt #" + attempt+ ")", appEvent.cause());
+                Throwable cause = appEvent.cause();
+                if(cause instanceof ReplyException && ReplyFailure.NO_HANDLERS.equals(((ReplyException)cause).failureType())) {
+                    vertx.setTimer(DELAY_BETWEEN_STARTUP_ATTEMPTS, e -> {
+                        try {
+                            sendStartup(app, actionsToSend, eb, address, vertx, attempt + 1, handler);
+                        } catch (IOException ex) {
+                            log.error("Error recording application (attempt #" + attempt + ")", ex);
+                        }
+                    });
+                } else {
+                    if (handler != null) handler.handle(appEvent);
+                    return;
+                }
+            }
 
-				final JsonArray widgetsArray = loadWidgets(app.getString("name"), vertx);
-				if(widgetsArray.size() == 0){
-					if(handler != null) handler.handle(appEvent);
-					return;
-				}
+            final JsonArray widgetsArray = loadWidgets(app.getString("name"), vertx);
+            if(widgetsArray.size() == 0){
+                if(handler != null) handler.handle(appEvent);
+                return;
+            }
 
-				final JsonObject widgets = new JsonObject().put("widgets", widgetsArray);
-				eb.request(address+".widgets", widgets, (Handler<AsyncResult<Message<JsonObject>>>) event -> {
+            final JsonObject widgets = new JsonObject().put("widgets", widgetsArray);
+            eb.request(address+".widgets", widgets, (Handler<AsyncResult<Message<JsonObject>>>) event -> {
           if(event.failed()){
             log.error("Error registering widgets for application " + app.getString("name"), event.cause());
           } else {

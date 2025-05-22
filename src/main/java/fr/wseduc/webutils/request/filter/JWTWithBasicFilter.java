@@ -1,12 +1,17 @@
 package fr.wseduc.webutils.request.filter;
 
+import fr.wseduc.webutils.collections.SharedDataHelper;
 import fr.wseduc.webutils.security.JWT;
 import fr.wseduc.webutils.security.SecureHttpServerRequest;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 public class JWTWithBasicFilter {
+
+	private static final Logger log = LoggerFactory.getLogger(JWTWithBasicFilter.class);
 
 	private final AbstractBasicFilter basicFilter;
 	private JWT jwt;
@@ -16,7 +21,9 @@ public class JWTWithBasicFilter {
 	}
 
 	public void init(Vertx vertx) {
-		this.jwt = new JWT(vertx, (String) vertx.sharedData().getLocalMap("server").get("signKey"), null);
+		SharedDataHelper.getInstance().<String, String>getLocal("server", "signKey")
+				.onSuccess(signKey -> jwt = new JWT(vertx, signKey, null))
+				.onFailure(ex -> log.error("Error getting jwt signKey", ex));
 	}
 
 	public void validate(final SecureHttpServerRequest request, final Handler<Boolean> handler) {

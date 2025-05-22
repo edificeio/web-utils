@@ -21,6 +21,7 @@ package fr.wseduc.sms;
 
 import fr.wseduc.webutils.Server;
 import fr.wseduc.webutils.StringValidation;
+import fr.wseduc.webutils.collections.SharedDataHelper;
 import fr.wseduc.webutils.http.Renders;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -31,12 +32,12 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.core.shareddata.LocalMap;
+import io.vertx.core.shareddata.AsyncMap;
 import org.apache.commons.lang3.StringUtils;
 
 import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
+import static fr.wseduc.webutils.Utils.isNotEmpty;
 
-//-------------------
 public class Sms {
 
 	private static final Logger log = LoggerFactory.getLogger(Sms.class);
@@ -64,14 +65,12 @@ public class Sms {
 			this.eb = Server.getEventBus(vertx);
 			this.vertx = vertx;
 			this.config = config;
-			LocalMap<Object, Object> server = vertx.sharedData().getLocalMap("server");
-			if(server != null && server.get("smsProvider") != null) {
-				smsProvider = (String) server.get("smsProvider");
-				final String node = (String) server.get("node");
-				smsAddress = (node != null ? node : "") + "entcore.sms";
-			} else {
+			SharedDataHelper.getInstance().<String, String>getLocal("server", "smsProvider").onSuccess(smsProvider -> {
+				if(isNotEmpty(smsProvider)) {
+					SmsFactory.this.smsProvider = smsProvider;
+				}
 				smsAddress = "entcore.sms";
-			}
+			}).onFailure(ex -> log.error("Error getting smsProvider configuration", ex));
 		}
 
 		public Sms newInstance( Renders render ) {
