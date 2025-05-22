@@ -16,7 +16,10 @@
 
 package fr.wseduc.webutils;
 
+import fr.wseduc.webutils.collections.SharedDataHelper;
 import fr.wseduc.webutils.data.FileResolver;
+
+import static fr.wseduc.webutils.Utils.isNotEmpty;
 import static fr.wseduc.webutils.data.FileResolver.absolutePath;
 import fr.wseduc.webutils.http.BaseController;
 import fr.wseduc.webutils.http.Binding;
@@ -37,7 +40,9 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.core.shareddata.AsyncMap;
 import io.vertx.core.shareddata.LocalMap;
+
 import org.vertx.java.core.http.RouteMatcher;
 
 import java.io.IOException;
@@ -64,15 +69,22 @@ public abstract class Server extends AbstractVerticle {
 	@Override
 	public void start(Promise<Void> startPromise) throws Exception {
 		super.start(startPromise);
+		final SharedDataHelper sharedDataHelper = SharedDataHelper.getInstance();
+		sharedDataHelper.init(vertx);
+		sharedDataHelper.<String, String>getMulti("server", "signKey", "sameSiteValue", "httpServerOptions")
+			.onSuccess(serverMap -> init(startPromise, serverMap))
+			.onFailure(ex -> log.error("Error loading server map for modue " + this.getClass().getSimpleName(), ex));
+	}
+
+	public void init(Promise<Void> startPromise, Map<String,String> serverConfig) {
 		config = config();
 		FileResolver.getInstance().setBasePath(config);
 		rm = new RouteMatcher();
 		trace = TracerFactory.getTracer(this.getClass().getSimpleName());
 		i18n = I18n.getInstance();
 		i18n.init(vertx);
-		CookieHelper.getInstance().init((String) vertx
-				.sharedData().getLocalMap("server").get("signKey"),
-				(String) vertx.sharedData().getLocalMap("server").get("sameSiteValue"), log);
+		CookieHelper.getInstance().init(
+				serverConfig.get("signKey"), serverConfig.get("sameSiteValue"), log);
 		staticRessources = vertx.sharedData().getLocalMap("staticRessources");
 		dev = "dev".equals(config.getString("mode"));
 
@@ -160,24 +172,22 @@ public abstract class Server extends AbstractVerticle {
 		} catch (IOException e) {
 			log.error("Error application not registred.", e);
 		}
-		final HttpServerOptions httpOptions = createHttpServerOptions();
+		final HttpServerOptions httpOptions = createHttpServerOptions(serverConfig.get("httpServerOptions"));
 		vertx.createHttpServer(httpOptions)
 			.requestHandler(rm)
 			.listen(config.getInteger("port"))
 			.onSuccess(e -> {
-				server = e;
+				Server.this.server = e;
 				startPromise.tryComplete();
 			})
 			.onFailure(startPromise::tryFail);
 	}
 
-	private HttpServerOptions createHttpServerOptions() {
+	private HttpServerOptions createHttpServerOptions(String httpServerOptions) {
 		JsonObject rawHttpServerOptions = config().getJsonObject("httpServerOptions");
-		if(rawHttpServerOptions == null) {
-			final LocalMap<Object, Object> server = vertx.sharedData().getLocalMap("server");
-			rawHttpServerOptions = (JsonObject) server.get("httpServerOptions");
-		}
-		if(rawHttpServerOptions == null) {
+		if(rawHttpServerOptions == null && isNotEmpty(httpServerOptions)) {
+			rawHttpServerOptions = new JsonObject(httpServerOptions);
+		} else {
 			rawHttpServerOptions = new JsonObject();
 		}
 		return new HttpServerOptions(rawHttpServerOptions);
