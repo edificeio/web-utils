@@ -26,22 +26,19 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import sun.security.util.DerOutputStream;
+import sun.security.util.DerValue;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.math.BigInteger;
 import java.net.URI;
 import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.KeySpec;
-import java.security.spec.PKCS8EncodedKeySpec;
-import java.security.spec.RSAPublicKeySpec;
+import java.security.spec.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -59,6 +56,7 @@ public final class JWT {
 	private String secret;
 	private HttpClient httpClient;
 	private String certsPath;
+	private Boolean noCertCache = false;
 	private final ConcurrentMap<String, PublicKey> certificates = new ConcurrentHashMap<>();
 	private final List<Key> privateKeys = new ArrayList<>();
 
@@ -73,7 +71,7 @@ public final class JWT {
 	}
 
 	private enum Algorithm {
-		RS256("SHA256withRSA"), RS384("SHA384withRSA"), RS512("SHA512withRSA"), HS256("HmacSHA256");
+		RS256("SHA256withRSA"), RS384("SHA384withRSA"), RS512("SHA512withRSA"), HS256("HmacSHA256"), ES256("SHA256withECDSA");
 
 		private final String algo;
 
@@ -104,6 +102,11 @@ public final class JWT {
 			findCertificates(null);
 		}
 		this.secret = secret;
+	}
+
+	public JWT(Vertx vertx, String secret, URI certsUri, Boolean noCertCache) {
+		this(vertx, secret, certsUri);
+		this.noCertCache = noCertCache;
 	}
 
 	public JWT(final Vertx vertx, String keysPath) {
@@ -228,12 +231,34 @@ public final class JWT {
 		{
 			if("RSA".equals(keyType))
 				return readJWT_RSA(JWT, keyId);
+			else if ("EC".equals(keyType)) {
+				readJWT_EC(JWT, keyId);
+			}
 		}
 		else if(fallbackPlain == true)
 		{
 			readPlainCertificate(JWT);
 		}
 		return false;
+	}
+
+	private void readJWT_EC(JsonObject JWT, String keyId) {
+		final String x = JWT.getString("x");
+		final String y = JWT.getString("y");
+
+		final ECPoint ecPoint = new ECPoint(new BigInteger(1, base64DecodeToByte(x)), new BigInteger(1, base64DecodeToByte(y)));
+
+		try {
+			final AlgorithmParameters parameters = AlgorithmParameters.getInstance("EC");
+			parameters.init(new ECGenParameterSpec("secp256r1"));
+			final ECParameterSpec ecSpec = parameters.getParameterSpec(ECParameterSpec.class);
+
+			final ECPublicKeySpec pubSpec = new ECPublicKeySpec(ecPoint, ecSpec);
+			final PublicKey pKey = KeyFactory.getInstance("EC").generatePublic(pubSpec);
+			certificates.put(keyId, pKey);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
 	}
 
 	private boolean readJWT_RSA(JsonObject JWT, String keyId)
@@ -250,7 +275,7 @@ public final class JWT {
 				CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
 				Certificate certificate = certFactory.generateCertificate(new ByteArrayInputStream(base64DecodeToByte(x5c)));
 				PublicKey pKey = certificate.getPublicKey();
-				certificates.putIfAbsent(keyId, pKey);
+				certificates.put(keyId, pKey);
 				return true;
 			} catch (Exception e) {
 				log.error(e.getMessage(), e);
@@ -266,7 +291,7 @@ public final class JWT {
 				try {
 					KeySpec kSpec = new RSAPublicKeySpec(new BigInteger(base64DecodeToByte(modulus)),new BigInteger(base64DecodeToByte(exponent)));
 					PublicKey pKey = KeyFactory.getInstance("RSA").generatePublic(kSpec);
-					certificates.putIfAbsent(keyId, pKey);
+					certificates.put(keyId, pKey);
 				} catch (Exception e) {
 					log.error(e.getMessage(), e);
 				}
@@ -331,7 +356,6 @@ public final class JWT {
 		try {
 			privateKey = KeyFactory.getInstance("RSA").generatePrivate(keySpec);
 		} catch (InvalidKeySpecException | NoSuchAlgorithmException  e) {
-			e.printStackTrace();
 			log.error("Error loading private key : " + key, e);
 		}
 
@@ -357,10 +381,11 @@ public final class JWT {
 			case RS256:
 			case RS384:
 			case RS512:
+			case ES256:
 				final String kid = header.getString("kid");
 				if (kid != null) {
 					PublicKey publicKey = certificates.get(kid);
-					if (publicKey == null) {
+					if (publicKey == null || noCertCache) {
 						findCertificates(new Handler<Void>() {
 							@Override
 							public void handle(Void v) {
@@ -393,17 +418,44 @@ public final class JWT {
 		try {
 			JsonObject header = new JsonObject(base64Decode(t[0]));
 			JsonObject payload = new JsonObject(base64Decode(t[1]));
-			byte[] signature = base64DecodeToByte(t[2]);
+			byte[] rawSignature = base64DecodeToByte(t[2]);
+			byte[] derSignature = Algorithm.ES256.equals(Algorithm.valueOf(header.getString("alg"))) ? convertJWTSignatureToDER(rawSignature) : rawSignature;
+
 			Signature sign = Signature.getInstance(Algorithm.valueOf(header.getString("alg")).getAlgo());
 			sign.initVerify(publicKey);
 			sign.update((t[0] + "." + t[1]).getBytes("UTF-8"));
-			if (sign.verify(signature)) {
+			if (sign.verify(derSignature)) {
 				return payload;
 			}
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 		}
 		return null;
+	}
+
+	private static byte[] convertJWTSignatureToDER(byte[] jwsSignature) throws IOException {
+		if (jwsSignature.length != 64) {
+			throw new IllegalArgumentException("Invalid ES256 signature length");
+		}
+
+		byte[] r = Arrays.copyOfRange(jwsSignature, 0, 32);
+		byte[] s = Arrays.copyOfRange(jwsSignature, 32, 64);
+
+		DerOutputStream derOut = new DerOutputStream();
+		derOut.write(DerValue.createTag(DerValue.tag_Integer, false, (byte) 0), trimLeadingZeros(r));
+		derOut.write(DerValue.createTag(DerValue.tag_Integer, false, (byte) 0), trimLeadingZeros(s));
+
+		DerOutputStream seq = new DerOutputStream();
+		seq.write(DerValue.tag_Sequence, derOut.toByteArray());
+		return seq.toByteArray();
+	}
+
+	private static byte[] trimLeadingZeros(byte[] val) {
+		int i = 0;
+		while (i < val.length - 1 && val[i] == 0) {
+			i++;
+		}
+		return Arrays.copyOfRange(val, i, val.length);
 	}
 
 	public static JsonObject verifyAndGet(String token, String secret) {
