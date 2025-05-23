@@ -39,10 +39,10 @@ public final class OpenIdConnectClient extends OAuth2Client {
 	private String logoutUri;
 
 	public OpenIdConnectClient(URI uri, String clientId, String secret, String authorizeUrn,
-			String tokenUrn, String redirectUri, Vertx vertx, int poolSize, String certificatesUri)
+							   String tokenUrn, String redirectUri, Vertx vertx, int poolSize, String certificatesUri, Boolean noCertCache)
 			throws URISyntaxException {
 		super(uri, clientId, secret, authorizeUrn, tokenUrn, redirectUri, vertx, poolSize);
-		this.jwt = new JWT(vertx, secret, (certificatesUri != null ? new URI(certificatesUri) : null));
+		this.jwt = new JWT(vertx, secret, (certificatesUri != null ? new URI(certificatesUri) : null), noCertCache);
 	}
 
 	@Override
