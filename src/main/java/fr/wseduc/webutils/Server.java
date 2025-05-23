@@ -40,13 +40,13 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.core.shareddata.AsyncMap;
 import io.vertx.core.shareddata.LocalMap;
 
 import org.vertx.java.core.http.RouteMatcher;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -68,21 +68,24 @@ public abstract class Server extends AbstractVerticle {
 
 	@Override
 	public void start(Promise<Void> startPromise) throws Exception {
-		super.start(startPromise);
-		final SharedDataHelper sharedDataHelper = SharedDataHelper.getInstance();
-		sharedDataHelper.init(vertx);
-		sharedDataHelper.<String, String>getMulti("server", "signKey", "sameSiteValue", "httpServerOptions")
-			.onSuccess(serverMap -> init(startPromise, serverMap))
-			.onFailure(ex -> log.error("Error loading server map for modue " + this.getClass().getSimpleName(), ex));
+		final Promise<Void> vertxPromise = Promise.promise();
+		super.start(vertxPromise);
+		vertxPromise.future().onSuccess(x -> {
+			config = config();
+			FileResolver.getInstance().setBasePath(config);
+			rm = new RouteMatcher();
+			trace = TracerFactory.getTracer(this.getClass().getSimpleName());
+			i18n = I18n.getInstance();
+			i18n.init(vertx);
+			final SharedDataHelper sharedDataHelper = SharedDataHelper.getInstance();
+			sharedDataHelper.init(vertx);
+			sharedDataHelper.<String, String>getMulti("server", "signKey", "sameSiteValue", "httpServerOptions")
+				.onSuccess(serverMap -> init(startPromise, serverMap))
+				.onFailure(ex -> log.error("Error loading server map for modue " + this.getClass().getSimpleName(), ex));
+		}).onFailure(ex -> log.error("Error on vertx init promise", ex));
 	}
 
 	public void init(Promise<Void> startPromise, Map<String,String> serverConfig) {
-		config = config();
-		FileResolver.getInstance().setBasePath(config);
-		rm = new RouteMatcher();
-		trace = TracerFactory.getTracer(this.getClass().getSimpleName());
-		i18n = I18n.getInstance();
-		i18n.init(vertx);
 		CookieHelper.getInstance().init(
 				serverConfig.get("signKey"), serverConfig.get("sameSiteValue"), log);
 		staticRessources = vertx.sharedData().getLocalMap("staticRessources");
@@ -161,13 +164,15 @@ public abstract class Server extends AbstractVerticle {
 			JsonArray actions = StartupUtils.loadSecuredActions(vertx);
 			securedActions = StartupUtils.securedActionsToMap(actions);
 			log.info("secureaction loaded : " + actions.encode());
-			if (config.getString("integration-mode","BUS").equals("HTTP")) {
-				StartupUtils.sendStartup(application, actions, vertx,
-						config.getInteger("app-registry.port", 8012));
-			} else {
-				StartupUtils.sendStartup(application, actions,
-						Server.getEventBus(vertx),
-						config.getString("app-registry.address", "wse.app.registry"), vertx);
+			if (!Arrays.asList("Starter", "AppRegistry").contains(this.getClass().getSimpleName())) {
+				if (config.getString("integration-mode","BUS").equals("HTTP")) {
+					StartupUtils.sendStartup(application, actions, vertx,
+							config.getInteger("app-registry.port", 8012));
+				} else {
+					StartupUtils.sendStartup(application, actions,
+							Server.getEventBus(vertx),
+							config.getString("app-registry.address", "wse.app.registry"), vertx);
+				}
 			}
 		} catch (IOException e) {
 			log.error("Error application not registred.", e);

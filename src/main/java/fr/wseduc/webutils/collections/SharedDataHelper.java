@@ -9,10 +9,13 @@ import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.shareddata.AsyncMap;
 
 public class SharedDataHelper {
 
+    private static final Logger log = LoggerFactory.getLogger(SharedDataHelper.class);
     private Vertx vertx;
 
     private SharedDataHelper(){}
@@ -56,7 +59,11 @@ public class SharedDataHelper {
     private <K, V> Future<V> getValue(K key, final Promise<V> promise, AsyncMap<K, V> asyncMap) {
         asyncMap.get(key, ar2 -> {
             if (ar2.succeeded()) {
-                promise.complete(ar2.result());
+                try {
+                    promise.complete(ar2.result());
+                } catch (ClassCastException e) {
+                    log.error("Cast error on key " + key + " : " + ar2.result(), e);
+                }
             } else {
                 promise.fail(ar2.cause());
             }
