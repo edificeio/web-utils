@@ -246,7 +246,7 @@ public abstract class Server extends AbstractVerticle {
 	}
 
 	protected Server addController(BaseController controller) {
-		log.info("add controller");
+		log.info("add controller : " + controller.getClass().getName());
 		controller.init(vertx, config, rm, securedActions);
 		securedUriBinding.addAll(controller.securedUriBinding());
 		mfaProtectedBinding.addAll(controller.getMfaProtectedBindings());
