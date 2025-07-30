@@ -17,5 +17,5 @@
 package fr.wseduc.webutils.security;
 
 public enum ActionType {
-	WORKFLOW, RESOURCE, AUTHENTICATED, UNSECURED;
+	WORKFLOW, RESOURCE, AUTHENTICATED, PRE_AUTHORIZE, UNSECURED;
 }
