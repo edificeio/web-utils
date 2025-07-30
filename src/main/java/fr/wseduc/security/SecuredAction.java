@@ -28,4 +28,6 @@ public @interface SecuredAction {
 
 	ActionType type() default ActionType.WORKFLOW;
 
+	String right() default "";
+
 }
