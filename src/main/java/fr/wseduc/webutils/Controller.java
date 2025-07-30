@@ -370,7 +370,7 @@ public abstract class Controller extends Renders {
 			bindings = new HashSet<>();
 			uriBinding.put(serviceMethod, bindings);
 		}
-		bindings.add(new Binding(httpMethod, Pattern.compile(regex), serviceMethod, actionType(serviceMethod)));
+		bindings.add(new Binding(httpMethod, Pattern.compile(regex), serviceMethod, actionType(serviceMethod), findOverride(serviceMethod)));
 	}
 
 	private void addRegEx(String input, HttpMethod httpMethod, String method) {
@@ -380,7 +380,14 @@ public abstract class Controller extends Renders {
 			bindings = new HashSet<>();
 			uriBinding.put(serviceMethod, bindings);
 		}
-		bindings.add(new Binding(httpMethod, Pattern.compile(input), serviceMethod, actionType(serviceMethod)));
+		bindings.add(new Binding(httpMethod, Pattern.compile(input), serviceMethod, actionType(serviceMethod), findOverride(serviceMethod)));
+	}
+
+	private String findOverride(String serviceMethod) {
+		if(!securedActions.containsKey(serviceMethod)) {
+			return null;
+		}
+		return securedActions.get(serviceMethod).getOverride();
 	}
 
 	private ActionType actionType(String serviceMethod) {

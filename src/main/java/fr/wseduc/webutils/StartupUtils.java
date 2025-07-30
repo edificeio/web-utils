@@ -20,11 +20,9 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
+import io.micrometer.common.util.StringUtils;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -91,7 +89,7 @@ public class StartupUtils {
 		}
 		JsonObject jo = new JsonObject();
 		jo.put("application", app)
-		.put("actions", actions);
+		.put("actions", applyOverrideForRegistry(actions));
 		eb.request(address, jo, (AsyncResult<Message<JsonObject>> appEvent) -> {
 				if(appEvent.failed()){
 					log.error("Error registering application " + app.getString("name"), appEvent.cause());
@@ -151,7 +149,7 @@ public class StartupUtils {
 	}
 
 	public static Map<String, SecuredAction> securedActionsToMap(JsonArray securedActions) {
-		if (securedActions == null || securedActions.size() == 0) {
+		if (securedActions == null || securedActions.isEmpty()) {
 			return Collections.emptyMap();
 		}
 		Map<String, SecuredAction> actions = new HashMap<>();
@@ -160,12 +158,50 @@ public class StartupUtils {
 			String name = action.getString("name");
 			String displayName = action.getString("displayName");
 			String type = action.getString("type");
+			String override = action.getString("override");
 			if (name != null && type != null && displayName != null
 					&& !name.trim().isEmpty() && !type.trim().isEmpty()) {
-				actions.put(name, new SecuredAction(name, displayName, type));
+				actions.put(name, new SecuredAction(name, displayName, type, override));
 			}
 		}
 		return actions;
+	}
+
+	public static Map<String, SecuredAction> applyOverrideForShare(Map<String, SecuredAction> securedActionMap) {
+		Map<String, SecuredAction> toReturn = new HashMap<>();
+		for (Iterator<Map.Entry<String, SecuredAction>> it = securedActionMap.entrySet().iterator();it.hasNext();) {
+			Map.Entry<String, SecuredAction> entry = it.next();
+			if(StringUtils.isBlank(entry.getValue().getOverride())) {
+				toReturn.put(entry.getKey(), entry.getValue());
+			} else {
+				if (!securedActionMap.containsKey(entry.getValue().getOverride())) {
+					toReturn.put(entry.getValue().getOverride(), entry.getValue());
+				}
+			}
+		}
+		return toReturn;
+	}
+
+	public static JsonArray applyOverrideForRegistry(JsonArray securedActions) {
+		JsonArray toReturn = securedActions.copy();
+		for (Object oAction : toReturn.getList()) {
+			JsonObject action = (JsonObject) oAction;
+			if (StringUtils.isNotBlank(action.getString("override"))) {
+				action.put("name", action.getString("override"));
+			}
+		}
+
+		for (Iterator<Object> it = toReturn.stream().iterator(); it.hasNext();) {
+			JsonObject action = (JsonObject) it.next();
+			if(toReturn.getList()
+					.stream()
+					.filter(a -> ((JsonObject)a).getString("name").equals(action.getString("name")))
+					.count() > 1
+					&& StringUtils.isNotBlank(action.getString("override"))) {
+				it.remove();
+			}
+		}
+		return toReturn;
 	}
 
 	public static JsonArray loadWidgets(String appName, Vertx vertx){
