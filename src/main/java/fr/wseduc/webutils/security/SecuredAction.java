@@ -21,12 +21,14 @@ public class SecuredAction {
 	private final String name;
 	private final String displayName;
 	private final String type;
+	private final String override;
 
-	public SecuredAction(String name, String displayName, String type) {
+	public SecuredAction(String name, String displayName, String type, String override) {
 		this.name = name;
 		this.displayName = displayName;
 		this.type = type;
-	}
+        this.override = override;
+    }
 
 	public String getName() {
 		return name;
@@ -38,6 +40,10 @@ public class SecuredAction {
 
 	public String getType() {
 		return type;
+	}
+
+	public String getOverride() {
+		return override;
 	}
 
 }

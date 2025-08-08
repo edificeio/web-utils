@@ -26,9 +26,20 @@ public class Binding {
 	private final Pattern uriPattern;
 	private final String serviceMethod;
 	private final ActionType actionType;
+	private String override;
 
 	public Binding(HttpMethod method, Pattern uriPattern,
-			String serviceMethod, ActionType actionType) {
+			String serviceMethod, ActionType actionType,
+				   String override) {
+		this.method = method;
+		this.uriPattern = uriPattern;
+		this.serviceMethod = serviceMethod;
+		this.actionType = actionType;
+		this.override = override;
+	}
+
+	public Binding(HttpMethod method, Pattern uriPattern,
+				   String serviceMethod, ActionType actionType) {
 		this.method = method;
 		this.uriPattern = uriPattern;
 		this.serviceMethod = serviceMethod;
@@ -51,4 +62,11 @@ public class Binding {
 		return actionType;
 	}
 
+	public String getOverride() {
+		return override != null ? override : "";
+	}
+
+	public void setOverride(String override) {
+		this.override = override;
+	}
 }
