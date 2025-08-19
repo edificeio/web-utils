@@ -387,7 +387,7 @@ public abstract class Controller extends Renders {
 		if(!securedActions.containsKey(serviceMethod)) {
 			return null;
 		}
-		return securedActions.get(serviceMethod).getOverride();
+		return securedActions.get(serviceMethod).getRight();
 	}
 
 	private ActionType actionType(String serviceMethod) {

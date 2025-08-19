@@ -89,7 +89,7 @@ public class StartupUtils {
 		}
 		JsonObject jo = new JsonObject();
 		jo.put("application", app)
-		.put("actions", applyOverrideForRegistry(actions));
+		.put("actions", applyOverrideRightForRegistry(actions));
 		eb.request(address, jo, (AsyncResult<Message<JsonObject>> appEvent) -> {
 				if(appEvent.failed()){
 					log.error("Error registering application " + app.getString("name"), appEvent.cause());
@@ -158,36 +158,36 @@ public class StartupUtils {
 			String name = action.getString("name");
 			String displayName = action.getString("displayName");
 			String type = action.getString("type");
-			String override = action.getString("override");
+			String right = action.getString("right");
 			if (name != null && type != null && displayName != null
 					&& !name.trim().isEmpty() && !type.trim().isEmpty()) {
-				actions.put(name, new SecuredAction(name, displayName, type, override));
+				actions.put(name, new SecuredAction(name, displayName, type, right));
 			}
 		}
 		return actions;
 	}
 
-	public static Map<String, SecuredAction> applyOverrideForShare(Map<String, SecuredAction> securedActionMap) {
+	public static Map<String, SecuredAction> applyOverrideRightForShare(Map<String, SecuredAction> securedActionMap) {
 		Map<String, SecuredAction> toReturn = new HashMap<>();
 		for (Iterator<Map.Entry<String, SecuredAction>> it = securedActionMap.entrySet().iterator();it.hasNext();) {
 			Map.Entry<String, SecuredAction> entry = it.next();
-			if(StringUtils.isBlank(entry.getValue().getOverride())) {
+			if(StringUtils.isBlank(entry.getValue().getRight())) {
 				toReturn.put(entry.getKey(), entry.getValue());
 			} else {
-				if (!securedActionMap.containsKey(entry.getValue().getOverride())) {
-					toReturn.put(entry.getValue().getOverride(), entry.getValue());
+				if (!securedActionMap.containsKey(entry.getValue().getRight())) {
+					toReturn.put(entry.getValue().getRight(), entry.getValue());
 				}
 			}
 		}
 		return toReturn;
 	}
 
-	public static JsonArray applyOverrideForRegistry(JsonArray securedActions) {
+	public static JsonArray applyOverrideRightForRegistry(JsonArray securedActions) {
 		JsonArray toReturn = securedActions.copy();
 		for (Object oAction : toReturn.getList()) {
 			JsonObject action = (JsonObject) oAction;
-			if (StringUtils.isNotBlank(action.getString("override"))) {
-				action.put("name", action.getString("override"));
+			if (StringUtils.isNotBlank(action.getString("right"))) {
+				action.put("name", action.getString("right"));
 			}
 		}
 
@@ -197,7 +197,7 @@ public class StartupUtils {
 					.stream()
 					.filter(a -> ((JsonObject)a).getString("name").equals(action.getString("name")))
 					.count() > 1
-					&& StringUtils.isNotBlank(action.getString("override"))) {
+					&& StringUtils.isNotBlank(action.getString("right"))) {
 				it.remove();
 			}
 		}

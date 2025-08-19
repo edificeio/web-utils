@@ -153,7 +153,7 @@ public abstract class Server extends AbstractVerticle {
 				StartupUtils.sendStartup(application, actions, vertx,
 						config.getInteger("app-registry.port", 8012));
 			} else {
-				StartupUtils.sendStartup(application, StartupUtils.applyOverrideForRegistry(actions),
+				StartupUtils.sendStartup(application, StartupUtils.applyOverrideRightForRegistry(actions),
 						Server.getEventBus(vertx),
 						config.getString("app-registry.address", "wse.app.registry"), vertx);
 			}
