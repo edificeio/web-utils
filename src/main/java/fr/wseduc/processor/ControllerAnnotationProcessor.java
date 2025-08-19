@@ -232,7 +232,7 @@ public class ControllerAnnotationProcessor extends AbstractProcessor {
 			controllerActions.add("{ \"name\" : \"" + clazz.getQualifiedName().toString() + "|" +
 					element.getSimpleName().toString() +
 					"\", \"displayName\" : \"" + annotation.value() + "\", \"type\" : \"" +
-					annotation.type().name() + "\", \"override\": \"" + annotation.override() + "\" }");
+					annotation.type().name() + "\", \"right\": \"" + annotation.right() + "\" }");
 		}
 
 		writeFile("SecuredAction-", actions);

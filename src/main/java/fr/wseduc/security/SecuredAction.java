@@ -28,6 +28,6 @@ public @interface SecuredAction {
 
 	ActionType type() default ActionType.WORKFLOW;
 
-	String override() default "";
+	String right() default "";
 
 }
