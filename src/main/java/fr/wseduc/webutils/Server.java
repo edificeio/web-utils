@@ -246,12 +246,14 @@ public abstract class Server extends AbstractVerticle {
 		return vertx.eventBus();
 	}
 
-	protected Server addController(BaseController controller) {
+	protected Future<Server> addController(BaseController controller) {
 		log.info("add controller : " + controller.getClass().getName());
-		controller.init(vertx, config, rm, securedActions);
-		securedUriBinding.addAll(controller.securedUriBinding());
-		mfaProtectedBinding.addAll(controller.getMfaProtectedBindings());
-		return this;
+		return controller.initAsync(vertx, config, rm, securedActions)
+      .map(e -> {
+          securedUriBinding.addAll(controller.securedUriBinding());
+          mfaProtectedBinding.addAll(controller.getMfaProtectedBindings());
+        return this;
+      });
 	}
 
 	protected Server clearFilters() {
