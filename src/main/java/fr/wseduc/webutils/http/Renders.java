@@ -20,8 +20,11 @@ import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import com.samskivert.mustache.Mustache;
 import fr.wseduc.webutils.template.TemplateProcessor;
 import fr.wseduc.webutils.template.FileTemplateProcessor;
 import fr.wseduc.webutils.template.lambdas.FormatBirthDateLambda;
@@ -57,6 +60,7 @@ public class Renders {
 	protected String staticHost;
 	protected FileTemplateProcessor templateProcessor;
 	protected static final List<String> allowedHosts = new ArrayList<>();
+	private final Map<String, Mustache.Lambda> staticLambdas = new HashMap<>();
 
 	public Renders(Vertx vertx, JsonObject config) {
 		this.config = config;
@@ -66,8 +70,10 @@ public class Renders {
 		this.vertx = vertx;
 		if (vertx != null) {
 			this.templateProcessor = new FileTemplateProcessor(vertx, "view/", false);
-			this.templateProcessor.setLambda("formatBirthDate", new FormatBirthDateLambda());
-			this.templateProcessor.setLambda("modVersion", new ModsLambda(vertx));
+			staticLambdas.put("formatBirthDate", new FormatBirthDateLambda());
+			staticLambdas.put("modVersion", new ModsLambda(vertx));
+
+			staticLambdas.forEach(templateProcessor::setLambda);
 		}
 	}
 
@@ -84,13 +90,15 @@ public class Renders {
 
 		if (templateProcessor == null && vertx != null) {
 			this.templateProcessor = new FileTemplateProcessor(vertx, "view/", false);
-			this.templateProcessor.setLambda("formatBirthDate", new FormatBirthDateLambda());
-			this.templateProcessor.setLambda("modVersion", new ModsLambda(vertx));
+			staticLambdas.put("formatBirthDate", new FormatBirthDateLambda());
+			staticLambdas.put("modVersion", new ModsLambda(vertx));
+
+			staticLambdas.forEach(templateProcessor::setLambda);
 		}
 	}
 
-	protected void setLambdaTemplateRequest(final HttpServerRequest request)
-	{
+	@Deprecated
+	protected void setLambdaTemplateRequest(final HttpServerRequest request) {
 		String host = Renders.getHost(request);
 		if(host == null) // This can happen for forged requests
 			host = "";
@@ -102,6 +110,10 @@ public class Renders {
 		this.templateProcessor.setLambda("infra",
 			new InfraLambda(config.getBoolean("ssl", sttcHost.startsWith("https")), sttcHost, "/infra/public", request.headers().get("X-Forwarded-For") == null));
 		this.templateProcessor.setLambda("datetime", new LocaleDateLambda(I18n.acceptLanguage(request)));
+	}
+
+	protected Map<String, Mustache.Lambda> getLambdasFromRequest() {
+		return null;
 	}
 
 	public void renderView(HttpServerRequest request) {

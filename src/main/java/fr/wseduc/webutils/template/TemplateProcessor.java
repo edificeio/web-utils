@@ -52,12 +52,14 @@ public class TemplateProcessor
 
   // =========================================== COMPILER CONFIGURATION ===========================================
 
+  @Deprecated
   public TemplateProcessor setLambda(String identifier, Mustache.Lambda lambda)
   {
     this.templateLambdas.put(identifier, lambda);
     return this;
   }
 
+  @Deprecated
   public TemplateProcessor clearLambda(String identifier)
   {
     this.templateLambdas.remove(identifier);
@@ -79,6 +81,7 @@ public class TemplateProcessor
   // ============================================= TEMPLATE PROCESSING ============================================
 
 
+  @Deprecated
   public void processTemplate(String templateString, JsonObject params, final Handler<String> handler)
   {
     this.processTemplateToWriter(templateString, params, new Handler<Writer>()
@@ -91,6 +94,20 @@ public class TemplateProcessor
     });
   }
 
+  public void processTemplate(String templateString, JsonObject params, Map<String, Mustache.Lambda> lambdas,
+                              final Handler<String> handler)
+  {
+    this.processTemplateToWriter(templateString, params, lambdas, new Handler<Writer>()
+    {
+      @Override
+      public void handle(Writer w)
+      {
+        handler.handle(w == null ? null : w.toString());
+      }
+    });
+  }
+
+  @Deprecated
   public void processTemplateToWriter(String templateString, JsonObject params, final Handler<Writer> handler)
   {
     this.getTemplate(templateString, new Handler<Template>()
@@ -103,28 +120,33 @@ public class TemplateProcessor
     });
   }
 
+  public void processTemplateToWriter(String templateString, JsonObject params,  Map<String, Mustache.Lambda> lambdas,
+                                      final Handler<Writer> handler)
+  {
+    this.getTemplate(templateString, new Handler<Template>()
+    {
+      @Override
+      public void handle(Template t)
+      {
+        processTemplate(t, params, lambdas, handler);
+      }
+    });
+  }
+
+  protected void processTemplate(Template t, JsonObject params, Map<String, Mustache.Lambda> lambdas, final Handler<Writer> handler) {
+    final JsonObject ctxParams = (params == null) ? new JsonObject() : params.copy();
+    final Map<String, Object> ctx = JsonUtils.convertMap(ctxParams);
+    ctx.putAll(lambdas);
+    applyTemplate(t, ctx, handler);
+  }
+
+  @Deprecated
   protected void processTemplate(Template t, JsonObject params, final Handler<Writer> handler)
   {
     final JsonObject ctxParams = (params == null) ? new JsonObject() : params.copy();
     final Map<String, Object> ctx = JsonUtils.convertMap(ctxParams);
     this.applyLambdas(ctx);
-
-    if (t != null)
-    {
-      try
-      {
-        Writer writer = new StringWriter();
-        t.execute(ctx, writer);
-        handler.handle(writer);
-      }
-      catch (Exception e)
-      {
-        log.error(e.getMessage(), e);
-        handler.handle(null);
-      }
-    }
-    else
-      handler.handle(null);
+    applyTemplate(t, ctx, handler);
   }
 
   protected void getTemplate(String templateString, final Handler<Template> handler)
@@ -132,7 +154,23 @@ public class TemplateProcessor
     handler.handle(compiler.compile(templateString));
   }
 
+
   // ================================================ PRIVATE UTILS ===============================================
+
+  private void applyTemplate(Template t, Map<String, Object> ctx, Handler<Writer> handler) {
+    if (t != null) {
+      try {
+        Writer writer = new StringWriter();
+        t.execute(ctx, writer);
+        handler.handle(writer);
+      } catch (Exception e) {
+        log.error(e.getMessage(), e);
+        handler.handle(null);
+      }
+    } else {
+      handler.handle(null);
+    }
+  }
 
   private void applyLambdas(Map<String, Object> context)
   {
