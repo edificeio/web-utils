@@ -29,6 +29,7 @@ import java.util.concurrent.ConcurrentMap;
 import com.samskivert.mustache.Mustache;
 import com.samskivert.mustache.Template;
 import fr.wseduc.webutils.collections.JsonUtils;
+import fr.wseduc.webutils.http.ProcessTemplateContext;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -74,6 +75,7 @@ public class FileTemplateProcessor extends TemplateProcessor
 
   // ============================================= TEMPLATE PROCESSING ============================================
 
+  @Deprecated
   public void processTemplate(String resourceName, JsonObject params, Reader r, final Handler<Writer> handler)
   {
     if(r != null)
@@ -83,38 +85,50 @@ public class FileTemplateProcessor extends TemplateProcessor
   }
 
   @Override
+  @Deprecated
   protected void getTemplate(String resourceName, final Handler<Template> handler)
   {
     String path = this.templateFolder + resourceName;
-
     final String p = absolutePath(path);
-    if (this.useCache == true)
-    {
+    handleGetTemplate(p,  handler);
+  }
+
+  @Override
+  public void processTemplate(ProcessTemplateContext context, final Handler<Writer> handler) {
+    if(context.reader() != null) {
+      super.getTemplate(context, t -> processTemplate(context,  t , handler));
+    } else {
+      super.processTemplate(context, handler);
+    }
+  }
+
+
+  @Override
+  protected void getTemplate(ProcessTemplateContext context, final Handler<Template> handler) {
+    String path = this.templateFolder + context.templateString();
+    final String p = absolutePath(path);
+    handleGetTemplate(p,  handler);
+  }
+
+  private void handleGetTemplate(String p, Handler<Template> handler) {
+    if (this.useCache) {
       Template cacheEntry = cache.get(p);
-      if(cacheEntry != null)
-      {
+      if(cacheEntry != null) {
         handler.handle(cacheEntry);
         return;
       }
     }
 
-    this.vertx.fileSystem().readFile(p, new Handler<AsyncResult<Buffer>>()
-    {
-      @Override
-      public void handle(AsyncResult<Buffer> ar)
-      {
-        if (ar.succeeded())
-        {
-          Template template = compiler.compile(ar.result().toString("UTF-8"));
-
-          if(useCache == true)
-            cache.put(p, template);
-
-          handler.handle(template);
+    this.vertx.fileSystem().readFile(p, ar -> {
+      if (ar.succeeded()) {
+        Template template = compiler.compile(ar.result().toString("UTF-8"));
+        if(useCache) {
+          cache.put(p, template);
         }
-        else
-          handler.handle(null);
+        handler.handle(template);
+        return;
       }
+      handler.handle(null);
     });
   }
 }
