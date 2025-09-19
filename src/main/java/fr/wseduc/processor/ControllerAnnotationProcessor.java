@@ -230,7 +230,7 @@ public class ControllerAnnotationProcessor extends AbstractProcessor {
 			checkRights(annotation, clazz);
 			String qualifiedName = clazz.getQualifiedName().toString() + "|" +
 					element.getSimpleName().toString();
-			String right =  annotation.right().isEmpty() ? qualifiedName : annotation.right();
+			String right = annotation.right() == null || annotation.right().isEmpty() ? qualifiedName : annotation.right();
 
 			Set<String> controllerActions = getController(actions, clazz);
 			controllerActions.add("{ \"name\" : \"" + qualifiedName +
