@@ -21,7 +21,6 @@ import fr.wseduc.rs.*;
 import fr.wseduc.security.ActionType;
 import fr.wseduc.security.MfaProtected;
 import fr.wseduc.security.SecuredAction;
-import org.apache.commons.lang3.StringUtils;
 
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
@@ -231,7 +230,7 @@ public class ControllerAnnotationProcessor extends AbstractProcessor {
 			checkRights(annotation, clazz);
 			String qualifiedName = clazz.getQualifiedName().toString() + "|" +
 					element.getSimpleName().toString();
-			String right = StringUtils.isBlank(annotation.right()) ? qualifiedName : annotation.right();
+			String right =  annotation.right().isEmpty() ? qualifiedName : annotation.right();
 
 			Set<String> controllerActions = getController(actions, clazz);
 			controllerActions.add("{ \"name\" : \"" + qualifiedName +
