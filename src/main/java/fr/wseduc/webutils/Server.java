@@ -150,10 +150,11 @@ public abstract class Server extends AbstractVerticle {
 			securedActions = StartupUtils.securedActionsToMap(actions);
 			log.info("secureaction loaded : " + actions.encode());
 			if (config.getString("integration-mode","BUS").equals("HTTP")) {
-				StartupUtils.sendStartup(application, actions, vertx,
+				StartupUtils.sendStartup(application, StartupUtils.applyOverrideRightForRegistry(actions)
+						, vertx,
 						config.getInteger("app-registry.port", 8012));
 			} else {
-				StartupUtils.sendStartup(application, actions,
+				StartupUtils.sendStartup(application, StartupUtils.applyOverrideRightForRegistry(actions),
 						Server.getEventBus(vertx),
 						config.getString("app-registry.address", "wse.app.registry"), vertx);
 			}

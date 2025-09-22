@@ -20,11 +20,10 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
+import io.micrometer.common.util.StringUtils;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -91,7 +90,7 @@ public class StartupUtils {
 		}
 		JsonObject jo = new JsonObject();
 		jo.put("application", app)
-		.put("actions", actions);
+		.put("actions", applyOverrideRightForRegistry(actions));
 		eb.request(address, jo, (AsyncResult<Message<JsonObject>> appEvent) -> {
 				if(appEvent.failed()){
 					log.error("Error registering application " + app.getString("name"), appEvent.cause());
@@ -151,21 +150,66 @@ public class StartupUtils {
 	}
 
 	public static Map<String, SecuredAction> securedActionsToMap(JsonArray securedActions) {
-		if (securedActions == null || securedActions.size() == 0) {
+		if (securedActions == null || securedActions.isEmpty()) {
 			return Collections.emptyMap();
 		}
 		Map<String, SecuredAction> actions = new HashMap<>();
 		for (Object a: securedActions) {
 			JsonObject action = (JsonObject) a;
-			String name = action.getString("name");
+			String qualifiedName = action.getString("name");
 			String displayName = action.getString("displayName");
 			String type = action.getString("type");
-			if (name != null && type != null && displayName != null
-					&& !name.trim().isEmpty() && !type.trim().isEmpty()) {
-				actions.put(name, new SecuredAction(name, displayName, type));
+			String right = action.getString("right");
+			if (qualifiedName != null && type != null && displayName != null
+					&& !qualifiedName.trim().isEmpty() && !type.trim().isEmpty()) {
+				actions.put(qualifiedName, new SecuredAction(qualifiedName, displayName, type, right));
 			}
 		}
 		return actions;
+	}
+
+	public static Map<String, SecuredAction> applyOverrideRightForShare(Map<String, SecuredAction> securedActionMap) {
+		Map<String, SecuredAction> toReturn = new HashMap<>();
+        for (Map.Entry<String, SecuredAction> entry : securedActionMap.entrySet()) {
+            //we want to use right as replacement for name and this key is unique
+			toReturn.put(entry.getValue().getRight(), entry.getValue());
+
+			//duplicate between override right and legacy right
+			// override on a right on different type should not be allowed to avoid weird behaviour
+            SecuredAction action = securedActionMap.get(entry.getValue().getRight());
+            if (action != null && !action.getType().equals(entry.getValue().getType())) {
+                throw new IllegalArgumentException(String.format(" %s override right has a type " +
+                        "different from overridden action ", entry.getValue().getName()));
+            }
+        }
+		return toReturn;
+	}
+
+	public static JsonArray applyOverrideRightForRegistry(JsonArray securedActions) {
+		//replace name ( class name + | + method) by the right
+		ArrayList<JsonObject> toReturn = new ArrayList<>();
+		for (Object oAction : securedActions.getList()) {
+			JsonObject action = ((JsonObject) oAction).copy();
+			action.put("name", action.getString("right"));
+			toReturn.add(action);
+		}
+		// unicity on name + consistency control
+		for (Iterator<JsonObject> it = toReturn.iterator(); it.hasNext();) {
+			JsonObject action = it.next();
+			List<JsonObject> duplicateAction = toReturn.stream()
+					.filter(a -> a.getString("name")
+					.equals(action.getString("name")))
+					.collect(Collectors.toList());
+			if(duplicateAction.size() > 1) {
+				//verify type coherence
+				if (duplicateAction.stream().anyMatch(a -> !a.getString("type").equals(action.getString("type")))) {
+					throw new IllegalArgumentException((String.format(" %s override right has a type " +
+							"different from overridden action ", action.getString("name") )));
+				}
+				it.remove();
+			}
+		}
+		return new JsonArray(toReturn);
 	}
 
 	public static JsonArray loadWidgets(String appName, Vertx vertx){

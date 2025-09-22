@@ -26,13 +26,31 @@ public class Binding {
 	private final Pattern uriPattern;
 	private final String serviceMethod;
 	private final ActionType actionType;
+	private String right;
+	private String[] arguments;
 
 	public Binding(HttpMethod method, Pattern uriPattern,
-			String serviceMethod, ActionType actionType) {
+			String serviceMethod, ActionType actionType,
+				   String override) {
 		this.method = method;
 		this.uriPattern = uriPattern;
 		this.serviceMethod = serviceMethod;
 		this.actionType = actionType;
+		this.right = override;
+	}
+
+	public Binding(HttpMethod method, Pattern uriPattern,
+				   String serviceMethod, ActionType actionType) {
+		this.method = method;
+		this.uriPattern = uriPattern;
+		this.serviceMethod = serviceMethod;
+		this.actionType = actionType;
+	}
+
+	public Binding(Binding b, String[] arguments) {
+		this(b.method, b.uriPattern, b.serviceMethod, b.actionType);
+		this.right = b.right;
+		this.arguments = arguments;
 	}
 
 	public HttpMethod getMethod() {
@@ -51,4 +69,15 @@ public class Binding {
 		return actionType;
 	}
 
+	public String getRight() {
+		return right != null ? right : "";
+	}
+
+	public void setRight(String right) {
+		this.right = right;
+	}
+
+	public String[] getArguments() {
+		return arguments;
+	}
 }

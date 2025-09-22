@@ -21,12 +21,14 @@ public class SecuredAction {
 	private final String name;
 	private final String displayName;
 	private final String type;
+	private final String right;
 
-	public SecuredAction(String name, String displayName, String type) {
-		this.name = name;
+	public SecuredAction(String qualifiedName, String displayName, String type, String right) {
+		this.name = qualifiedName;
 		this.displayName = displayName;
 		this.type = type;
-	}
+        this.right = right;
+    }
 
 	public String getName() {
 		return name;
@@ -38,6 +40,10 @@ public class SecuredAction {
 
 	public String getType() {
 		return type;
+	}
+
+	public String getRight() {
+		return right;
 	}
 
 }
