@@ -21,12 +21,17 @@ import fr.wseduc.webutils.data.FileResolver;
 
 import static fr.wseduc.webutils.Utils.isNotEmpty;
 import static fr.wseduc.webutils.data.FileResolver.absolutePath;
+import static io.vertx.core.Future.succeededFuture;
+
 import fr.wseduc.webutils.http.BaseController;
 import fr.wseduc.webutils.http.Binding;
 import fr.wseduc.webutils.http.Renders;
 import fr.wseduc.webutils.http.StaticResource;
 import fr.wseduc.webutils.logging.Tracer;
 import fr.wseduc.webutils.logging.TracerFactory;
+import fr.wseduc.webutils.metrics.EventBusProbe;
+import fr.wseduc.webutils.metrics.HealthCheckProbe;
+import fr.wseduc.webutils.metrics.HealthCheckProbeResult;
 import fr.wseduc.webutils.request.CookieHelper;
 import fr.wseduc.webutils.request.filter.Filter;
 import fr.wseduc.webutils.request.filter.SecurityHandler;
@@ -45,12 +50,8 @@ import io.vertx.core.shareddata.LocalMap;
 import org.vertx.java.core.http.RouteMatcher;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public abstract class Server extends AbstractVerticle {
 
@@ -65,6 +66,8 @@ public abstract class Server extends AbstractVerticle {
 	private LocalMap<String, String> staticRessources;
 	private boolean dev;
 	private HttpServer server;
+  private final List<HealthCheckProbe> probes = new ArrayList<>();
+  private long probeTimeout = 10_000L;
 
 	@Override
 	public void start(Promise<Void> startPromise) throws Exception {
@@ -79,16 +82,70 @@ public abstract class Server extends AbstractVerticle {
 			i18n.init(vertx);
 			final SharedDataHelper sharedDataHelper = SharedDataHelper.getInstance();
 			sharedDataHelper.init(vertx);
-			sharedDataHelper.<String, String>getMulti("server", "signKey", "sameSiteValue", "httpServerOptions")
-				.onSuccess(serverMap -> init(startPromise, serverMap))
-				.onFailure(ex -> log.error("Error loading server map for modue " + this.getClass().getSimpleName(), ex));
+      initializeProbes()
+      .onSuccess(e -> {
+        sharedDataHelper.<String, String>getMulti("server", "signKey", "sameSiteValue", "httpServerOptions")
+          .onSuccess(serverMap -> init(startPromise, serverMap))
+          .onFailure(ex -> log.error("Error loading server map for modue " + this.getClass().getSimpleName(), ex));
+      }).onFailure(th -> startPromise.fail(th));
 		}).onFailure(ex -> log.error("Error on vertx init promise", ex));
 	}
 
-	public void init(Promise<Void> startPromise, Map<String,String> serverConfig) {
+  /**
+   * Read probes from the configuration and initialize them.
+   * The configuration is read from the "probes" field and is a mixed list of :
+   * - string, which is the fully qualified name of the probe to instantiate
+   * - object, with the fields :
+   *    - name, which is the fully qualified name of the probe to instantiate
+   *    - config, which is a JsonObject containing configuration parameters for the probe
+   * @return A future that completes when the initialization of all probes is done.
+   */
+  private Future<Void> initializeProbes() {
+    this.probeTimeout = config.getLong("probes-timeout", 10_000L);
+    final List<Future<HealthCheckProbe>> probes = new ArrayList<>();
+    final JsonArray probesConf = config.getJsonArray("probes");
+    if(probesConf == null) {
+      final EventBusProbe probe = new EventBusProbe();
+      probes.add(probe.init(vertx, null).map(probe));
+    } else {
+      for (Object o : probesConf) {
+        final String probeClassName;
+        final JsonObject conf;
+        if(o instanceof String) {
+          probeClassName = (String) o;
+          conf = new JsonObject();
+        } else if(o instanceof JsonObject) {
+          final JsonObject jo = (JsonObject) o;
+          probeClassName = jo.getString("name");
+          conf = jo.getJsonObject("config");
+        } else {
+          log.error("We expect the probes to be a list of string with the name of the probes or an object");
+          continue;
+        }
+        try {
+          final Class<?> probeClass = Class.forName(probeClassName);
+          if(!HealthCheckProbe.class.isAssignableFrom(probeClass)) {
+            log.error("Specified class " + probeClassName + " is not a probe class");
+            continue;
+          }
+          final HealthCheckProbe probe = (HealthCheckProbe) probeClass.newInstance();
+          probes.add(probe.init(vertx, conf).map(probe));
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+          log.error("Cannot instantiate probe " + probeClassName, e);
+        }
+      }
+    }
+    return Future.all(probes)
+      .map(CompositeFuture::list)
+      .onSuccess(ps -> this.probes.addAll((List)ps))
+      .mapEmpty();
+  }
+
+
+  public void init(Promise<Void> startPromise, Map<String,String> serverConfig) {
 		CookieHelper.getInstance().init(
 				serverConfig.get("signKey"), serverConfig.get("sameSiteValue"), log);
-		staticRessources = vertx.sharedData().getLocalMap("staticRessources");
+		staticRessources = vertx.sharedData().getLocalMap("staticRessources"); // TODO JBER
 		dev = "dev".equals(config.getString("mode"));
 
 		log.info("Verticle: " + this.getClass().getSimpleName() + " starts on port: " + config.getInteger("port"));
@@ -140,6 +197,28 @@ public abstract class Server extends AbstractVerticle {
 			}
 		});
 
+    rm.get(prefix + "/health/liveness", event -> Controller.renderJson(event, new JsonObject().put("test", "ok")));
+
+    rm.get(prefix + "/health/readiness", event -> {
+      final List<Future<HealthCheckProbeResult>> futures = probes.stream()
+        .map(this::executeProbeWithTimeout)
+        .collect(Collectors.toList());
+      Future.join(futures)
+        .onSuccess(res -> {
+          final JsonObject result = mergeProbes(res.list());
+          boolean hasKO = res.<HealthCheckProbeResult>list().stream().anyMatch(p -> !p.isOk());
+          if(hasKO) {
+            Controller.renderError(event, result);
+          } else {
+            Controller.renderJson(event, result);
+          }
+        })
+        .onFailure(th -> {
+          log.error("An error occurred while getting readiness probe", th);
+          Controller.renderError(event);
+        });
+    });
+
 		rm.get(prefix + "/monitoring", new Handler<HttpServerRequest>() {
 			@Override
 			public void handle(HttpServerRequest event) {
@@ -189,7 +268,23 @@ public abstract class Server extends AbstractVerticle {
 			.onFailure(startPromise::tryFail);
 	}
 
-	private HttpServerOptions createHttpServerOptions(String httpServerOptions) {
+  private Future<HealthCheckProbeResult> executeProbeWithTimeout(HealthCheckProbe healthCheckProbe) {
+      try {
+        return healthCheckProbe.probe(probeTimeout);
+      } catch (RuntimeException e) {
+        return succeededFuture(new HealthCheckProbeResult(healthCheckProbe.getName(), false, new JsonObject().put("exception", e.getMessage())));
+      }
+  }
+
+  private JsonObject mergeProbes(final  List<HealthCheckProbeResult> results) {
+    final JsonObject merged = new JsonObject();
+    for (HealthCheckProbeResult result : results) {
+      merged.put(result.getName(), JsonObject.mapFrom(result));
+    }
+    return merged;
+  }
+
+  private HttpServerOptions createHttpServerOptions(String httpServerOptions) {
 		JsonObject rawHttpServerOptions = config().getJsonObject("httpServerOptions");
 		if(rawHttpServerOptions == null && isNotEmpty(httpServerOptions)) {
 			rawHttpServerOptions = new JsonObject(httpServerOptions);
