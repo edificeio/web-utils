@@ -17,19 +17,22 @@
 package fr.wseduc.webutils.request;
 
 import fr.wseduc.webutils.http.Renders;
-import static fr.wseduc.webutils.request.RequestUtils.getTokenHeader;
-import static fr.wseduc.webutils.request.RequestUtils.getUserAgent;
 import fr.wseduc.webutils.security.SecureHttpServerRequest;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.LoggerFactory;
+
+import java.time.Instant;
+
+import static fr.wseduc.webutils.request.RequestUtils.getTokenHeader;
+import static fr.wseduc.webutils.request.RequestUtils.getUserAgent;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
 public class AccessLogger {
 
-	protected static final io.vertx.core.logging.Logger log = LoggerFactory.getLogger(AccessLogger.class);
-	public static final String UNAUTHENTICATED_USER_ID = "unauthenticated";
+  protected static final java.util.logging.Logger log = java.util.logging.Logger.getLogger("ACCESS");
+
+  public static final String UNAUTHENTICATED_USER_ID = "unauthenticated";
 	public static final String NO_SESSION_COOKIE = "nocookie";
 	public static final String NO_TOKEN_ID = "notoken";
 
@@ -44,35 +47,43 @@ public class AccessLogger {
 	 * @param handler Downstream process ({@code null} will always be supplied
 	 */
 	public void log(HttpServerRequest request, Handler<Void> handler) {
-		log.trace(formatLog(request));
+		log.finest(formatLog(request, null));
 		handler.handle(null);
 	}
 
-	protected String formatLog(final HttpServerRequest request) {
-		return String.format("\"%s\" \"%s %s%s\" \"%s\"%s",
-				Renders.getIp(request), request.method(),
-				request.path(), getQuery(request),
-				getUserAgent(request), getAuthenticatedUserInfo(request));
+	protected String formatLog(final HttpServerRequest request, final String userId) {
+    JsonObject logEntry = new JsonObject()
+      .put("timestamp", Instant.now().toString())
+      .put("ip", Renders.getIp(request))
+      .put("method", request.method().toString())
+      .put("path", request.path())
+      .put("query", request.query())
+      .put("userAgent", getUserAgent(request));
+    if(userId != null) {
+      logEntry.put("userId", userId);
+    }
+
+    if(request instanceof SecureHttpServerRequest) {
+      JsonObject auth = getAuthenticatedUserInfo((SecureHttpServerRequest) request);
+      logEntry.mergeIn(auth);
+    }
+
+    return logEntry.encode();
 	}
 
-	private String getAuthenticatedUserInfo(final HttpServerRequest request) {
-		if(request instanceof SecureHttpServerRequest) {
-			final String userId;
-			final String tokenId;
-			final String cookieId;
-			final JsonObject session = ((SecureHttpServerRequest) request).getSession();
-			if(session == null || isBlank(session.getString("externalId"))) {
-				userId = UNAUTHENTICATED_USER_ID;
-			} else {
-				userId = session.getString("externalId");
-			}
-			tokenId = getTokenHeader(request).orElse(NO_TOKEN_ID);
-			final String sessionId = CookieHelper.getInstance().getSigned("oneSessionId", request);
-			cookieId = isBlank(sessionId) ? NO_SESSION_COOKIE : sessionId;
-			return String.format(" - %s %s %s", userId, cookieId, tokenId);
-		} else {
-			return "";
-		}
+	private JsonObject getAuthenticatedUserInfo(final SecureHttpServerRequest request) {
+    final JsonObject session = request.getSession();
+    final String userId = (session == null || isBlank(session.getString("externalId")))
+      ? UNAUTHENTICATED_USER_ID
+      : session.getString("externalId");
+    final String tokenId = getTokenHeader(request).orElse(NO_TOKEN_ID);
+    final String sessionId = CookieHelper.getInstance().getSigned("oneSessionId", request);
+    final String cookieId = isBlank(sessionId) ? NO_SESSION_COOKIE : sessionId;
+
+    return new JsonObject()
+      .put("userId", userId)
+      .put("sessionId", cookieId)
+      .put("tokenId", tokenId);
 	}
 
 	private String getQuery(HttpServerRequest request) {
