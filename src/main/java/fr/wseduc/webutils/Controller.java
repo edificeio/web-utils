@@ -16,34 +16,35 @@
 
 package fr.wseduc.webutils;
 
-import java.io.*;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
+import fr.wseduc.webutils.http.Binding;
+import fr.wseduc.webutils.http.HttpMethod;
+import fr.wseduc.webutils.http.Renders;
+import fr.wseduc.webutils.http.TraceIdContextHandler;
 import fr.wseduc.webutils.request.AccessLogger;
+import fr.wseduc.webutils.request.filter.SecurityHandler;
 import fr.wseduc.webutils.request.filter.XSSHandler;
+import fr.wseduc.webutils.security.ActionType;
+import fr.wseduc.webutils.security.SecuredAction;
+import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.JsonObject;
-
-import fr.wseduc.webutils.http.Binding;
-import fr.wseduc.webutils.http.HttpMethod;
-import fr.wseduc.webutils.http.Renders;
-import fr.wseduc.webutils.request.filter.SecurityHandler;
-import fr.wseduc.webutils.security.ActionType;
-import fr.wseduc.webutils.security.SecuredAction;
+import io.vertx.core.spi.context.storage.ContextLocal;
+import org.apache.commons.lang3.time.StopWatch;
 import org.vertx.java.core.http.RouteMatcher;
+
+import java.io.*;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public abstract class Controller extends Renders {
 
@@ -56,6 +57,7 @@ public abstract class Controller extends Renders {
 	protected EventBus eb;
 	protected String busPrefix = "";
 	private AccessLogger accessLogger;
+	public static final String TRACE_ID = "X-Cloud-Trace-Context";
 
 	public Controller(Vertx vertx, JsonObject config, RouteMatcher rm,
 			Map<String, SecuredAction> securedActions) {
@@ -162,13 +164,14 @@ public abstract class Controller extends Renders {
 		try {
 			final MethodHandle mh = lookup.bind(this, method,
 					MethodType.methodType(void.class, HttpServerRequest.class));
+			final String qualifiedName = this.getClass().getName() + "|" + method;
 			return new XSSHandler() {
 
 				@Override
 				public void filter(final HttpServerRequest request) {
 					accessLogger.log(request, v -> {
 						try {
-							mh.invokeExact(request);
+							doExecuteInvoke(mh, request, qualifiedName, false);
 						} catch (Throwable e) {
 							if (!(e instanceof IllegalStateException) ||
 									!"Response is closed".equals(e.getMessage())) {
@@ -196,12 +199,13 @@ public abstract class Controller extends Renders {
 		try {
 			final MethodHandle mh = lookup.bind(this, method,
 					MethodType.methodType(void.class, HttpServerRequest.class));
+			final String qualifiedName = this.getClass().getName() + "|" + method;
 			return new SecurityHandler() {
 
 				@Override
 				public void filter(HttpServerRequest request) {
 					try {
-						mh.invokeExact(request);
+						doExecuteInvoke(mh, request, qualifiedName, true);
 					} catch (Throwable e) {
 						if (!(e instanceof IllegalStateException) ||
 								!"Response is closed".equals(e.getMessage())) {
@@ -224,24 +228,48 @@ public abstract class Controller extends Renders {
 		}
 	}
 
+	private void doExecuteInvoke(MethodHandle mh, HttpServerRequest request,
+								 String qualifiedName, boolean secured) throws Throwable {
+		final Context ctx = Vertx.currentContext();
+		String traceId = TraceIdContextHandler.getTraceId(ctx, request);
+		String shortQualifiedName = qualifiedName.replaceAll("\\B\\w+(\\.[a-z])","$1");
+		if(secured) {
+			log.info(" Begin secured method : " + shortQualifiedName);
+		} else {
+			log.debug(" Begin method : " + shortQualifiedName);
+		}
+		request.response().putHeader(TRACE_ID, traceId);
+
+		final StopWatch watch = new StopWatch();
+		watch.start();
+		// if call later and the http response implementation doesn't manage multiple end handler it will be
+		//erased, not a big deal
+		request.response().endHandler(h -> {
+			if(secured) {
+				log.info(" End of secured method : " + shortQualifiedName + " in [" + watch.getTime(TimeUnit.MILLISECONDS) + " ms]");
+			} else {
+				log.debug(" End of method : " + shortQualifiedName + " in [" + watch.getTime(TimeUnit.MILLISECONDS) + " ms]");
+			}
+			watch.stop();
+		});
+		//invoke the target method on the controller
+		mh.invokeExact(request);
+	}
+
 	public void registerMethod(String address, String method, boolean local)
 			throws NoSuchMethodException, IllegalAccessException {
 		final MethodHandle mh = lookup.bind(this, method,
 				MethodType.methodType(void.class, Message.class));
-		Handler<Message<JsonObject>> handler = new Handler<Message<JsonObject>>() {
-
-			@Override
-			public void handle(Message<JsonObject> message) {
-				try {
-					mh.invokeExact(message);
-				} catch (Throwable e) {
-					log.error(e.getMessage(), e);
-					JsonObject json = new JsonObject().put("status", "error")
-							.put("message", e.getMessage());
-					message.reply(json);
-				}
-			}
-		};
+		Handler<Message<JsonObject>> handler = message -> {
+            try {
+                mh.invokeExact(message);
+            } catch (Throwable e) {
+                log.error(e.getMessage(), e);
+                JsonObject json = new JsonObject().put("status", "error")
+                        .put("message", e.getMessage());
+                message.reply(json);
+            }
+        };
 		if (local) {
 			Server.getEventBus(vertx).localConsumer(busPrefix + address, handler);
 		} else {
