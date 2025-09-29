@@ -170,6 +170,9 @@ public class StartupUtils {
 
 	public static Map<String, SecuredAction> applyOverrideRightForShare(Map<String, SecuredAction> securedActionMap) {
 		Map<String, SecuredAction> toReturn = new HashMap<>();
+		if (securedActionMap == null) {
+			return toReturn;
+		}
         for (Map.Entry<String, SecuredAction> entry : securedActionMap.entrySet()) {
             //we want to use right as replacement for name and this key is unique
 			toReturn.put(entry.getValue().getRight(), entry.getValue());
