@@ -30,6 +30,14 @@ public class SecuredAction {
         this.right = right;
     }
 
+	public SecuredAction(String qualifiedName, String displayName, String type) {
+		this.name = qualifiedName;
+		this.displayName = displayName;
+		this.type = type;
+		this.right = qualifiedName;
+	}
+
+
 	public String getName() {
 		return name;
 	}
