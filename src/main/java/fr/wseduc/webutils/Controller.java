@@ -253,7 +253,7 @@ public abstract class Controller extends Renders {
 		if (method == null || method.trim().isEmpty()) {
 			throw new NullPointerException();
 		}
-		if (securedActions.containsKey(this.getClass().getName() + "|" + method)) {
+		if (securedActions!= null && securedActions.containsKey(this.getClass().getName() + "|" + method)) {
 			return executeSecure(method);
 		}
 		return execute(method);
@@ -277,7 +277,7 @@ public abstract class Controller extends Renders {
 	public Map<String, Set<Binding>> getSecuredUriBinding() {
 		Map<String, Set<Binding>> bindings = new HashMap<>();
 		for (Entry<String, Set<Binding>> e : this.uriBinding.entrySet()) {
-			if (securedActions.containsKey(e.getKey())) {
+			if (securedActions!= null && securedActions.containsKey(e.getKey())) {
 				bindings.put(e.getKey(), e.getValue());
 			}
 		}
@@ -287,7 +287,7 @@ public abstract class Controller extends Renders {
 	public Set<Binding> securedUriBinding() {
 		Set<Binding> bindings = new HashSet<>();
 		for (Entry<String, Set<Binding>> e : this.uriBinding.entrySet()) {
-			if (securedActions.containsKey(e.getKey())) {
+			if (securedActions != null && securedActions.containsKey(e.getKey())) {
 				bindings.addAll(e.getValue());
 			}
 		}
@@ -384,7 +384,7 @@ public abstract class Controller extends Renders {
 	}
 
 	private String findOverride(String serviceMethod) {
-		if(!securedActions.containsKey(serviceMethod)) {
+		if(securedActions == null || !securedActions.containsKey(serviceMethod)) {
 			return null;
 		}
 		return securedActions.get(serviceMethod).getRight();
