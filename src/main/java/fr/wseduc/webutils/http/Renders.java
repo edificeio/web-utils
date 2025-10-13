@@ -119,6 +119,12 @@ public class Renders {
 		this.templateProcessor.setLambda("datetime", new LocaleDateLambda(I18n.acceptLanguage(request)));
 	}
 
+	/**
+	 * Create lambda from request for mustache. These lambdas should be used with TemplateProcessorContext and method
+	 * that use it in order to avoid race condition on template processing
+	 * @param request HttpRequest of the user to set various dependent request lambda (host, domain, language, etc..)
+	 * @return Map with request dependent lambda
+	 */
 	protected Map<String, Mustache.Lambda> getLambdasFromRequest(final HttpServerRequest request) {
 		Map<String, Mustache.Lambda> lambdas = new HashMap<>();
 
@@ -166,12 +172,15 @@ public class Renders {
 		mergeLambdas.putAll(lambdas);
 		mergeLambdas.putAll(staticLambdas);
 
-		ProcessTemplateContext context = new ProcessTemplateContext()
+		ProcessTemplateContext.Builder context = new ProcessTemplateContext.Builder()
 												.escapeHtml(true)
 												.reader(r)
 												.lambdas( mergeLambdas)
 												.request(request);
-		processTemplateWithLambdas(context,  resourceName,writer -> {
+
+		context.templateString(genTemplateName(resourceName, request));
+
+		templateProcessor.processTemplate(context.build(),  writer -> {
 			if (writer != null) {
 				request.response().putHeader("content-type", "text/html; charset=utf-8");
 				request.response().setStatusCode(status);
@@ -274,15 +283,15 @@ public class Renders {
 		this.templateProcessor.escapeHTML(escapeHTML).processTemplate(this.genTemplateName(resourceName, request), p, handler);
 	}
 
-	public void processTemplateWithLambdas(ProcessTemplateContext context, Handler<Writer> handler) {
+	public void processTemplateWithLambdas(ProcessTemplateContext.Builder context, Handler<Writer> handler) {
 		context.lambdas(getLambdasFromRequest(context.request()));
-		this.templateProcessor.processTemplate(context, handler);
+		this.templateProcessor.processTemplate(context.build(), handler);
 	}
 
-	public void processTemplateWithLambdas(ProcessTemplateContext context, String resourceName, Handler<Writer> handler) {
+	public void processTemplateWithLambdas(ProcessTemplateContext.Builder context, String resourceName, Handler<Writer> handler) {
 		context.lambdas(getLambdasFromRequest(context.request()));
 		context.templateString(genTemplateName(resourceName, context.request()));
-		this.templateProcessor.processTemplate(context, handler);
+		this.templateProcessor.processTemplate(context.build(), handler);
 	}
 
 	private String genTemplateName(final String resourceName, final HttpServerRequest request) {
