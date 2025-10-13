@@ -21,55 +21,49 @@ package fr.wseduc.webutils.template;
 
 import java.io.Writer;
 import java.io.StringWriter;
-import java.io.Reader;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import com.samskivert.mustache.Mustache;
 import com.samskivert.mustache.Template;
 import fr.wseduc.webutils.collections.JsonUtils;
-import io.vertx.core.AsyncResult;
+import fr.wseduc.webutils.http.ProcessTemplateContext;
 import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-
-import static fr.wseduc.webutils.data.FileResolver.absolutePath;
 
 public class TemplateProcessor
 {
   protected static final Logger log = LoggerFactory.getLogger(TemplateProcessor.class);
 
   protected Mustache.Compiler compiler = Mustache.compiler().defaultValue("");
-  private Map<String, Mustache.Lambda> templateLambdas = new ConcurrentHashMap<String, Mustache.Lambda>();
-
-  public TemplateProcessor()
-  {
-  }
+  private Map<String, Mustache.Lambda> templateLambdas = new ConcurrentHashMap<>();
 
   // =========================================== COMPILER CONFIGURATION ===========================================
 
+  @Deprecated
   public TemplateProcessor setLambda(String identifier, Mustache.Lambda lambda)
   {
     this.templateLambdas.put(identifier, lambda);
     return this;
   }
 
+  @Deprecated
   public TemplateProcessor clearLambda(String identifier)
   {
     this.templateLambdas.remove(identifier);
     return this;
   }
 
+  @Deprecated
   public TemplateProcessor defaultValue(String defaultValue)
   {
     this.compiler = this.compiler.defaultValue(defaultValue);
     return this;
   }
 
+  @Deprecated
   public TemplateProcessor escapeHTML(boolean enableHTMLEscaping)
   {
     this.compiler = this.compiler.escapeHTML(enableHTMLEscaping);
@@ -79,66 +73,82 @@ public class TemplateProcessor
   // ============================================= TEMPLATE PROCESSING ============================================
 
 
+  @Deprecated
   public void processTemplate(String templateString, JsonObject params, final Handler<String> handler)
   {
-    this.processTemplateToWriter(templateString, params, new Handler<Writer>()
-    {
-      @Override
-      public void handle(Writer w)
-      {
-        handler.handle(w == null ? null : w.toString());
-      }
-    });
+    this.processTemplateToWriter(templateString, params, w -> handler.handle(w == null ? null : w.toString()));
   }
 
+  @Deprecated
   public void processTemplateToWriter(String templateString, JsonObject params, final Handler<Writer> handler)
   {
-    this.getTemplate(templateString, new Handler<Template>()
-    {
-      @Override
-      public void handle(Template t)
-      {
-        processTemplate(t, params, handler);
-      }
-    });
+    this.getTemplate(templateString, t -> processTemplate(t, params, handler));
   }
 
+  @Deprecated
   protected void processTemplate(Template t, JsonObject params, final Handler<Writer> handler)
   {
     final JsonObject ctxParams = (params == null) ? new JsonObject() : params.copy();
     final Map<String, Object> ctx = JsonUtils.convertMap(ctxParams);
     this.applyLambdas(ctx);
-
-    if (t != null)
-    {
-      try
-      {
-        Writer writer = new StringWriter();
-        t.execute(ctx, writer);
-        handler.handle(writer);
-      }
-      catch (Exception e)
-      {
-        log.error(e.getMessage(), e);
-        handler.handle(null);
-      }
-    }
-    else
-      handler.handle(null);
+    applyTemplate(t, ctx, handler);
   }
 
-  protected void getTemplate(String templateString, final Handler<Template> handler)
-  {
+  @Deprecated
+  protected void getTemplate(String templateString, final Handler<Template> handler) {
     handler.handle(compiler.compile(templateString));
   }
 
-  // ================================================ PRIVATE UTILS ===============================================
-
-  private void applyLambdas(Map<String, Object> context)
-  {
-    for(Map.Entry<String, Mustache.Lambda> entry : this.templateLambdas.entrySet())
-    {
-      context.put(entry.getKey(), entry.getValue());
+  protected void getTemplate(ProcessTemplateContext context, final Handler<Template> handler) {
+    if(context.reader() == null) {
+      handler.handle(compiler.defaultValue(context.defaultValue())
+              .escapeHTML(context.escapeHtml())
+              .compile(context.templateString()));
+    } else {
+      handler.handle(compiler.defaultValue(context.defaultValue())
+              .escapeHTML(context.escapeHtml())
+              .compile(context.reader()));
     }
   }
+
+
+  public void processTemplate(ProcessTemplateContext templateContext, Template template, Handler<Writer> handler) {
+    final JsonObject ctxParams = (templateContext.params() == null) ? new JsonObject() : templateContext.params().copy();
+    final Map<String, Object> ctx = JsonUtils.convertMap(ctxParams);
+    applyLambdas(templateContext, ctx);
+    applyTemplate(template, ctx, handler);
+  }
+
+  public void processTemplate(ProcessTemplateContext templateContext, Handler<Writer> handler) {
+      getTemplate(templateContext, h -> processTemplate(templateContext, h, handler));
+  }
+
+
+  // ================================================ PRIVATE UTILS ===============================================
+
+
+  private void applyTemplate(Template t, Map<String, Object> ctx, Handler<Writer> handler) {
+    if (t != null) {
+      try {
+        Writer writer = new StringWriter();
+        t.execute(ctx, writer);
+        handler.handle(writer);
+      } catch (Exception e) {
+        log.error(e.getMessage(), e);
+        handler.handle(null);
+      }
+    } else {
+      handler.handle(null);
+    }
+  }
+
+  private void applyLambdas(ProcessTemplateContext templateContext, Map<String, Object> ctx) {
+      ctx.putAll(templateContext.lambdas());
+  }
+
+  @Deprecated
+  private void applyLambdas(Map<String, Object> context) {
+      context.putAll(this.templateLambdas);
+  }
+
 }
