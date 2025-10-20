@@ -180,6 +180,9 @@ public class I18n {
 	public static String acceptLanguage(HttpServerRequest request) {
 		final String acceptLanguage = request.headers().get("Accept-Language") != null ?
 				request.headers().get("Accept-Language") : "fr";
+		if ("true".equals(request.headers().get("X-Force-Language"))) {
+			return acceptLanguage;
+		}
 		if (request instanceof SecureHttpServerRequest) {
 			JsonObject session = ((SecureHttpServerRequest) request).getSession();
 			if (session != null && session.getJsonObject("cache") != null &&
