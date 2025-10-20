@@ -180,7 +180,7 @@ public class I18n {
 	public static String acceptLanguage(HttpServerRequest request) {
 		final String acceptLanguage = request.headers().get("Accept-Language") != null ?
 				request.headers().get("Accept-Language") : "fr";
-		if (request.getParam("bypassPreference", "").equals("true")) {
+		if ("true".equals(request.headers().get("bypassPreference"))) {
 			return acceptLanguage;
 		}
 		if (request instanceof SecureHttpServerRequest) {
