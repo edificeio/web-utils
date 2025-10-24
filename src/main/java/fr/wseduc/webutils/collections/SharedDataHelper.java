@@ -12,6 +12,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.shareddata.AsyncMap;
+import io.vertx.core.shareddata.Lock;
 
 public class SharedDataHelper {
 
@@ -31,6 +32,19 @@ public class SharedDataHelper {
 	public void init(Vertx vertx) {
 		this.vertx = vertx;
 	}
+
+    public Future<Lock> getLock(final String lockName, final long timeout) {
+        return this.vertx.sharedData().getLockWithTimeout(lockName, timeout);
+    }
+
+    public Future<Void> releaseLockAfterDelay(final Lock lock, final long delay) {
+        return Future.future(p -> {
+            vertx.setTimer(delay, e -> {
+                lock.release();
+                p.complete();
+            });
+        });
+    }
 
     public <K, V> Future<AsyncMap<K, V>> getAsyncMap(String mapName) {
         final Promise<AsyncMap<K, V>> promise = Promise.promise();
