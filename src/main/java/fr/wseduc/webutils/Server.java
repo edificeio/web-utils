@@ -84,7 +84,7 @@ public abstract class Server extends AbstractVerticle {
 			sharedDataHelper.init(vertx);
       initializeProbes()
       .onSuccess(e -> {
-        sharedDataHelper.<String, String>getMulti("server", "signKey", "sameSiteValue", "httpServerOptions")
+        sharedDataHelper.<String, String>getLocalMulti("server", "signKey", "sameSiteValue", "httpServerOptions")
           .onSuccess(serverMap -> init(startPromise, serverMap))
           .onFailure(ex -> log.error("Error loading server map for modue " + this.getClass().getSimpleName(), ex));
       }).onFailure(th -> startPromise.fail(th));

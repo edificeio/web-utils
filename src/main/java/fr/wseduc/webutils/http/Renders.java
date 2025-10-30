@@ -80,7 +80,7 @@ public class Renders {
 			this.pathPrefix = Server.getPathPrefix(config);
 		}
 
-		SharedDataHelper.getInstance().<String, String>get("server", "static-host")
+		SharedDataHelper.getInstance().<String, String>getLocal("server", "static-host")
 				.onSuccess(staticHost -> Renders.this.staticHost = staticHost)
 				.onFailure(ex -> log.error("Error getting static-host conf", ex));
 
