@@ -21,7 +21,7 @@ public class JWTWithBasicFilter {
 	}
 
 	public void init(Vertx vertx) {
-		SharedDataHelper.getInstance().<String, String>get("server", "signKey")
+		SharedDataHelper.getInstance().<String, String>getLocal("server", "signKey")
 				.onSuccess(signKey -> jwt = new JWT(vertx, signKey, null))
 				.onFailure(ex -> log.error("Error getting jwt signKey", ex));
 	}

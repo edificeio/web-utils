@@ -46,6 +46,18 @@ public class SharedDataHelper {
         });
     }
 
+    public <K, V> Future<AsyncMap<K, V>> getLocalAsyncMap(String mapName) {
+        final Promise<AsyncMap<K, V>> promise = Promise.promise();
+        vertx.sharedData().<K, V>getLocalAsyncMap(mapName, ar -> {
+            if (ar.succeeded()) {
+                promise.complete(ar.result());
+            } else {
+                promise.fail(ar.cause());
+            }
+        });
+        return promise.future();
+    }
+
     public <K, V> Future<AsyncMap<K, V>> getAsyncMap(String mapName) {
         final Promise<AsyncMap<K, V>> promise = Promise.promise();
         vertx.sharedData().<K, V>getAsyncMap(mapName, ar -> {
@@ -61,6 +73,18 @@ public class SharedDataHelper {
     public <K, V> Future<V> get(String mapName, K key) {
         final Promise<V> promise = Promise.promise();
         vertx.sharedData().<K, V>getAsyncMap(mapName, ar -> {
+            if (ar.succeeded()) {
+                getValue(key, promise, ar.result());
+            } else {
+                promise.fail(ar.cause());
+            }
+        });
+        return promise.future();
+    }
+
+    public <K, V> Future<V> getLocal(String mapName, K key) {
+        final Promise<V> promise = Promise.promise();
+        vertx.sharedData().<K, V>getLocalAsyncMap(mapName, ar -> {
             if (ar.succeeded()) {
                 getValue(key, promise, ar.result());
             } else {
@@ -92,6 +116,29 @@ public class SharedDataHelper {
     public <K, V> Future<Map<K, V>> getMulti(String mapName, K... keys) {
         final Promise<Map<K, V>> promise = Promise.promise();
         vertx.sharedData().<K, V>getAsyncMap(mapName, ar -> {
+            if (ar.succeeded()) {
+                final List<Future> futures = new ArrayList<>();
+                for (K key: keys) {
+                    futures.add(getValue(key, ar.result()));
+                }
+                CompositeFuture.all(futures).onSuccess(cf -> {
+                    final Map<K, V> res = new HashMap<>();
+                    int i = 0;
+                    for (K key: keys) {
+                        res.put(key, (V) futures.get(i++).result());
+                    }
+                    promise.complete(res);
+                }).onFailure(ex -> promise.fail(ex));
+            } else {
+                promise.fail(ar.cause());
+            }
+        });
+        return promise.future();
+    }
+
+    public <K, V> Future<Map<K, V>> getLocalMulti(String mapName, K... keys) {
+        final Promise<Map<K, V>> promise = Promise.promise();
+        vertx.sharedData().<K, V>getLocalAsyncMap(mapName, ar -> {
             if (ar.succeeded()) {
                 final List<Future> futures = new ArrayList<>();
                 for (K key: keys) {
