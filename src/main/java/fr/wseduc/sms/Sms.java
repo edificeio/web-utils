@@ -65,7 +65,7 @@ public class Sms {
 			this.eb = Server.getEventBus(vertx);
 			this.vertx = vertx;
 			this.config = config;
-			SharedDataHelper.getInstance().<String, String>get("server", "smsProvider").onSuccess(smsProvider -> {
+			SharedDataHelper.getInstance().<String, String>getLocal("server", "smsProvider").onSuccess(smsProvider -> {
 				if(isNotEmpty(smsProvider)) {
 					SmsFactory.this.smsProvider = smsProvider;
 				}

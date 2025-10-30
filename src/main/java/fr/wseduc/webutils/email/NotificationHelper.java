@@ -44,7 +44,7 @@ public abstract class NotificationHelper implements SendEmail {
 
 	public NotificationHelper(Vertx vertx, JsonObject config) {
 		this.render = new Renders(vertx, config);
-		SharedDataHelper.getInstance().<String, String>get("server", "emailConfig").onSuccess(encodedEmailConfig -> {
+		SharedDataHelper.getInstance().<String, String>getLocal("server", "emailConfig").onSuccess(encodedEmailConfig -> {
 			String defaultMail = "noreply@one1d.fr";
 			String defaultHost = "http://localhost:8009";
 

@@ -201,7 +201,7 @@ public class UserAuthFilter implements Filter, WithVertx {
 	private void updateCachedAuthRedirectionConfs() {
 		vertx.setPeriodic(AUTH_REDIRECT_CACHE_DELAY, delay -> {
 			SharedDataHelper.getInstance()
-					.<String, String>getMulti("server", "authLocations", "loginUri", "callbackParam")
+					.<String, String>getLocalMulti("server", "authLocations", "loginUri", "callbackParam")
 					.onSuccess(confs -> confs.entrySet().stream().forEach(e -> redirectAuthConfs.put(e.getKey(), e.getValue())))
 					.onFailure(ex -> log.error("Error updating authConf redirections", ex));
 		});
