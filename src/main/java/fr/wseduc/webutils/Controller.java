@@ -240,17 +240,17 @@ public abstract class Controller extends Renders {
 		}
 		request.response().putHeader(TRACE_ID, traceId);
 
-		final StopWatch watch = new StopWatch();
-		watch.start();
 		// if call later and the http response implementation doesn't manage multiple end handler it will be
 		//erased, not a big deal
 		request.response().endHandler(h -> {
-			if(secured) {
+			StopWatch watch = TraceIdContextHandler.getTraceTime(ctx);
+			if(secured && watch != null) {
+				watch.stop();
 				log.info(" End of secured method : " + shortQualifiedName + " in [" + watch.getTime(TimeUnit.MILLISECONDS) + " ms]");
-			} else {
+			} else if(!secured && watch != null) {
+				watch.stop();
 				log.debug(" End of method : " + shortQualifiedName + " in [" + watch.getTime(TimeUnit.MILLISECONDS) + " ms]");
 			}
-			watch.stop();
 		});
 		//invoke the target method on the controller
 		mh.invokeExact(request);
