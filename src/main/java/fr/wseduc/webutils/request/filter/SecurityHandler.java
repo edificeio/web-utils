@@ -16,22 +16,26 @@
 
 package fr.wseduc.webutils.request.filter;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import fr.wseduc.webutils.http.TraceIdContextHandler;
 import fr.wseduc.webutils.request.AccessLogger;
+import fr.wseduc.webutils.security.SecureHttpServerRequest;
 import fr.wseduc.webutils.security.XssSecuredHttpServerRequest;
+import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import fr.wseduc.webutils.security.SecureHttpServerRequest;
+import io.vertx.core.impl.logging.Logger;
+import io.vertx.core.impl.logging.LoggerFactory;
+import org.apache.commons.lang3.time.StopWatch;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 /*
  * Implement a Security Handler with a pre-configurate filters chain 
  */
 public abstract class SecurityHandler implements Handler<HttpServerRequest> {
-	private static Logger logger = LoggerFactory.getLogger(SecurityHandler.class);
+	private static final Logger logger = LoggerFactory.getLogger(SecurityHandler.class);
 	static protected List<Filter> chain = new ArrayList<>();
 	static {
 		chain.add(new AccessLoggerFilter(new AccessLogger()));
@@ -50,6 +54,12 @@ public abstract class SecurityHandler implements Handler<HttpServerRequest> {
 					request.resume();
 					filter(request);
 				} else {
+					Context ctx = Vertx.currentContext();
+					StopWatch watch = TraceIdContextHandler.getTraceTime(ctx);
+					if(watch != null) {
+						watch.stop();
+						logger.info(" End of secured method REJECTED : " + request.path() + " in [" + watch.getTime(TimeUnit.MILLISECONDS) + " ms]");
+					}
 					chain.get(chain.size() - 1).deny(request);
 				}
 			}
@@ -75,6 +85,8 @@ public abstract class SecurityHandler implements Handler<HttpServerRequest> {
 
 	@Override
 	public void handle(HttpServerRequest request) {
+		final Context ctx = Vertx.currentContext();
+		TraceIdContextHandler.setTraceTime(ctx);
 		if (chain != null && !chain.isEmpty()) {
 			SecureHttpServerRequest sr = new XssSecuredHttpServerRequest(request);
 			chain.get(0).canAccess(sr, chainToHandler(sr));
