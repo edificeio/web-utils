@@ -20,8 +20,11 @@ import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import com.samskivert.mustache.Mustache;
 import fr.wseduc.webutils.template.TemplateProcessor;
 import fr.wseduc.webutils.template.FileTemplateProcessor;
 import fr.wseduc.webutils.template.lambdas.FormatBirthDateLambda;
@@ -30,6 +33,7 @@ import fr.wseduc.webutils.template.lambdas.InfraLambda;
 import fr.wseduc.webutils.template.lambdas.LocaleDateLambda;
 import fr.wseduc.webutils.template.lambdas.ModsLambda;
 import fr.wseduc.webutils.template.lambdas.StaticLambda;
+import io.micrometer.common.util.StringUtils;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -47,6 +51,12 @@ import fr.wseduc.webutils.Server;
 
 import static fr.wseduc.webutils.Utils.isNotEmpty;
 
+/**
+ * Method with @deprecated, relative to template processing are NOT thread safe and should not be used. Alternative method not deprecated was developed.
+ * Lambda for template processing dependent of the user context (request, host, etc..) must not be shared and are local variable.
+ * Static lambda that doesn't change with the context can be used
+ * Parameter for the template are either NOT thread safe. EscapeHTML, defaultValue, should be passed as local variable
+ */
 public class Renders {
 
 	protected static final Logger log = LoggerFactory.getLogger(Renders.class);
@@ -57,6 +67,7 @@ public class Renders {
 	protected String staticHost;
 	protected FileTemplateProcessor templateProcessor;
 	protected static final List<String> allowedHosts = new ArrayList<>();
+	private final Map<String, Mustache.Lambda> staticLambdas = new HashMap<>();
 
 	public Renders(Vertx vertx, JsonObject config) {
 		this.config = config;
@@ -66,8 +77,10 @@ public class Renders {
 		this.vertx = vertx;
 		if (vertx != null) {
 			this.templateProcessor = new FileTemplateProcessor(vertx, "view/", false);
-			this.templateProcessor.setLambda("formatBirthDate", new FormatBirthDateLambda());
-			this.templateProcessor.setLambda("modVersion", new ModsLambda(vertx));
+			staticLambdas.put("formatBirthDate", new FormatBirthDateLambda());
+			staticLambdas.put("modVersion", new ModsLambda(vertx));
+
+			staticLambdas.forEach(templateProcessor::setLambda);
 		}
 	}
 
@@ -84,13 +97,15 @@ public class Renders {
 
 		if (templateProcessor == null && vertx != null) {
 			this.templateProcessor = new FileTemplateProcessor(vertx, "view/", false);
-			this.templateProcessor.setLambda("formatBirthDate", new FormatBirthDateLambda());
-			this.templateProcessor.setLambda("modVersion", new ModsLambda(vertx));
+			staticLambdas.put("formatBirthDate", new FormatBirthDateLambda());
+			staticLambdas.put("modVersion", new ModsLambda(vertx));
+
+			staticLambdas.forEach(templateProcessor::setLambda);
 		}
 	}
 
-	protected void setLambdaTemplateRequest(final HttpServerRequest request)
-	{
+	@Deprecated
+	protected void setLambdaTemplateRequest(final HttpServerRequest request) {
 		String host = Renders.getHost(request);
 		if(host == null) // This can happen for forged requests
 			host = "";
@@ -104,6 +119,88 @@ public class Renders {
 		this.templateProcessor.setLambda("datetime", new LocaleDateLambda(I18n.acceptLanguage(request)));
 	}
 
+	/**
+	 * Create lambda from request for mustache. These lambdas should be used with TemplateProcessorContext and method
+	 * that use it in order to avoid race condition on template processing
+	 * @param request HttpRequest of the user to set various dependent request lambda (host, domain, language, etc..)
+	 * @return Map with request dependent lambda
+	 */
+	protected Map<String, Mustache.Lambda> getLambdasFromRequest(final HttpServerRequest request) {
+		Map<String, Mustache.Lambda> lambdas = new HashMap<>();
+
+		String host = Renders.getHost(request);
+		if(host == null) // This can happen for forged requests
+			host = "";
+		String sttcHost = this.staticHost != null ? this.staticHost : host;
+
+
+		lambdas.put("i18n",
+				new I18nLambda(I18n.acceptLanguage(request), host, I18n.getTheme(request)));
+		lambdas.put("static",
+				new StaticLambda(config.getBoolean("ssl", sttcHost.startsWith("https")), sttcHost, this.pathPrefix + "/public"));
+		lambdas.put("infra",
+				new InfraLambda(config.getBoolean("ssl", sttcHost.startsWith("https")), sttcHost, "/infra/public", request.headers().get("X-Forwarded-For") == null));
+		lambdas.put("datetime", new LocaleDateLambda(I18n.acceptLanguage(request)));
+		return lambdas;
+	}
+
+	public void renderTemplateView(HttpServerRequest request) {
+		renderTemplateView(request, new JsonObject(), new HashMap<>());
+	}
+
+	public void renderTemplateView(HttpServerRequest request, Map<String, Mustache.Lambda> lambdas) {
+		renderTemplateView(request, new JsonObject(), lambdas);
+	}
+
+	public void renderTemplateView(HttpServerRequest request, JsonObject params) {
+		renderTemplateView(request, params, new HashMap<>());
+	}
+
+	public void renderTemplateView(HttpServerRequest request, JsonObject params, Map<String, Mustache.Lambda> lambdas) {
+		renderTemplateView(request, params, null, null, 200, lambdas);
+	}
+
+	public void renderTemplateView(HttpServerRequest request, JsonObject params,  String resourceName,
+								   Reader r, Map<String, Mustache.Lambda> lambdas) {
+		renderTemplateView(request, params, resourceName, r, 200, lambdas);
+	}
+
+	public void renderTemplateView(final HttpServerRequest request, JsonObject params,
+								   String resourceName, Reader r, final int status, Map<String, Mustache.Lambda> lambdas) {
+
+		Map<String, Mustache.Lambda> mergeLambdas = getLambdasFromRequest(request);
+		mergeLambdas.putAll(lambdas);
+		mergeLambdas.putAll(staticLambdas);
+
+		ProcessTemplateContext.Builder context = new ProcessTemplateContext.Builder()
+												.escapeHtml(true)
+												.reader(r)
+												.lambdas( mergeLambdas)
+												.request(request);
+
+		context.templateString(genTemplateName(resourceName, request));
+
+		templateProcessor.processTemplate(context.build(),  writer -> {
+			if (writer != null) {
+				request.response().putHeader("content-type", "text/html; charset=utf-8");
+				request.response().setStatusCode(status);
+				if (hookRenderProcess != null) {
+					executeHandlersHookRender(request, new Handler<Void>() {
+						@Override
+						public void handle(Void v) {
+							request.response().end(writer.toString());
+						}
+					});
+				} else {
+					request.response().end(writer.toString());
+				}
+			} else {
+				renderError(request);
+			}
+		});
+	}
+
+	@Deprecated
 	public void renderView(HttpServerRequest request) {
 		renderView(request, new JsonObject());
 	}
@@ -112,14 +209,17 @@ public class Renders {
 	 * Render a Mustache template : see http://mustache.github.com/mustache.5.html
 	 * TODO : isolate scope management
 	 */
+	@Deprecated
 	public void renderView(HttpServerRequest request, JsonObject params) {
 		renderView(request, params, null, null, 200);
 	}
 
+	@Deprecated
 	public void renderView(HttpServerRequest request, JsonObject params, String resourceName, Reader r) {
 		renderView(request, params, resourceName, r, 200);
 	}
 
+	@Deprecated
 	public void renderView(final HttpServerRequest request, JsonObject params,
 			String resourceName, Reader r, final int status) {
 		processTemplate(request, params, resourceName, r, new Handler<Writer>() {
@@ -161,12 +261,14 @@ public class Renders {
 		handlers[0].handle(null);
 	}
 
+	@Deprecated
 	public void processTemplate(HttpServerRequest request, String template, JsonObject params, final Handler<String> handler)
 	{
 		this.setLambdaTemplateRequest(request);
 		this.templateProcessor.escapeHTML(true).processTemplate(this.genTemplateName(template, request), params, handler);
 	}
 
+	@Deprecated
 	public void processTemplate(final HttpServerRequest request, JsonObject p, String resourceName, Reader r, final Handler<Writer> handler)
 	{
 		this.setLambdaTemplateRequest(request);
@@ -174,24 +276,33 @@ public class Renders {
 		this.templateProcessor.processTemplate(this.genTemplateName(resourceName, request), p, r, handler);
 	}
 
+	@Deprecated
 	public void processTemplate(final HttpServerRequest request, JsonObject p, String resourceName, boolean escapeHTML, final Handler<String> handler)
 	{
 		this.setLambdaTemplateRequest(request);
 		this.templateProcessor.escapeHTML(escapeHTML).processTemplate(this.genTemplateName(resourceName, request), p, handler);
 	}
 
-	private String genTemplateName(final String resourceName, final HttpServerRequest request)
-	{
-		if (resourceName != null && !resourceName.trim().isEmpty())
+	public void processTemplateWithLambdas(ProcessTemplateContext.Builder context, Handler<Writer> handler) {
+		context.lambdas(getLambdasFromRequest(context.request()));
+		this.templateProcessor.processTemplate(context.build(), handler);
+	}
+
+	public void processTemplateWithLambdas(ProcessTemplateContext.Builder context, String resourceName, Handler<Writer> handler) {
+		context.lambdas(getLambdasFromRequest(context.request()));
+		context.templateString(genTemplateName(resourceName, context.request()));
+		this.templateProcessor.processTemplate(context.build(), handler);
+	}
+
+	private String genTemplateName(final String resourceName, final HttpServerRequest request) {
+		if (!StringUtils.isEmpty(resourceName)) {
 			return resourceName;
-		else
-		{
-			String template = request.path().substring(pathPrefix.length());
-			if (template.trim().isEmpty()) {
-				template = pathPrefix.substring(1);
-			}
-			return template + ".html";
 		}
+		String template = request.path().substring(pathPrefix.length());
+		if (template.trim().isEmpty()) {
+			template = pathPrefix.substring(1);
+		}
+		return template + ".html";
 	}
 
 	public static void ok(HttpServerRequest request) {
