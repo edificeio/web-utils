@@ -236,12 +236,14 @@ public abstract class Controller extends Renders {
 								 String qualifiedName, boolean secured) throws Throwable {
 		final Context ctx = Vertx.currentContext();
 		String traceId = TraceIdContextHandler.getTraceId(ctx, request);
+		//regex that transform full qualified class into short one:  o.e.a.controllers.AdminController for ex
+		// capture all package name except the last one and replace them by the first letter
 		String shortQualifiedName = qualifiedName.replaceAll("\\B\\w+(\\.[a-z])","$1");
 		if(logRestAccess) {
 			if (secured) {
-				log.info(" Begin secured method : " + shortQualifiedName);
+				log.info(String.format("[%s] Begin secured method : %s", traceId,  shortQualifiedName));
 			} else {
-				log.debug(" Begin method : " + shortQualifiedName);
+				log.debug(String.format("[%s] Begin method : %s", traceId, shortQualifiedName));
 			}
 		}
 		request.response().putHeader(TRACE_ID, traceId);
@@ -258,9 +260,9 @@ public abstract class Controller extends Renders {
 					Vertx.currentContext().putLocal(TRACE_MTTR, mttr);
 				}
 				if (secured) {
-					log.info(" End of secured method : " + shortQualifiedName);
+					log.info(String.format("[%s] End of secured method : %s", traceId, shortQualifiedName));
 				} else {
-					log.debug(" End of method : " + shortQualifiedName);
+					log.debug(String.format("[%s] End of method : %s", traceId, shortQualifiedName));
 				}
 			});
 		}
