@@ -288,7 +288,8 @@ public abstract class Server extends AbstractVerticle {
 		JsonObject rawHttpServerOptions = config().getJsonObject("httpServerOptions");
 		if(rawHttpServerOptions == null && isNotEmpty(httpServerOptions)) {
 			rawHttpServerOptions = new JsonObject(httpServerOptions);
-		} else {
+		}
+		if (rawHttpServerOptions == null) {
 			rawHttpServerOptions = new JsonObject();
 		}
 		return new HttpServerOptions(rawHttpServerOptions);
