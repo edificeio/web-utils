@@ -32,7 +32,6 @@ import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.spi.context.storage.ContextLocal;
 import org.apache.commons.lang3.time.StopWatch;
 import org.vertx.java.core.http.RouteMatcher;
 
@@ -58,6 +57,8 @@ public abstract class Controller extends Renders {
 	protected String busPrefix = "";
 	private AccessLogger accessLogger;
 	public static final String TRACE_ID = "X-Cloud-Trace-Context";
+	public static final String TRACE_MTTR = "Trace-MTTR";
+	private boolean logRestAccess = false;
 
 	public Controller(Vertx vertx, JsonObject config, RouteMatcher rm,
 			Map<String, SecuredAction> securedActions) {
@@ -81,6 +82,9 @@ public abstract class Controller extends Renders {
 		this.rm = rm;
 		this.securedActions = securedActions;
 		this.eb = Server.getEventBus(vertx);
+		if (config != null) {
+			logRestAccess = config.getBoolean("log-rest-access", false);
+		}
 		if (rm != null) {
 			loadRoutes();
 		} else {
@@ -233,25 +237,33 @@ public abstract class Controller extends Renders {
 		final Context ctx = Vertx.currentContext();
 		String traceId = TraceIdContextHandler.getTraceId(ctx, request);
 		String shortQualifiedName = qualifiedName.replaceAll("\\B\\w+(\\.[a-z])","$1");
-		if(secured) {
-			log.info(" Begin secured method : " + shortQualifiedName);
-		} else {
-			log.debug(" Begin method : " + shortQualifiedName);
+		if(logRestAccess) {
+			if (secured) {
+				log.info(" Begin secured method : " + shortQualifiedName);
+			} else {
+				log.debug(" Begin method : " + shortQualifiedName);
+			}
 		}
 		request.response().putHeader(TRACE_ID, traceId);
 
 		// if call later and the http response implementation doesn't manage multiple end handler it will be
 		//erased, not a big deal
-		request.response().endHandler(h -> {
-			StopWatch watch = TraceIdContextHandler.getTraceTime(ctx);
-			if(secured && watch != null) {
-				watch.stop();
-				log.info(" End of secured method : " + shortQualifiedName + " in [" + watch.getTime(TimeUnit.MILLISECONDS) + " ms]");
-			} else if(!secured && watch != null) {
-				watch.stop();
-				log.debug(" End of method : " + shortQualifiedName + " in [" + watch.getTime(TimeUnit.MILLISECONDS) + " ms]");
-			}
-		});
+		if(logRestAccess) {
+			request.response().endHandler(h -> {
+				StopWatch watch = TraceIdContextHandler.getTraceTime(ctx);
+				String mttr = "";
+				if (watch != null) {
+					watch.stop();
+					mttr = String.valueOf(watch.getTime(TimeUnit.MILLISECONDS));
+					Vertx.currentContext().putLocal(TRACE_MTTR, mttr);
+				}
+				if (secured) {
+					log.info(" End of secured method : " + shortQualifiedName);
+				} else {
+					log.debug(" End of method : " + shortQualifiedName);
+				}
+			});
+		}
 		//invoke the target method on the controller
 		mh.invokeExact(request);
 	}
