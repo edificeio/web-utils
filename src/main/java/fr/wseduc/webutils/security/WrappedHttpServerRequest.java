@@ -16,8 +16,6 @@
 
 package fr.wseduc.webutils.security;
 
-import java.util.Map;
-
 import fr.wseduc.webutils.http.response.BufferHttpResponse;
 import fr.wseduc.webutils.request.HttpServerRequestWithBuffering;
 import fr.wseduc.webutils.request.ProxyHttpRequest;
@@ -35,6 +33,7 @@ import io.vertx.core.net.SocketAddress;
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSession;
 import javax.security.cert.X509Certificate;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -365,5 +364,4 @@ public class WrappedHttpServerRequest implements HttpServerRequest, HttpServerRe
 	public @Nullable Cookie getCookie(String name, String domain, String path) {
 		return request.getCookie(name, domain, path);
 	}
-
 }
