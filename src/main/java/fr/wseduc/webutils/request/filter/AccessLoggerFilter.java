@@ -16,15 +16,19 @@
 
 package fr.wseduc.webutils.request.filter;
 
-import fr.wseduc.webutils.request.AccessLogger;
+import fr.wseduc.webutils.request.IAccessLogger;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpServerRequest;
 
 public class AccessLoggerFilter implements Filter {
 
-	private final AccessLogger accessLogger;
+	private IAccessLogger accessLogger;
 
-	public AccessLoggerFilter(AccessLogger accessLogger) {
+	public AccessLoggerFilter(IAccessLogger accessLogger) {
+		this.accessLogger = accessLogger;
+	}
+
+	public void setAccessLogger(IAccessLogger accessLogger) {
 		this.accessLogger = accessLogger;
 	}
 
