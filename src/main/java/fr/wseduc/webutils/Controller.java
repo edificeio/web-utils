@@ -21,6 +21,8 @@ import fr.wseduc.webutils.http.HttpMethod;
 import fr.wseduc.webutils.http.Renders;
 import fr.wseduc.webutils.http.TraceIdContextHandler;
 import fr.wseduc.webutils.request.AccessLogger;
+import fr.wseduc.webutils.request.AccessLoggerFactory;
+import fr.wseduc.webutils.request.IAccessLogger;
 import fr.wseduc.webutils.request.filter.SecurityHandler;
 import fr.wseduc.webutils.request.filter.XSSHandler;
 import fr.wseduc.webutils.security.ActionType;
@@ -55,7 +57,7 @@ public abstract class Controller extends Renders {
 	protected Set<String> mfaProtectedMethods = new HashSet<String>();
 	protected EventBus eb;
 	protected String busPrefix = "";
-	private AccessLogger accessLogger;
+	private IAccessLogger accessLogger;
 	public static final String TRACE_ID = "X-Cloud-Trace-Context";
 	public static final String TRACE_MTTR = "Trace-MTTR";
 	private boolean logRestAccess = false;
@@ -72,7 +74,7 @@ public abstract class Controller extends Renders {
 		if (rm != null) {
 			loadRoutes();
 		}
-		this.accessLogger = new AccessLogger();
+		this.accessLogger = AccessLoggerFactory.create();
 	}
 
 	protected void init(Vertx vertx, JsonObject config, RouteMatcher rm,
@@ -450,7 +452,7 @@ public abstract class Controller extends Renders {
 		return pathPrefix + pattern.trim();
 	}
 
-	public void setAccessLogger(AccessLogger accessLogger) {
+	public void setAccessLogger(IAccessLogger accessLogger) {
 		this.accessLogger = accessLogger;
 	}
 

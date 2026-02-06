@@ -17,7 +17,8 @@
 package fr.wseduc.webutils.request.filter;
 
 import fr.wseduc.webutils.http.TraceIdContextHandler;
-import fr.wseduc.webutils.request.AccessLogger;
+import fr.wseduc.webutils.request.AccessLoggerFactory;
+import fr.wseduc.webutils.request.IAccessLogger;
 import fr.wseduc.webutils.security.SecureHttpServerRequest;
 import fr.wseduc.webutils.security.XssSecuredHttpServerRequest;
 import io.vertx.core.Context;
@@ -38,7 +39,7 @@ public abstract class SecurityHandler implements Handler<HttpServerRequest> {
 	private static final Logger logger = LoggerFactory.getLogger(SecurityHandler.class);
 	static protected List<Filter> chain = new ArrayList<>();
 	static {
-		chain.add(new AccessLoggerFilter(new AccessLogger()));
+		chain.add(new AccessLoggerFilter(AccessLoggerFactory.create()));
 		chain.add(new UserAuthFilter());
 	}
 
