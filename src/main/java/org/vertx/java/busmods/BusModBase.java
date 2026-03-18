@@ -77,7 +77,13 @@ public abstract class BusModBase extends AbstractVerticle {
 	}
 
 	protected void sendError(Message<JsonObject> message, String error, Throwable e) {
-		logger.error(error, e);
+		sendError(message, error, e, true);
+	}
+
+	protected void sendError(Message<JsonObject> message, String error, Throwable e, final boolean logError) {
+		if(logError) {
+			logger.error(error, e);
+		}
 		JsonObject json = new JsonObject().put("status", "error").put("message", error);
 		message.reply(json);
 	}
