@@ -24,8 +24,12 @@ import java.util.TimeZone;
 
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 public class StaticResource {
+
+	private static final Logger log = LoggerFactory.getLogger(StaticResource.class);
 
 	private static final SimpleDateFormat format =
 			new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.UK);
@@ -72,7 +76,11 @@ public class StaticResource {
 		} else {
 			request.response().sendFile(ressourcePath, ar -> {
 				if (ar.failed() && !request.response().ended()) {
-					Renders.notFound(request);
+					try {
+						Renders.notFound(request);
+					} catch (Exception e) {
+						log.debug("Error while setting the response code 404 of call to " + request.path(), e);
+					}
 				}
 			});
 		}
