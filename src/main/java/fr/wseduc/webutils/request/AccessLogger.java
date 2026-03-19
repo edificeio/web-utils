@@ -54,23 +54,9 @@ public class AccessLogger implements IAccessLogger{
 	}
 
 	private String getAuthenticatedUserInfo(final HttpServerRequest request) {
-		if(request instanceof SecureHttpServerRequest) {
-			final String userId;
-			final String tokenId;
-			final String cookieId;
-			final JsonObject session = ((SecureHttpServerRequest) request).getSession();
-			if(session == null || isBlank(session.getString("externalId"))) {
-				userId = UNAUTHENTICATED_USER_ID;
-			} else {
-				userId = session.getString("externalId");
-			}
-			tokenId = getTokenHeader(request).orElse(NO_TOKEN_ID);
-			final String sessionId = CookieHelper.getInstance().getSigned("oneSessionId", request);
-			cookieId = isBlank(sessionId) ? NO_SESSION_COOKIE : sessionId;
-			return String.format(" - %s %s %s", userId, cookieId, tokenId);
-		} else {
-			return "";
-		}
+		return RequestUtils.getAuthenticatedUserInfo(request)
+			.map(info -> String.format(" - %s %s %s", info.getUserId(), info.getCookieId(), info.getTokenId()))
+			.orElse("");
 	}
 
 	private String getQuery(HttpServerRequest request) {

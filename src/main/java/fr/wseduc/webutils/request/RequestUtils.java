@@ -18,6 +18,7 @@ package fr.wseduc.webutils.request;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import fr.wseduc.webutils.http.Renders;
+import fr.wseduc.webutils.security.SecureHttpServerRequest;
 import fr.wseduc.webutils.security.XSSUtils;
 import fr.wseduc.webutils.validation.JsonSchemaValidator;
 import io.vertx.core.Future;
@@ -32,8 +33,12 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.json.jackson.JacksonCodec;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+
+import static fr.wseduc.webutils.request.IAccessLogger.*;
 import static java.util.Collections.emptySet;
 import org.apache.commons.lang3.StringUtils;
+
+import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 
 import java.text.ParseException;
@@ -334,6 +339,50 @@ public class RequestUtils {
 			}
 		}
 		return resultDate;
+	}
+
+	public static Optional<AuthenticatedUserInfo> getAuthenticatedUserInfo(final HttpServerRequest request) {
+		if(request instanceof SecureHttpServerRequest) {
+			final String userId;
+			final String tokenId;
+			final String cookieId;
+			final JsonObject session = ((SecureHttpServerRequest) request).getSession();
+			if(session == null || isBlank(session.getString("externalId"))) {
+				userId = UNAUTHENTICATED_USER_ID;
+			} else {
+				userId = session.getString("externalId");
+			}
+			tokenId = getTokenHeader(request).orElse(NO_TOKEN_ID);
+			final String sessionId = CookieHelper.getInstance().getSigned("oneSessionId", request);
+			cookieId = isBlank(sessionId) ? NO_SESSION_COOKIE : sessionId;
+			return Optional.of(new AuthenticatedUserInfo(userId, tokenId, cookieId));
+		} else {
+			return Optional.empty();
+		}
+	}
+
+	public static class AuthenticatedUserInfo {
+		private final String userId;
+		private final String tokenId;
+		private final String cookieId;
+
+        public AuthenticatedUserInfo(String userId, String tokenId, String cookieId) {
+            this.userId = userId;
+            this.tokenId = tokenId;
+            this.cookieId = cookieId;
+        }
+
+		public String getUserId() {
+			return userId;
+		}
+
+		public String getTokenId() {
+			return tokenId;
+		}
+
+		public String getCookieId() {
+			return cookieId;
+		}
 	}
 
 }

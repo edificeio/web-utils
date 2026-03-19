@@ -16,9 +16,10 @@
 
 package fr.wseduc.webutils.request.filter;
 
+import fr.wseduc.webutils.http.Renders;
 import fr.wseduc.webutils.http.TraceIdContextHandler;
 import fr.wseduc.webutils.request.AccessLoggerFactory;
-import fr.wseduc.webutils.request.IAccessLogger;
+import fr.wseduc.webutils.request.RequestUtils;
 import fr.wseduc.webutils.security.SecureHttpServerRequest;
 import fr.wseduc.webutils.security.XssSecuredHttpServerRequest;
 import io.vertx.core.Context;
@@ -59,7 +60,10 @@ public abstract class SecurityHandler implements Handler<HttpServerRequest> {
 					StopWatch watch = TraceIdContextHandler.getTraceTime(ctx);
 					if(watch != null) {
 						watch.stop();
-						logger.info(" End of secured method REJECTED : " + request.path() + " in [" + watch.getTime(TimeUnit.MILLISECONDS) + " ms]");
+						final String userIdentification = RequestUtils.getAuthenticatedUserInfo(request)
+							.map(info -> "id=" + info.getUserId() + " tokenId=" + info.getTokenId() + " cookieId=" + info.getCookieId())
+							.orElse("unauthenticated");
+						logger.info(" End of secured method REJECTED : " + request.path() + " in [" + watch.getTime(TimeUnit.MILLISECONDS) + " ms] ip= " + Renders.getIp(request) + userIdentification);
 					}
 					chain.get(chain.size() - 1).deny(request);
 				}
