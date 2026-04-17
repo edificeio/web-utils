@@ -93,14 +93,17 @@ public class TemplateProcessor
 
   public void processTemplateToWriter(String templateString, JsonObject params, final Handler<Writer> handler)
   {
-    this.getTemplate(templateString, new Handler<Template>()
-    {
-      @Override
-      public void handle(Template t)
-      {
-        processTemplate(t, params, handler);
-      }
-    });
+    this.getTemplate(templateString, t -> processTemplate(t, params, handler));
+  }
+
+  public void processTemplate(String templateString, JsonObject params, Map<String, Mustache.Lambda> lambdas, final Handler<String> handler)
+  {
+    this.processTemplateToWriter(templateString, params, lambdas, w -> handler.handle(w == null ? null : w.toString()));
+  }
+
+  public void processTemplateToWriter(String templateString, JsonObject params, Map<String, Mustache.Lambda> lambdas, final Handler<Writer> handler)
+  {
+    this.getTemplate(templateString, t -> processTemplate(t, params, lambdas, handler));
   }
 
   protected void processTemplate(Template t, JsonObject params, final Handler<Writer> handler)
@@ -125,6 +128,26 @@ public class TemplateProcessor
     }
     else
       handler.handle(null);
+  }
+
+  protected void processTemplate(Template t, JsonObject params, Map<String, Mustache.Lambda> lambdas, final Handler<Writer> handler)
+  {
+    final JsonObject ctxParams = (params == null) ? new JsonObject() : params.copy();
+    final Map<String, Object> ctx = JsonUtils.convertMap(ctxParams);
+    ctx.putAll(lambdas);
+
+    if (t != null) {
+      try {
+        Writer writer = new StringWriter();
+        t.execute(ctx, writer);
+        handler.handle(writer);
+      } catch (Exception e) {
+        log.error(e.getMessage(), e);
+        handler.handle(null);
+      }
+    } else {
+      handler.handle(null);
+    }
   }
 
   protected void getTemplate(String templateString, final Handler<Template> handler)

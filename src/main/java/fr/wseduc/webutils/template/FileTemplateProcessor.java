@@ -82,17 +82,23 @@ public class FileTemplateProcessor extends TemplateProcessor
       this.processTemplateToWriter(resourceName, params, handler);
   }
 
+  public void processTemplate(String resourceName, JsonObject params, Reader r, Map<String, Mustache.Lambda> lambdas, final Handler<Writer> handler)
+  {
+    if(r != null)
+      this.processTemplate(compiler.compile(r), params, lambdas, handler);
+    else
+      this.processTemplateToWriter(resourceName, params, lambdas, handler);
+  }
+
   @Override
   protected void getTemplate(String resourceName, final Handler<Template> handler)
   {
     String path = this.templateFolder + resourceName;
 
     final String p = absolutePath(path);
-    if (this.useCache == true)
-    {
+    if (this.useCache) {
       Template cacheEntry = cache.get(p);
-      if(cacheEntry != null)
-      {
+      if(cacheEntry != null) {
         handler.handle(cacheEntry);
         return;
       }
