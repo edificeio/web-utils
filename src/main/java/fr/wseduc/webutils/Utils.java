@@ -18,8 +18,10 @@ package fr.wseduc.webutils;
 
 import fr.wseduc.webutils.eventbus.ResultMessage;
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
+import io.vertx.core.Promise;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -28,6 +30,7 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.function.Consumer;
 
 public class Utils {
 
@@ -197,6 +200,15 @@ public class Utils {
 				handler.handle(new ResultMessage().error(event.cause().getMessage()));
 			}
 		};
+	}
+
+	public static <T> Future<T> eitherToFuture(Consumer<Handler<Either<String, T>>> call) {
+		Promise<T> promise = Promise.promise();
+		call.accept(res -> {
+			if (res.isRight()) promise.complete(res.right().getValue());
+			else promise.fail(res.left().getValue());
+		});
+		return promise.future();
 	}
 
 }

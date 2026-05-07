@@ -20,7 +20,6 @@ import fr.wseduc.webutils.http.Binding;
 import fr.wseduc.webutils.http.HttpMethod;
 import fr.wseduc.webutils.http.Renders;
 import fr.wseduc.webutils.http.TraceIdContextHandler;
-import fr.wseduc.webutils.request.AccessLogger;
 import fr.wseduc.webutils.request.AccessLoggerFactory;
 import fr.wseduc.webutils.request.IAccessLogger;
 import fr.wseduc.webutils.request.filter.SecurityHandler;
@@ -33,6 +32,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.lang3.time.StopWatch;
 import org.vertx.java.core.http.RouteMatcher;
@@ -44,8 +44,10 @@ import java.lang.invoke.MethodType;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public abstract class Controller extends Renders {
 
@@ -78,7 +80,7 @@ public abstract class Controller extends Renders {
 	}
 
 	protected void init(Vertx vertx, JsonObject config, RouteMatcher rm,
-	Map<String, SecuredAction> securedActions)
+						Map<String, SecuredAction> securedActions)
 	{
 		super.init(vertx, config);
 		this.rm = rm;
@@ -450,6 +452,22 @@ public abstract class Controller extends Renders {
 			return pathPrefix + "/" + pattern.trim();
 		}
 		return pathPrefix + pattern.trim();
+	}
+
+	/**
+	 * Take a json array of jsonObject, appy the mapper to enforce contract, then serialize the result back to jsonObject
+	 * to be send on the event bus
+	 * @param arr List of JsonObject from database
+	 * @param mapper Mapper to convert / filter JsonObject to a specific T class
+	 * @return JsonArray of serialized T on JsonObject
+	 * @param <T>
+	 */
+	public static <T> JsonArray serializeForBus(JsonArray arr, Function<JsonObject, T> mapper) {
+		return new JsonArray(arr.stream()
+				.map(JsonObject.class::cast)
+				.map(mapper)
+				.map(JsonObject::mapFrom)
+				.collect(Collectors.toList()));
 	}
 
 	public void setAccessLogger(IAccessLogger accessLogger) {

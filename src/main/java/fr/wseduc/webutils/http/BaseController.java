@@ -17,7 +17,6 @@
 package fr.wseduc.webutils.http;
 
 import fr.wseduc.webutils.Controller;
-import fr.wseduc.webutils.Server;
 import fr.wseduc.webutils.security.SecuredAction;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
@@ -37,7 +36,7 @@ public class BaseController extends Controller {
 		this(null, null, null, null);
 	}
 
-	public void init(Vertx vertx, JsonObject config, RouteMatcher rm,
+    public void init(Vertx vertx, JsonObject config, RouteMatcher rm,
 					 Map<String, SecuredAction> securedActions) {
     super.init(vertx, config, rm, securedActions);
 	}
