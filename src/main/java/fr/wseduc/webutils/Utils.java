@@ -202,6 +202,28 @@ public class Utils {
 		};
 	}
 
+	/**
+	 * Bridges a legacy callback-based service method (using {@link Either}) into a Vert.x {@link Future}.
+	 * <p>
+	 * Many service methods in this codebase accept a {@code Handler<Either<String, T>>} as their last
+	 * argument, where a {@link Either.Left} signals failure (with an error message) and a
+	 * {@link Either.Right} signals success (with the result value). This utility wraps such a call
+	 * into a {@link Future} so it can be composed with other async operations.
+	 *
+	 * <pre>{@code
+	 * // Given a service method:
+	 * //   void findUser(String id, Handler<Either<String, JsonObject>> handler)
+	 *
+	 * Utils.eitherToFuture(handler -> userService.findUser(userId, handler))
+	 *     .compose(user -> Utils.eitherToFuture(handler -> roleService.getRoles(user.getString("id"), handler)))
+	 *     .onSuccess(roles -> renderJson(request, roles))
+	 *     .onFailure(err -> renderError(request, err));
+	 * }</pre>
+	 *
+	 * @param call a consumer that invokes the legacy service method, passing along the provided handler
+	 * @param <T>  the type of the success value
+	 * @return a {@link Future} that completes with the right value on success, or fails with the left message on error
+	 */
 	public static <T> Future<T> eitherToFuture(Consumer<Handler<Either<String, T>>> call) {
 		Promise<T> promise = Promise.promise();
 		call.accept(res -> {
