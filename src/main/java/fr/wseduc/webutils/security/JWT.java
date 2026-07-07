@@ -26,8 +26,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import sun.security.util.DerOutputStream;
-import sun.security.util.DerValue;
+
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -440,16 +439,46 @@ public final class JWT {
 			throw new IllegalArgumentException("Invalid ES256 signature length");
 		}
 
-		byte[] r = Arrays.copyOfRange(jwsSignature, 0, 32);
-		byte[] s = Arrays.copyOfRange(jwsSignature, 32, 64);
+		byte[] r = trimLeadingZeros(Arrays.copyOfRange(jwsSignature, 0, 32));
+		byte[] s = trimLeadingZeros(Arrays.copyOfRange(jwsSignature, 32, 64));
 
-		DerOutputStream derOut = new DerOutputStream();
-		derOut.write(DerValue.createTag(DerValue.tag_Integer, false, (byte) 0), trimLeadingZeros(r));
-		derOut.write(DerValue.createTag(DerValue.tag_Integer, false, (byte) 0), trimLeadingZeros(s));
+		// Add leading zero byte if high bit is set (to keep the integer positive in DER)
+		if ((r[0] & 0x80) != 0) {
+			byte[] tmp = new byte[r.length + 1];
+			System.arraycopy(r, 0, tmp, 1, r.length);
+			r = tmp;
+		}
+		if ((s[0] & 0x80) != 0) {
+			byte[] tmp = new byte[s.length + 1];
+			System.arraycopy(s, 0, tmp, 1, s.length);
+			s = tmp;
+		}
 
-		DerOutputStream seq = new DerOutputStream();
-		seq.write(DerValue.tag_Sequence, derOut.toByteArray());
-		return seq.toByteArray();
+		// DER encode: SEQUENCE { INTEGER r, INTEGER s }
+		int seqContentLen = 2 + r.length + 2 + s.length;
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		out.write(0x30); // SEQUENCE tag
+		writeDerLength(out, seqContentLen);
+		out.write(0x02); // INTEGER tag
+		writeDerLength(out, r.length);
+		out.write(r);
+		out.write(0x02); // INTEGER tag
+		writeDerLength(out, s.length);
+		out.write(s);
+		return out.toByteArray();
+	}
+
+	private static void writeDerLength(ByteArrayOutputStream out, int length) {
+		if (length < 128) {
+			out.write(length);
+		} else if (length < 256) {
+			out.write(0x81);
+			out.write(length);
+		} else {
+			out.write(0x82);
+			out.write((length >> 8) & 0xFF);
+			out.write(length & 0xFF);
+		}
 	}
 
 	private static byte[] trimLeadingZeros(byte[] val) {
