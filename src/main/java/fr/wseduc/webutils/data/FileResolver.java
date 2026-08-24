@@ -19,10 +19,14 @@ package fr.wseduc.webutils.data;
 import io.vertx.core.json.JsonObject;
 
 import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class FileResolver {
 
 	private String basePath;
+	// Racine canonique servant a confiner la resolution : tout chemin qui en sort est refuse.
+	private Path baseDir;
 
 	private FileResolver() {}
 
@@ -36,6 +40,8 @@ public class FileResolver {
 		} else {
 			this.basePath = "";
 		}
+		this.baseDir = Paths.get(this.basePath.isEmpty() ? "." : this.basePath)
+				.toAbsolutePath().normalize();
 	}
 
 	private static class FileResolverHolder {
@@ -48,6 +54,14 @@ public class FileResolver {
 
 	public String getAbsolutePath(String file) {
 		if (file == null || file.isEmpty() || file.startsWith(File.separator)) return file;
+		// Confinement : on resout puis on verifie que le chemin ne sort pas de baseDir.
+		// normalize() consomme les « .. » ; un chemin qui s'echappe renvoie null (l'appelant repond 404).
+		if (baseDir != null) {
+			final Path resolved = baseDir.resolve(file).normalize();
+			if (!resolved.startsWith(baseDir)) {
+				return null;
+			}
+		}
 		return basePath + file;
 	}
 

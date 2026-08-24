@@ -181,6 +181,10 @@ public abstract class Server extends AbstractVerticle {
 		// Serve public static resource like img, css, js. By convention in /public directory
 		rm.getWithRegEx(prefix.replaceAll("\\/", "\\/") + "\\/public\\/.+", request -> {
 			final String path = absolutePath(request.path().substring(prefix.length() + 1));
+			if (path == null) { // tentative de traversee de repertoire refusee par FileResolver
+				Renders.notFound(request);
+				return;
+			}
 			if (dev) {
 				request.response().sendFile(path, ar -> {
 					if (ar.failed() && !request.response().ended()) {
