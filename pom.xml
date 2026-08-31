@@ -12,7 +12,7 @@
 
     <groupId>fr.wseduc</groupId>
     <artifactId>web-utils</artifactId>
-    <version>3.4.3</version>
+    <version>3.4-SNAPSHOT</version>
 
     <repositories>
         <repository>
@@ -31,7 +31,7 @@
         <commonsTextVersion>1.11.0</commonsTextVersion>
         <commonsCodecVersion>1.16.0</commonsCodecVersion>
         <micrometerPrometheusVersion>1.1.0</micrometerPrometheusVersion>
-        <xss-utils.version>1.1.1</xss-utils.version>
+        <xss-utils.version>1.1-SNAPSHOT</xss-utils.version>
     </properties>
 
     <dependencies>
