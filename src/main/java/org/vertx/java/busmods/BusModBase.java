@@ -16,6 +16,7 @@
 
 package org.vertx.java.busmods;
 
+import fr.wseduc.webutils.VerticleWithProbes;
 import fr.wseduc.webutils.data.FileResolver;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.eventbus.EventBus;
@@ -33,7 +34,7 @@ import java.util.Optional;
  *
  * @author <a href="http://tfox.org">Tim Fox</a>
  */
-public abstract class BusModBase extends AbstractVerticle {
+public abstract class BusModBase extends VerticleWithProbes {
 
 	protected EventBus eb;
 	protected JsonObject config;
@@ -47,6 +48,11 @@ public abstract class BusModBase extends AbstractVerticle {
 		eb = vertx.eventBus();
 		config = config();
 		FileResolver.getInstance().setBasePath(config);
+	}
+
+	@Override
+	protected JsonObject getConfig() {
+		return config;
 	}
 
 	protected void sendOK(Message<JsonObject> message) {
