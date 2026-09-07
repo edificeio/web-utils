@@ -22,6 +22,8 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.SortedMap;
@@ -46,7 +48,7 @@ public class AWS4Signature {
         final StringBuilder canonicalRequest = new StringBuilder()
                 .append(httpMethod).append("\n")
                 .append(canonicalUri).append("\n")
-                .append(canonicalQueryString).append("\n");
+                .append(canonicalQueryString(canonicalQueryString)).append("\n");
 
         final String hashPayload = (payloadSha256 != null ? payloadSha256: EMPTY_PAYLOAD_SHA256);
 
@@ -103,6 +105,64 @@ public class AWS4Signature {
         return canonical;
     }
 
+    /**
+     * The authority Vert.x will actually write in the {@code Host} header, which is the value that has to be
+     * signed. {@link HttpClientRequest#getHost()} alone drops the port, while Vert.x appends it as soon as it
+     * is not the default one for the scheme — signing the bare host against an endpoint on a non standard port
+     * (MinIO, an internal gateway) yields SignatureDoesNotMatch.
+     */
+    public static String authority(HttpClientRequest request) {
+        return authority(request.getHost(), request.getPort(), request.connection().isSsl());
+    }
+
+    /**
+     * Same rule as {@code HttpClientRequestBase.authority()}, kept here so that the signed value and the one
+     * put on the wire cannot drift apart.
+     */
+    public static String authority(String host, int port, boolean ssl) {
+        if (port < 0 || (port == 80 && !ssl) || (port == 443 && ssl)) {
+            return host;
+        }
+        return host + ":" + port;
+    }
+
+    /**
+     * The {@code CanonicalQueryString} of SigV4: parameters split on {@code &}, each given an explicit
+     * {@code =}, and the whole sorted by parameter name — then by value for a repeated name.
+     * <p>
+     * Values are passed through exactly as they already sit in the URI: they are what goes on the wire, and
+     * re-encoding them here would turn every {@code %} into {@code %25}. Encoding stays the caller's job,
+     * ordering is ours — a query built in any other order used to sign against a canonical request the
+     * server never rebuilds the same way, and answer SignatureDoesNotMatch.
+     */
+    public static String canonicalQueryString(String query) {
+        if (query == null || query.isEmpty()) {
+            return "";
+        }
+        final List<String[]> params = new ArrayList<>();
+        for (String param : query.split("&")) {
+            if (param.isEmpty()) {
+                continue;
+            }
+            final int separator = param.indexOf('=');
+            params.add(separator < 0
+                    ? new String[] { param, "" }
+                    : new String[] { param.substring(0, separator), param.substring(separator + 1) });
+        }
+        params.sort((a, b) -> {
+            final int byName = a[0].compareTo(b[0]);
+            return byName != 0 ? byName : a[1].compareTo(b[1]);
+        });
+        final StringBuilder canonical = new StringBuilder();
+        for (String[] param : params) {
+            if (canonical.length() > 0) {
+                canonical.append("&");
+            }
+            canonical.append(param[0]).append("=").append(param[1]);
+        }
+        return canonical.toString();
+    }
+
     public static String byteArrayToHex(byte[] a) {
         final StringBuilder sb = new StringBuilder(a.length * 2);
         for(byte b: a)
@@ -117,7 +177,7 @@ public class AWS4Signature {
         final Instant instant = Instant.now();
         final String now = DATETIME_FORMAT.format(instant);
         final MultiMap canonicalHeaders = MultiMap.caseInsensitiveMultiMap();
-        canonicalHeaders.add("host", request.getHost());
+        canonicalHeaders.add("host", authority(request));
         // Every x-amz-* header carried by the request MUST be signed: S3 implementations reject the
         // request otherwise, with AccessDenied / HeadersNotSigned naming the offending header. This
         // covers object metadata (x-amz-meta-*), SSE-C keys and copy-source headers alike.
