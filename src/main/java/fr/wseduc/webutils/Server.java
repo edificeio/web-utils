@@ -309,4 +309,9 @@ public abstract class Server extends VerticleWithProbes {
 		futures.add(f.future());
 		Future.all(futures).map(e->(Void) null).onComplete(stopFuture);
 	}
+
+	@Override
+	protected JsonObject getConfig() {
+		return config;
+	}
 }
