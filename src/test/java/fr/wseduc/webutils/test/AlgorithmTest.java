@@ -174,6 +174,24 @@ public class AlgorithmTest {
 		assertNotEquals(plainSignature, encodedSignature);
 	}
 
+	/**
+	 * Pins the {@code host} value that gets signed. Vert.x writes {@code host:port} in the Host header as soon
+	 * as the port is not the default one for the scheme, so that is what has to be signed — an endpoint on a
+	 * non standard port (MinIO, an internal gateway) answers SignatureDoesNotMatch otherwise.
+	 */
+	@Test
+	public void aws4SignedHostCarriesANonDefaultPort() {
+		assertEquals("minio.internal:9000", AWS4Signature.authority("minio.internal", 9000, false));
+		assertEquals("minio.internal:9000", AWS4Signature.authority("minio.internal", 9000, true));
+		// The default port of the scheme in use is left out, as Vert.x leaves it out.
+		assertEquals("s3.amazonaws.com", AWS4Signature.authority("s3.amazonaws.com", 443, true));
+		assertEquals("s3.internal", AWS4Signature.authority("s3.internal", 80, false));
+		// But 443 in clear and 80 over TLS are not: Vert.x sends them, so they are signed.
+		assertEquals("s3.internal:443", AWS4Signature.authority("s3.internal", 443, false));
+		assertEquals("s3.internal:80", AWS4Signature.authority("s3.internal", 80, true));
+		assertEquals("s3.internal", AWS4Signature.authority("s3.internal", -1, false));
+	}
+
 	@Test
 	public void aws4HeaderValuesAreTrimmed() throws Exception {
 		final MultiMap padded = MultiMap.caseInsensitiveMultiMap();
@@ -188,6 +206,48 @@ public class AlgorithmTest {
 		assertEquals(
 				AWS4Signature.sign("PUT", "/test.txt", "", tidy, "us-east-1", "key", "secret", null, instant),
 				AWS4Signature.sign("PUT", "/test.txt", "", padded, "us-east-1", "key", "secret", null, instant));
+	}
+
+	/**
+	 * SigV4 signs the parameters sorted by name, whatever order they go on the wire in. Left to the caller,
+	 * this held only by luck on every route carrying more than one parameter.
+	 */
+	@Test
+	public void aws4CanonicalQueryStringIsSortedByName() {
+		assertEquals("partNumber=1&uploadId=abc",
+				AWS4Signature.canonicalQueryString("uploadId=abc&partNumber=1"));
+		assertEquals("continuation-token=t&list-type=2&prefix=x",
+				AWS4Signature.canonicalQueryString("list-type=2&prefix=x&continuation-token=t"));
+		// A repeated name is ordered on its value.
+		assertEquals("k=a&k=b", AWS4Signature.canonicalQueryString("k=b&k=a"));
+	}
+
+	/** A parameter with no value still carries its {@code =}, as {@code ?uploads} does. */
+	@Test
+	public void aws4CanonicalQueryStringAlwaysCarriesTheEquals() {
+		assertEquals("uploads=", AWS4Signature.canonicalQueryString("uploads"));
+		assertEquals("uploads=", AWS4Signature.canonicalQueryString("uploads="));
+		assertEquals("", AWS4Signature.canonicalQueryString(""));
+		assertEquals("", AWS4Signature.canonicalQueryString(null));
+	}
+
+	/**
+	 * Values arrive already percent encoded — they are what the URI carries. Encoding them a second time
+	 * here would sign {@code %2520} against a wire value of {@code %20}.
+	 */
+	@Test
+	public void aws4CanonicalQueryStringLeavesEncodedValuesAlone() {
+		assertEquals("prefix=dossier%20priv%C3%A9%2F",
+				AWS4Signature.canonicalQueryString("prefix=dossier%20priv%C3%A9%2F"));
+		// An opaque uploadId holding an encoded + keeps it: decoding it would corrupt the token.
+		assertEquals("uploadId=a%2Bb%3D%3D", AWS4Signature.canonicalQueryString("uploadId=a%2Bb%3D%3D"));
+	}
+
+	/** Already canonical in, unchanged out — the signature of a compliant call site does not move. */
+	@Test
+	public void aws4CanonicalQueryStringIsIdempotent() {
+		final String canonical = AWS4Signature.canonicalQueryString("uploadId=abc&partNumber=1");
+		assertEquals(canonical, AWS4Signature.canonicalQueryString(canonical));
 	}
 
 }
