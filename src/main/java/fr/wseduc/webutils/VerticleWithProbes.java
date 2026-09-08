@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static fr.wseduc.webutils.Server.getPathPrefix;
+import static io.vertx.core.Future.all;
 import static io.vertx.core.Future.succeededFuture;
 
 public abstract class VerticleWithProbes extends AbstractVerticle {
@@ -40,52 +41,59 @@ public abstract class VerticleWithProbes extends AbstractVerticle {
         log = LoggerFactory.getLogger(this.getClass());
         final JsonObject config = getConfig();
         this.probeTimeout = config.getLong("probes-timeout", 5_000L);
-        this.readinessProbes.addAll((Collection) getDefaultReadinessProbes(id));
-        this.livenessProbes.addAll((Collection) getDefaultLivenessProbes(id));
-        final JsonArray probesConf = config.getJsonArray("probes");
-        final List<Future<Void>> initProbes = new ArrayList<>();
-        if(probesConf != null) {
-            boolean readinessProbe = true;
-            boolean livenessProbe = false;
-            for (Object o : probesConf) {
-                final String probeClassName;
-                final JsonObject conf;
-                if (o instanceof String) {
-                    probeClassName = (String) o;
-                    conf = new JsonObject();
-                } else if (o instanceof JsonObject) {
-                    final JsonObject jo = (JsonObject) o;
-                    probeClassName = jo.getString("name");
-                    conf = jo.getJsonObject("config");
-                    readinessProbe = jo.getBoolean("readiness", true);
-                    livenessProbe = jo.getBoolean("liveness", false);
-                } else {
-                    log.error("We expect the probes to be a list of string with the name of the probes or an object");
-                    continue;
-                }
-                conf.put("id", id);
-                try {
-                    final Class<?> probeClass = Class.forName(probeClassName);
-                    if (!HealthCheckProbe.class.isAssignableFrom(probeClass)) {
-                        log.error("Specified class " + probeClassName + " is not a probe class");
+        return all(getDefaultReadinessProbes(id))
+        .compose(ready -> {
+            readinessProbes.addAll(ready.list());
+            return all(getDefaultLivenessProbes(id));
+        }).compose(live -> {
+            livenessProbes.addAll(live.list());
+            return succeededFuture();
+        }).compose(defaultInitialized -> {
+            final JsonArray probesConf = config.getJsonArray("probes");
+            final List<Future<Void>> initProbes = new ArrayList<>();
+            if (probesConf != null) {
+                boolean readinessProbe = true;
+                boolean livenessProbe = false;
+                for (Object o : probesConf) {
+                    final String probeClassName;
+                    final JsonObject conf;
+                    if (o instanceof String) {
+                        probeClassName = (String) o;
+                        conf = new JsonObject();
+                    } else if (o instanceof JsonObject) {
+                        final JsonObject jo = (JsonObject) o;
+                        probeClassName = jo.getString("name");
+                        conf = jo.getJsonObject("config");
+                        readinessProbe = jo.getBoolean("readiness", true);
+                        livenessProbe = jo.getBoolean("liveness", false);
+                    } else {
+                        log.error("We expect the probes to be a list of string with the name of the probes or an object");
                         continue;
                     }
-                    final HealthCheckProbe probe = (HealthCheckProbe) probeClass.newInstance();
-                    initProbes.add(probe.init(vertx, conf));
-                    if(readinessProbe) {
-                        this.readinessProbes.add(probe);
+                    conf.put("id", id);
+                    try {
+                        final Class<?> probeClass = Class.forName(probeClassName);
+                        if (!HealthCheckProbe.class.isAssignableFrom(probeClass)) {
+                            log.error("Specified class " + probeClassName + " is not a probe class");
+                            continue;
+                        }
+                        final HealthCheckProbe probe = (HealthCheckProbe) probeClass.newInstance();
+                        initProbes.add(probe.init(vertx, conf));
+                        if (readinessProbe) {
+                            this.readinessProbes.add(probe);
+                        }
+                        if (livenessProbe) {
+                            this.livenessProbes.add(probe);
+                        }
+                    } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+                        log.error("Cannot instantiate probe " + probeClassName, e);
                     }
-                    if (livenessProbe) {
-                        this.livenessProbes.add(probe);
-                    }
-                } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
-                    log.error("Cannot instantiate probe " + probeClassName, e);
                 }
             }
-        }
-        return Future.all(initProbes)
-                .map(CompositeFuture::list)
-                .mapEmpty();
+            return all(initProbes)
+                    .map(CompositeFuture::list)
+                    .mapEmpty();
+        });
     }
 
     protected abstract JsonObject getConfig();
