@@ -63,7 +63,7 @@ public abstract class VerticleWithProbes extends AbstractVerticle {
                     } else if (o instanceof JsonObject) {
                         final JsonObject jo = (JsonObject) o;
                         probeClassName = jo.getString("name");
-                        conf = jo.getJsonObject("config");
+                        conf = jo.getJsonObject("config", new JsonObject());
                         readinessProbe = jo.getBoolean("readiness", true);
                         livenessProbe = jo.getBoolean("liveness", false);
                     } else {
