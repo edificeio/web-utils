@@ -1,9 +1,6 @@
 package fr.wseduc.webutils;
 
-import fr.wseduc.webutils.metrics.EventBusProbe;
-import fr.wseduc.webutils.metrics.HealthCheckProbe;
-import fr.wseduc.webutils.metrics.HealthCheckProbeResult;
-import fr.wseduc.webutils.metrics.ZookeeperProbe;
+import fr.wseduc.webutils.metrics.*;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
@@ -16,6 +13,7 @@ import io.vertx.spi.cluster.zookeeper.ZookeeperClusterManager;
 import org.vertx.java.core.http.RouteMatcher;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,7 +23,8 @@ import static io.vertx.core.Future.succeededFuture;
 public abstract class VerticleWithProbes extends AbstractVerticle {
 
     protected Logger log;
-    protected final List<HealthCheckProbe> probes = new ArrayList<>();
+    protected final List<HealthCheckProbe> readinessProbes = new ArrayList<>();
+    protected final List<HealthCheckProbe> livenessProbes = new ArrayList<>();
     protected long probeTimeout = 10_000L;
 
     /**
@@ -41,9 +40,13 @@ public abstract class VerticleWithProbes extends AbstractVerticle {
         log = LoggerFactory.getLogger(this.getClass());
         final JsonObject config = getConfig();
         this.probeTimeout = config.getLong("probes-timeout", 5_000L);
-        final List<Future<HealthCheckProbe>> probes = new ArrayList<>(getDefaultProbes(id));
+        this.readinessProbes.addAll((Collection) getDefaultReadinessProbes(id));
+        this.livenessProbes.addAll((Collection) getDefaultLivenessProbes(id));
         final JsonArray probesConf = config.getJsonArray("probes");
+        final List<Future<Void>> initProbes = new ArrayList<>();
         if(probesConf != null) {
+            boolean readinessProbe = true;
+            boolean livenessProbe = false;
             for (Object o : probesConf) {
                 final String probeClassName;
                 final JsonObject conf;
@@ -54,6 +57,8 @@ public abstract class VerticleWithProbes extends AbstractVerticle {
                     final JsonObject jo = (JsonObject) o;
                     probeClassName = jo.getString("name");
                     conf = jo.getJsonObject("config");
+                    readinessProbe = jo.getBoolean("readiness", true);
+                    livenessProbe = jo.getBoolean("liveness", false);
                 } else {
                     log.error("We expect the probes to be a list of string with the name of the probes or an object");
                     continue;
@@ -66,21 +71,38 @@ public abstract class VerticleWithProbes extends AbstractVerticle {
                         continue;
                     }
                     final HealthCheckProbe probe = (HealthCheckProbe) probeClass.newInstance();
-                    probes.add(probe.init(vertx, conf).map(probe));
+                    initProbes.add(probe.init(vertx, conf));
+                    if(readinessProbe) {
+                        this.readinessProbes.add(probe);
+                    }
+                    if (livenessProbe) {
+                        this.livenessProbes.add(probe);
+                    }
                 } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
                     log.error("Cannot instantiate probe " + probeClassName, e);
                 }
             }
         }
-        return Future.all(probes)
+        return Future.all(initProbes)
                 .map(CompositeFuture::list)
-                .onSuccess(ps -> this.probes.addAll((List)ps))
                 .mapEmpty();
     }
 
     protected abstract JsonObject getConfig();
 
-    private List<? extends Future<HealthCheckProbe>> getDefaultProbes(final String id) {
+    private List<? extends Future<HealthCheckProbe>> getDefaultLivenessProbes(final String id) {
+        final List<Future<HealthCheckProbe>> defaultProbes = new ArrayList<>();
+        if(vertx.isClustered() && ((VertxInternal) vertx).getClusterManager() instanceof ZookeeperClusterManager) {
+            log.debug("Adding ZK cluster probe");
+            final ZookeeperClusterProbe zkProbe = new ZookeeperClusterProbe();
+            defaultProbes.add(zkProbe.init(vertx, config()).map(zkProbe));
+        } else {
+            log.debug("Skipping ZK cluster prob");
+        }
+        return defaultProbes;
+    }
+
+    private List<? extends Future<HealthCheckProbe>> getDefaultReadinessProbes(final String id) {
         final List<Future<HealthCheckProbe>> defaultProbes = new ArrayList<>();
         log.debug("Adding EventBus probe");
         final EventBusProbe eventBusProbe = new EventBusProbe();
@@ -117,48 +139,33 @@ public abstract class VerticleWithProbes extends AbstractVerticle {
     }
 
     protected void addLivenessAndReadinessProbes(final RouteMatcher rm) {
-        final ZookeeperClusterManager zkClusterManager;
-        if (vertx.isClustered() && ((VertxInternal) vertx).getClusterManager() instanceof ZookeeperClusterManager) {
-            zkClusterManager = (ZookeeperClusterManager) ((VertxInternal) vertx).getClusterManager();
-        } else {
-            zkClusterManager = null;
-        }
         final String prefix = getPathPrefix(getConfig());
         rm.get(prefix + "/health/liveness", event -> {
-            if (zkClusterManager != null) {
-                final String nodeId = zkClusterManager.getNodeId();
-                if (zkClusterManager.getNodes().contains(nodeId)) {
-                    Controller.renderJson(event, new JsonObject().put("test", "ok").put("nodeId", nodeId));
-                } else {
-                    log.warn("Liveness check failed: node " + nodeId + " not found in cluster nodes");
-                    Controller.renderError(event, new JsonObject()
-                            .put("test", "ko")
-                            .put("error", "Node not registered in cluster")
-                            .put("nodeId", nodeId));
-                }
-            } else {
-                Controller.renderJson(event, new JsonObject().put("test", "ok"));
-            }
+            evaluateProbes(this.livenessProbes, event);
         });
 
         rm.get(prefix + "/health/readiness", event -> {
-            final List<Future<HealthCheckProbeResult>> futures = probes.stream()
-                    .map(this::executeProbeWithTimeout)
-                    .collect(Collectors.toList());
-            Future.join(futures)
-                    .onSuccess(res -> {
-                        final JsonObject result = mergeProbes(res.list());
-                        boolean hasKO = res.<HealthCheckProbeResult>list().stream().anyMatch(p -> !p.isOk());
-                        if(hasKO) {
-                            Controller.renderError(event, result);
-                        } else {
-                            Controller.renderJson(event, result);
-                        }
-                    })
-                    .onFailure(th -> {
-                        log.error("An error occurred while getting readiness probe", th);
-                        Controller.renderError(event);
-                    });
+            evaluateProbes(this.readinessProbes, event);
         });
+    }
+
+    private void evaluateProbes(final List<HealthCheckProbe> probes, final io.vertx.core.http.HttpServerRequest event) {
+        final List<Future<HealthCheckProbeResult>> futures = probes.stream()
+                .map(this::executeProbeWithTimeout)
+                .collect(Collectors.toList());
+        Future.join(futures)
+                .onSuccess(res -> {
+                    final JsonObject result = mergeProbes(res.list());
+                    boolean hasKO = res.<HealthCheckProbeResult>list().stream().anyMatch(p -> !p.isOk());
+                    if(hasKO) {
+                        Controller.renderError(event, result);
+                    } else {
+                        Controller.renderJson(event, result);
+                    }
+                })
+                .onFailure(th -> {
+                    log.error("An error occurred while getting readiness probe", th);
+                    Controller.renderError(event);
+                });
     }
 }
