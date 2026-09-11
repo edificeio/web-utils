@@ -13,7 +13,6 @@ import io.vertx.spi.cluster.zookeeper.ZookeeperClusterManager;
 import org.vertx.java.core.http.RouteMatcher;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,7 +22,7 @@ import static io.vertx.core.Future.succeededFuture;
 
 public abstract class VerticleWithProbes extends AbstractVerticle {
 
-    protected Logger log;
+    protected Logger log = LoggerFactory.getLogger(this.getClass());
     protected final List<HealthCheckProbe> readinessProbes = new ArrayList<>();
     protected final List<HealthCheckProbe> livenessProbes = new ArrayList<>();
     protected long probeTimeout = 10_000L;
@@ -38,7 +37,6 @@ public abstract class VerticleWithProbes extends AbstractVerticle {
      * @return A future that completes when the initialization of all probes is done.
      */
     protected Future<Void> initializeProbes(final String id) {
-        log = LoggerFactory.getLogger(this.getClass());
         final JsonObject config = getConfig();
         this.probeTimeout = config.getLong("probes-timeout", 5_000L);
         return all(getDefaultReadinessProbes(id))
