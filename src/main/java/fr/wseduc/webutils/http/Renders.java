@@ -66,7 +66,7 @@ public class Renders {
 		}
 		this.vertx = vertx;
 		if (vertx != null) {
-			this.templateProcessor = new FileTemplateProcessor(vertx, "view/", false);
+			this.templateProcessor = new FileTemplateProcessor(vertx, "view/", isTemplateCacheEnabled(config));
 			this.templateProcessor.setLambda("formatBirthDate", new FormatBirthDateLambda());
 			this.templateProcessor.setLambda("modVersion", new ModsLambda(vertx));
 		}
@@ -85,10 +85,22 @@ public class Renders {
 				.onFailure(ex -> log.error("Error getting static-host conf", ex));
 
 		if (templateProcessor == null && vertx != null) {
-			this.templateProcessor = new FileTemplateProcessor(vertx, "view/", false);
+			this.templateProcessor = new FileTemplateProcessor(vertx, "view/", isTemplateCacheEnabled(config));
 			this.templateProcessor.setLambda("formatBirthDate", new FormatBirthDateLambda());
 			this.templateProcessor.setLambda("modVersion", new ModsLambda(vertx));
 		}
+	}
+
+	/*
+	 * Template caching defaults to enabled outside of "mode": "dev" (where templates are expected to be
+	 * edited live without a redeploy), but can always be forced either way via the "cache-enabled" config key.
+	 */
+	private static boolean isTemplateCacheEnabled(JsonObject config) {
+		if (config == null) {
+			return false;
+		}
+		boolean dev = "dev".equals(config.getString("mode"));
+		return config.getBoolean("cache-enabled", !dev);
 	}
 
 	protected void setLambdaTemplateRequest(final HttpServerRequest request)
