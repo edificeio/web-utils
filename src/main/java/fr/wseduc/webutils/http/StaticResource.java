@@ -33,6 +33,10 @@ public class StaticResource {
 		format.setTimeZone(TimeZone.getTimeZone("GMT"));
 	}
 
+	// Static assets still revalidate via Last-Modified/If-Modified-Since once this expires,
+	// so a moderate value is safe even for non content-hashed filenames.
+	private static final long DEFAULT_MAX_AGE_SECONDS = 3600L;
+
 	public static void addLastModifiedHeader(HttpServerResponse response, Date resourceLastModified) {
 		response.headers().add("Last-Modified", format.format(resourceLastModified));
 	}
@@ -65,6 +69,8 @@ public class StaticResource {
 			String resourceLastModified, boolean dev) {
 		if (dev) {
 			request.response().headers().add("Cache-Control", "max-age=0, no-cache, must-revalidate");
+		} else {
+			request.response().headers().add("Cache-Control", "public, max-age=" + DEFAULT_MAX_AGE_SECONDS);
 		}
 		addLastModifiedHeader(request.response(), resourceLastModified);
 		if (checkLastModified(request, resourceLastModified)) {

@@ -225,7 +225,13 @@ public abstract class Server extends VerticleWithProbes {
 		if (rawHttpServerOptions == null) {
 			rawHttpServerOptions = new JsonObject();
 		}
-		return new HttpServerOptions(rawHttpServerOptions);
+		final HttpServerOptions options = new HttpServerOptions(rawHttpServerOptions);
+		// Default gzip/deflate compression on for static/text responses, unless a service's own
+		// httpServerOptions explicitly overrides it (e.g. compression is instead handled upstream).
+		if (!rawHttpServerOptions.containsKey("compressionSupported")) {
+			options.setCompressionSupported(true);
+		}
+		return options;
 	}
 
 	protected JsonObject getCustomProperties() {
