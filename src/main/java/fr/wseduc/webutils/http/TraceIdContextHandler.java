@@ -18,6 +18,10 @@ public class TraceIdContextHandler {
     private static final String TRACE_TIME = "X-Cloud-Trace-Context-Time";
 
     public static String getTraceId(Context context, HttpServerRequest request) {
+        if (context == null) {
+            String traceId = request.getHeader(TRACE_ID);
+            return traceId != null ? traceId : "";
+        }
         try {
            if(context.getLocal(TRACE_ID) == null) {
                String traceId = request.getHeader(TRACE_ID);

@@ -60,7 +60,7 @@ public abstract class Controller extends Renders {
 	protected EventBus eb;
 	protected String busPrefix = "";
 	private IAccessLogger accessLogger;
-	public static final String TRACE_ID = "X-Cloud-Trace-Context";
+	public static final String TRACE_ID = System.getenv().getOrDefault("TRACE_ID_HEADER_NAME", "x-request-id");
 	public static final String TRACE_MTTR = "Trace-MTTR";
 	private boolean logRestAccess = false;
 
