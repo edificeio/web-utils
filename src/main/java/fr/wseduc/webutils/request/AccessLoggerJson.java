@@ -16,9 +16,13 @@
 
 package fr.wseduc.webutils.request;
 
+import fr.wseduc.webutils.Controller;
 import fr.wseduc.webutils.http.Renders;
+import fr.wseduc.webutils.http.TraceIdContextHandler;
 import fr.wseduc.webutils.security.SecureHttpServerRequest;
+import io.vertx.core.Context;
 import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.JsonObject;
 
@@ -48,13 +52,15 @@ public class AccessLoggerJson extends AccessLogger {
 	}
 
 	protected String formatLog(final HttpServerRequest request, final String userId) {
+	final Context ctx = Vertx.currentContext();
     JsonObject logEntry = new JsonObject()
       .put("timestamp", Instant.now().toString())
       .put("ip", Renders.getIp(request))
       .put("method", request.method().toString())
       .put("path", request.path())
       .put("query", request.query())
-      .put("userAgent", getUserAgent(request));
+      .put("userAgent", getUserAgent(request))
+	  .put(Controller.TRACE_ID, TraceIdContextHandler.getTraceId(ctx, request));
     if(userId != null) {
       logEntry.put("userId", userId);
     }
