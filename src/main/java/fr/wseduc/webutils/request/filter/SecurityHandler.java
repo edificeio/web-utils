@@ -87,6 +87,7 @@ public abstract class SecurityHandler implements Handler<HttpServerRequest> {
 	@Override
 	public void handle(HttpServerRequest request) {
 		final Context ctx = Vertx.currentContext();
+		TraceIdContextHandler.getTraceId(ctx, request);
 		TraceIdContextHandler.setTraceTime(ctx);
 		if (chain != null && !chain.isEmpty()) {
 			SecureHttpServerRequest sr = new XssSecuredHttpServerRequest(request);
