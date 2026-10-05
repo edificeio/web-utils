@@ -41,6 +41,8 @@ public class I18n {
 	public final static String DEFAULT_DOMAIN = "default-domain";
 	private Map<String, Map<Locale, JsonObject>> messagesByDomains = new HashMap<>();
 	private Map<String, Map<Locale, JsonObject>> messagesByThemes = new HashMap<>();
+	/** Translations overriding those of the files, replaced as a whole when they change. */
+	private volatile I18nOverrides overrides = I18nOverrides.EMPTY;
 
 	public I18n(){}
 
@@ -88,33 +90,76 @@ public class I18n {
 		return translate(key, domain, null, locale, args);
 	}
 		
+	/**
+	 * Translates a key for the requests made at a domain, without tenant: the overrides of the
+	 * domain apply (see {@link #translate(String, String, String, String, Locale, String...)}).
+	 */
 	public String translate(String key, String domain, String theme, Locale locale, String... args) {
+		return translate(key, domain, null, theme, locale, args);
+	}
+
+	/**
+	 * Translates a key: its override if any (see {@link I18nOverrides}), else its translation in the
+	 * files of the theme, then of the domain, then of {@value #DEFAULT_DOMAIN}, else the key itself.
+	 *
+	 * @param domain   domain of the request
+	 * @param tenantId tenant of the user, null if unknown
+	 * @param theme    theme of the user, null if unknown
+	 * @param args     values of the {0}, {1}... placeholders of the translation
+	 */
+	public String translate(String key, String domain, String tenantId, String theme, Locale locale, String... args) {
 		if (key == null) return "";
+		final String overridden = overrides.find(key, tenantId, domain, theme, locale);
+		if (overridden != null) {
+			return format(overridden, args);
+		}
+		return translateFromFiles(key, domain, theme, locale, args);
+	}
+
+	private String translateFromFiles(String key, String domain, String theme, Locale locale, String... args) {
 		Map<Locale, JsonObject> messages = getMessagesMap(theme != null ? theme : domain, theme != null); // Theme gets precedence over domain, domain is a fallback
 
 		if (messages == null) {
-			return theme != null ? translate(key, domain, null, locale, args) : key;
+			return theme != null ? translateFromFiles(key, domain, null, locale, args) : key;
 		}
 		JsonObject bundle = messages.get(locale) != null ? messages.get(locale) : messages.get(defaultLocale);
 		if (bundle == null) {
-			return theme != null ? translate(key, domain, null, locale, args) : key;
+			return theme != null ? translateFromFiles(key, domain, null, locale, args) : key;
 		}
 		String text = bundle.getString(key);
 		if(text != null)
 		{
-			if (args.length > 0) {
-				try {
-					for (int i = 0; i < args.length; i++) {
-						text = text.replaceAll("\\{" + i + "\\}", args[i]);
-					}
-				} catch (RuntimeException e) {
-					log.error("Error replacing i18n variable", e);
-				}
-			}
+			text = format(text, args);
 		}
 		else
-			text = theme != null ? translate(key, domain, null, locale, args) : key;
+			text = theme != null ? translateFromFiles(key, domain, null, locale, args) : key;
 		return text;
+	}
+
+	/** Replaces the {0}, {1}... placeholders of a translation by the given values. */
+	private static String format(String text, String... args) {
+		if (args.length > 0) {
+			try {
+				for (int i = 0; i < args.length; i++) {
+					text = text.replaceAll("\\{" + i + "\\}", args[i]);
+				}
+			} catch (RuntimeException e) {
+				log.error("Error replacing i18n variable", e);
+			}
+		}
+		return text;
+	}
+
+	/**
+	 * Replaces the translations overriding those of the files, e.g. when they changed. The given
+	 * snapshot is used as is by the translations made from now on.
+	 */
+	public void setOverrides(I18nOverrides overrides) {
+		this.overrides = overrides == null ? I18nOverrides.EMPTY : overrides;
+	}
+
+	public I18nOverrides getOverrides() {
+		return overrides;
 	}
 
 	private Map<Locale, JsonObject> getMessagesMap(String domain) {
@@ -146,7 +191,7 @@ public class I18n {
 		if (bundle == null) {
 			bundle = messages.get(defaultLocale2);
 		}
-		return bundle;
+		return withOverrides(bundle, null, domain, null, l);
 	}
 
 	public JsonObject load(HttpServerRequest request) {
@@ -163,7 +208,13 @@ public class I18n {
 		if (bundle == null) {
 			bundle = messages.get(defaultLocale);
 		}
-		return bundle;
+		return withOverrides(bundle, getTenantId(request), domain, themeName, l);
+	}
+
+	/** The translations themselves without overrides, else a copy with the overrides applying on top. */
+	private JsonObject withOverrides(JsonObject bundle, String tenantId, String domain, String theme, Locale locale) {
+		final I18nOverrides currentOverrides = overrides;
+		return currentOverrides.isEmpty() ? bundle : currentOverrides.applyTo(bundle, tenantId, domain, theme, locale);
 	}
 
 	/* Dummy implementation. Just use the first langage option ...
@@ -198,6 +249,23 @@ public class I18n {
 			}
 		}
 		return acceptLanguage;
+	}
+
+	/**
+	 * The tenant of the user making the request, for the translation overrides of its tenant to apply:
+	 * the one in its session (set at authentication), else the one of the X-Tenant-Id header.
+	 *
+	 * @return the id of the tenant, null if unknown
+	 */
+	public static String getTenantId(HttpServerRequest request) {
+		if (request instanceof SecureHttpServerRequest) {
+			final JsonObject session = ((SecureHttpServerRequest) request).getSession();
+			if (session != null && Utils.isNotEmpty(session.getString("tenantId"))) {
+				return session.getString("tenantId");
+			}
+		}
+		final String tenantId = request.headers() != null ? request.headers().get("X-Tenant-Id") : null;
+		return Utils.isNotEmpty(tenantId) ? tenantId : null;
 	}
 
 	/**

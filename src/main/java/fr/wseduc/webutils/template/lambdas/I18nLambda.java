@@ -35,6 +35,7 @@ public class I18nLambda implements Mustache.Lambda
   private final String host;
   private final Locale locale;
   private final String theme;
+  private final String tenantId;
 
   public I18nLambda(String locale)
   {
@@ -48,10 +49,19 @@ public class I18nLambda implements Mustache.Lambda
 
   public I18nLambda(String locale, String host, String theme)
   {
+    this(locale, host, theme, null);
+  }
+
+  /**
+   * @param tenantId tenant of the user, for its translation overrides to apply, null if unknown
+   */
+  public I18nLambda(String locale, String host, String theme, String tenantId)
+  {
     this.i18n = I18n.getInstance();
     this.host = host;
     this.locale = I18n.getLocale(locale != null ? locale : "fr");
     this.theme = theme;
+    this.tenantId = tenantId;
   }
 
   @Override
@@ -60,9 +70,9 @@ public class I18nLambda implements Mustache.Lambda
     String text;
 
     if(this.host == null)
-      text = i18n.translate(key, I18n.DEFAULT_DOMAIN, theme, locale);
+      text = i18n.translate(key, I18n.DEFAULT_DOMAIN, tenantId, theme, locale);
     else
-      text = i18n.translate(key, host, theme, locale);
+      text = i18n.translate(key, host, tenantId, theme, locale);
 
     // This will handle translation units with embedded mustache templates
     Mustache.compiler().compile(text).execute(frag.context(), out);
