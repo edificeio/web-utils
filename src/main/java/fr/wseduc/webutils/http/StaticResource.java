@@ -21,6 +21,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 import java.util.TimeZone;
+import java.util.regex.Pattern;
 
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
@@ -33,9 +34,35 @@ public class StaticResource {
 		format.setTimeZone(TimeZone.getTimeZone("GMT"));
 	}
 
-	// Static assets still revalidate via Last-Modified/If-Modified-Since once this expires,
-	// so a moderate value is safe even for non content-hashed filenames.
-	private static final long DEFAULT_MAX_AGE_SECONDS = 3600L;
+	/*
+	 * Browser caching policy for static files (outside dev mode).
+	 * - Content-hashed build outputs never change under the same name: cached for a year without revalidation.
+	 * - Any other file keeps its name across releases: the browser must revalidate (Last-Modified /
+	 *   If-Modified-Since => 304) so that a rollout is visible immediately. Shared caches still keep
+	 *   it, their TTL is set on their side so they have to be purged after each deploy.
+	 * - Files whose content depends on the user (theme, session, host...) must not be stored by shared caches.
+	 */
+	public static final String CACHE_CONTROL_REVALIDATE = "public, no-cache";
+	public static final String CACHE_CONTROL_IMMUTABLE = "public, max-age=31536000, immutable";
+	public static final String CACHE_CONTROL_PRIVATE = "private, no-cache";
+	public static final String CACHE_CONTROL_DEV = "max-age=0, no-cache, must-revalidate";
+	private static final Pattern CONTENT_HASHED_FILE =
+			Pattern.compile(".*[-.](?=[A-Za-z0-9_-]*[0-9A-Z])[A-Za-z0-9_-]{8}\\.(?:js|mjs|css)$");
+
+	public static boolean isContentHashed(String path) {
+		return path != null && CONTENT_HASHED_FILE.matcher(path).matches();
+	}
+
+	public static String cacheControl(String path, boolean dev, boolean shared) {
+		if (dev) {
+			return CACHE_CONTROL_DEV;
+		}
+		if (!shared) {
+			return CACHE_CONTROL_PRIVATE;
+		}
+		return isContentHashed(path) ? CACHE_CONTROL_IMMUTABLE : CACHE_CONTROL_REVALIDATE;
+	}
+
 	public static void addLastModifiedHeader(HttpServerResponse response, Date resourceLastModified) {
 		response.headers().add("Last-Modified", format.format(resourceLastModified));
 	}
@@ -66,11 +93,16 @@ public class StaticResource {
 
 	public static void serveRessource(HttpServerRequest request, String ressourcePath,
 			String resourceLastModified, boolean dev) {
-		if (dev) {
-			request.response().headers().add("Cache-Control", "max-age=0, no-cache, must-revalidate");
-		} else {
-			request.response().headers().add("Cache-Control", "public, max-age=" + DEFAULT_MAX_AGE_SECONDS);
-		}
+		serveRessource(request, ressourcePath, resourceLastModified, dev, true);
+	}
+
+	/**
+	 * @param shared false when the file served for this URL depends on the user (theme cookie, session
+	 *               preferences, host...): it is then marked private so that shared caches never store it.
+	 */
+	public static void serveRessource(HttpServerRequest request, String ressourcePath,
+			String resourceLastModified, boolean dev, boolean shared) {
+		request.response().headers().set("Cache-Control", cacheControl(ressourcePath, dev, shared));
 		addLastModifiedHeader(request.response(), resourceLastModified);
 		if (checkLastModified(request, resourceLastModified)) {
 			request.response().setStatusCode(304).end();
