@@ -105,21 +105,34 @@ public class RSA
 		else
       collectFiles(file, fileStreams);
 
+		return signFile(fileStreams, privateKey);
+	}
+
+	/**
+	 * Same as {@link #signFile(String, PrivateKey)}, for callers that already hold their content
+	 * as streams (objects read from S3) instead of files on a local path.
+	 */
+	public static String signFile(List<InputStream> fileStreams, PrivateKey privateKey) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException, IOException
+	{
     Signature privateSignature = Signature.getInstance("SHA256withRSA");
     privateSignature.initSign(privateKey);
+    updateSignature(privateSignature, fileStreams);
 
+		return Base64.getEncoder().encodeToString(privateSignature.sign());
+	}
+
+	private static void updateSignature(Signature signature, List<InputStream> fileStreams) throws IOException, SignatureException
+	{
     byte[] buf = new byte[2048];
     int len;
 
     for(InputStream in : fileStreams)
     {
       while ((len = in.read(buf)) != -1)
-        privateSignature.update(buf, 0, len);
+        signature.update(buf, 0, len);
 
       in.close();
     }
-
-		return Base64.getEncoder().encodeToString(privateSignature.sign());
 	}
 
 	private static void collectFiles(File directory, List<InputStream> fileInputStreams) throws IOException
@@ -153,19 +166,19 @@ public class RSA
 		else
       collectFiles(file, fileStreams);
 
+		return verifyFile(fileStreams, signature, publicKey);
+	}
+
+	/**
+	 * Same as {@link #verifyFile(String, String, PublicKey)}, for callers that already hold their
+	 * content as streams (objects read from S3) instead of files on a local path.
+	 */
+	public static boolean verifyFile(List<InputStream> fileStreams, String signature, PublicKey publicKey)
+    throws NoSuchAlgorithmException, InvalidKeyException, SignatureException, IOException
+	{
     Signature publicSignature = Signature.getInstance("SHA256withRSA");
     publicSignature.initVerify(publicKey);
-
-    byte[] buf = new byte[2048];
-    int len;
-
-    for(InputStream in : fileStreams)
-    {
-      while ((len = in.read(buf)) != -1)
-        publicSignature.update(buf, 0, len);
-
-      in.close();
-    }
+    updateSignature(publicSignature, fileStreams);
 
 		return publicSignature.verify(Base64.getDecoder().decode(signature));
 	}
